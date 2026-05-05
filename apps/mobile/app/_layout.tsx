@@ -10,9 +10,18 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 
-import { Text, TextInput } from 'react-native';
+import { LogBox, Text, TextInput } from 'react-native';
 import { useAuthStore, configureSupabase } from '@travyl/shared';
 import { Platform } from 'react-native';
+
+// Reanimated 4 fires a (currently false-positive) warning whenever a
+// style array combines a static object with a `useAnimatedStyle` result.
+// We do this throughout the app (e.g. PlaceCard crossfade, MosaicTile
+// press scale, FlipCard) and confirmed each `.value` access is inside a
+// worklet. Suppress the warning so it stops drowning out real logs.
+LogBox.ignoreLogs([
+  'It looks like you might be using shared value\'s .value inside reanimated inline style',
+]);
 
 // Set Satoshi as the default font for all Text and TextInput components
 const originalTextRender = (Text as any).render;

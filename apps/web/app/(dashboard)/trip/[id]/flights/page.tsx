@@ -26,8 +26,8 @@ import {
   Plane,
 } from 'lucide-react';
 import { PaperPlane } from '@/components/ui';
-import { useItineraryScreen, useFlights } from '@travyl/shared';
-import { useQuery } from '@tanstack/react-query';
+import { useItineraryScreen, useFlights, supabase } from '@travyl/shared';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 /* ================================================================
    TYPES & HELPERS
@@ -684,7 +684,7 @@ function BookedFlightCard({ flight }: { flight: BookedFlight }) {
    COMPARISON ALTERNATIVES
    ================================================================ */
 
-function ComparisonAlternatives({ comparisonFlights }: { comparisonFlights: ComparisonFlight[] }) {
+function ComparisonAlternatives({ comparisonFlights, onSelect, savingId }: { comparisonFlights: ComparisonFlight[]; onSelect: (f: ComparisonFlight) => void; savingId: string | null }) {
   const [open, setOpen] = useState(false);
   const [sort, setSort] = useState<'price' | 'duration' | 'value'>('value');
   const [altAirports, setAltAirports] = useState(false);
@@ -840,8 +840,12 @@ function ComparisonAlternatives({ comparisonFlights }: { comparisonFlights: Comp
                               </div>}
                             </div>
                             )}
-                            <button className="w-full py-2 bg-gradient-to-r from-[#2563eb] to-[#3b82f6] text-white text-xs font-medium rounded-lg hover:from-[#1d4ed8] hover:to-[#2563eb] transition-all shadow-sm">
-                              Select This Flight
+                            <button
+                              onClick={() => onSelect(flight)}
+                              disabled={savingId !== null}
+                              className="w-full py-2 bg-gradient-to-r from-[#2563eb] to-[#3b82f6] text-white text-xs font-medium rounded-lg hover:from-[#1d4ed8] hover:to-[#2563eb] transition-all shadow-sm disabled:opacity-60"
+                            >
+                              {savingId === flight.id ? 'Adding…' : 'Add to Trip'}
                             </button>
                           </div>
                         </motion.div>
@@ -999,6 +1003,56 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
   const outbound = bookedFlights.filter(f => f.type === 'outbound');
   const returnFlights = bookedFlights.filter(f => f.type === 'return');
 
+  // Persist a search-result flight into trip_context.flights[0]. The budget
+  // tab reads from trip_context.flights[] so this is what makes the flight
+  // price show up in Budget after the user picks one.
+  const queryClient = useQueryClient();
+  const [savingFlightId, setSavingFlightId] = useState<string | null>(null);
+  const handleSelectFlight = async (f: ComparisonFlight) => {
+    if (!id) return;
+    setSavingFlightId(f.id);
+    try {
+      // Reconstruct ISO datetimes from "HH:MM" + searchParams.date so the
+      // BookedFlightCard renderer (and trip itinerary) get usable times.
+      const baseDate = searchParams?.date || trip?.start_date || new Date().toISOString().slice(0, 10);
+      const isoFor = (clock: string) => {
+        const m = clock.match(/(\d{1,2}):(\d{2})/);
+        if (!m) return null;
+        const hh = m[1].padStart(2, '0');
+        return `${baseDate}T${hh}:${m[2]}:00`;
+      };
+      const ctxFlight = {
+        airline: f.airline,
+        airlineLogo: f.airlineLogo,
+        flight_number: f.flightNumber,
+        origin: f.departure.airport,
+        origin_iata: f.departure.airport,
+        destination: f.arrival.airport,
+        dest_iata: f.arrival.airport,
+        departure_time: isoFor(f.departure.time),
+        arrival_time: isoFor(f.arrival.time),
+        duration: (() => {
+          const m = f.duration.match(/(\d+)h\s*(\d+)?m?/);
+          return m ? Number(m[1]) * 60 + (m[2] ? Number(m[2]) : 0) : 0;
+        })(),
+        stops: f.stops,
+        price: f.price,
+        depart_date: baseDate,
+      };
+      const { data: row } = await supabase.from('trips').select('trip_context').eq('id', id).single();
+      const ctx = (row?.trip_context || {}) as Record<string, unknown>;
+      const existing = Array.isArray((ctx as any).flights) ? ((ctx as any).flights as any[]) : [];
+      (ctx as any).flights = existing.length > 0 ? [ctxFlight, ...existing.slice(1)] : [ctxFlight];
+      const { error } = await supabase.from('trips').update({ trip_context: ctx }).eq('id', id);
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ['trip', id] });
+    } catch (e) {
+      console.error('Failed to add flight to trip', e);
+    } finally {
+      setSavingFlightId(null);
+    }
+  };
+
   if (isLoading || loadingDbFlights) {
     return (
       <div className="space-y-3 animate-pulse">
@@ -1050,7 +1104,7 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
           <p className="text-sm text-gray-400 dark:text-gray-500">Searching flights...</p>
         </div>
       ) : searchedFlights.length > 0 ? (
-        <ComparisonAlternatives comparisonFlights={searchedFlights} />
+        <ComparisonAlternatives comparisonFlights={searchedFlights} onSelect={handleSelectFlight} savingId={savingFlightId} />
       ) : !hasBookedFlights ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-white/[0.06] flex items-center justify-center mb-3">

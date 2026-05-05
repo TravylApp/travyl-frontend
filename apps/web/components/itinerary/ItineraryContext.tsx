@@ -133,7 +133,20 @@ function calendarActivitiesToDayViewModels(
   });
 
   return baseDays.map((baseDay, idx) => {
-    const dayActivities = onCalendar.filter((a) => a.day === idx);
+    // Dedup by (title + startHour) — the trip-generation pipeline
+    // sometimes emits the same POI in multiple slots for the same day,
+    // which made "Ala Moana Regional Park" / "Bishop Museum" appear
+    // twice on Day 1. Same fix as the mobile itinerary screen, applied
+    // at the consumer side until #764 (single canonical activity store)
+    // lands and removes the duplicates at the data layer.
+    const seenInDay = new Set<string>();
+    const dayActivities = onCalendar.filter((a) => {
+      if (a.day !== idx) return false;
+      const key = `${a.title || ''}|${a.startHour ?? ''}`;
+      if (seenInDay.has(key)) return false;
+      seenInDay.add(key);
+      return true;
+    });
     // Flatten: for parent blocks, include children as separate activities
     const allVMs: ActivityViewModel[] = [];
     for (const a of dayActivities) {

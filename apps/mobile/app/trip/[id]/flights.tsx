@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useContext } from 'react';
-import { View, ScrollView, Text, Pressable, Linking, Modal, TextInput, FlatList, Image } from 'react-native';
+import { View, ScrollView, Text, Pressable, Linking, Modal, TextInput, FlatList, Image, Alert } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useQueryClient } from '@tanstack/react-query';
 import { PageTransition, useTabAccent, TabCtx } from './_layout';
-import { adjustBrightness, TextStyles, FontFamily, useItineraryScreen, useFlightSearch, getWebApiBase, useSettingsStore } from '@travyl/shared';
+import { adjustBrightness, TextStyles, FontFamily, useItineraryScreen, useFlightSearch, getWebApiBase, useSettingsStore, supabase } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 // Airport cache — populated dynamically from API search results
 const airportCache: { code: string; name: string; city: string }[] = [];
@@ -1276,6 +1277,54 @@ export default function FlightsScreen() {
 
   // Search results from FlightSearchSection
   const [searchFlights, setSearchFlights] = useState<any[]>([]);
+  const queryClient = useQueryClient();
+  const [savingFlightId, setSavingFlightId] = useState<string | null>(null);
+
+  // Persist a selected search-result flight into trip_context.flights[].
+  // The budget tab reads from trip_context.flights[] so this is what makes
+  // the price show up in Budget after the user picks a flight.
+  const addFlightToTrip = async (rawFlight: any, fallbackKey: string) => {
+    if (!id) return;
+    setSavingFlightId(fallbackKey);
+    try {
+      const legs: any[] = Array.isArray(rawFlight.legs) ? rawFlight.legs : [];
+      const firstLeg = legs[0] ?? {};
+      const lastLeg = legs[legs.length - 1] ?? firstLeg;
+      const ctxFlight = {
+        airline: firstLeg.airline || rawFlight.airline || 'Airline',
+        airlineLogo: rawFlight.airlineLogo || '',
+        origin: firstLeg.departure?.id || rawFlight.origin || '',
+        origin_iata: firstLeg.departure?.id || rawFlight.origin || '',
+        destination: lastLeg.arrival?.id || rawFlight.destination || '',
+        dest_iata: lastLeg.arrival?.id || rawFlight.destination || '',
+        departure_time: firstLeg.departure?.time || rawFlight.departure_time || null,
+        arrival_time: lastLeg.arrival?.time || rawFlight.arrival_time || null,
+        duration: rawFlight.totalDuration ?? rawFlight.duration ?? 0,
+        stops: typeof rawFlight.stops === 'number' ? rawFlight.stops : Math.max(0, legs.length - 1),
+        price: rawFlight.price ?? 0,
+        link: rawFlight.link || '',
+        depart_date: trip?.start_date ?? '',
+      };
+      const { data: row } = await supabase.from('trips').select('trip_context').eq('id', id).single();
+      const ctx = (row?.trip_context || {}) as Record<string, unknown>;
+      const existing = Array.isArray((ctx as any).flights) ? ((ctx as any).flights as any[]) : [];
+      // Replace the outbound (index 0) with the new selection. Keep any
+      // return leg in slot 1. Users typically swap their outbound; we don't
+      // stack endless flights.
+      const next = existing.length > 0
+        ? [ctxFlight, ...existing.slice(1)]
+        : [ctxFlight];
+      (ctx as any).flights = next;
+      const { error } = await supabase.from('trips').update({ trip_context: ctx }).eq('id', id);
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ['trip', id] });
+      Alert.alert('Flight added', 'This flight is now in your trip and budget.');
+    } catch (e: any) {
+      Alert.alert('Could not add flight', e?.message || 'Please try again.');
+    } finally {
+      setSavingFlightId(null);
+    }
+  };
 
   if (isLoading) return <PageTransition><FlightSkeleton /></PageTransition>;
 
@@ -1387,11 +1436,22 @@ export default function FlightsScreen() {
                   <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{durationLabel}</Text>
                   <Text style={{ ...TextStyles.smEm, color: stops === 0 ? colors.success : colors.warning }}>{stops === 0 ? 'Direct' : `${stops} stop${stops === 1 ? '' : 's'}`}</Text>
                 </View>
-                {f.link && (
-                  <Pressable onPress={() => Linking.openURL(f.link)} style={{ marginTop: 10, backgroundColor: ACCENT, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}>
-                    <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>Book Flight</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                  <Pressable
+                    onPress={() => addFlightToTrip(f, f.id || `search-${i}`)}
+                    disabled={savingFlightId !== null}
+                    style={{ flex: 1, backgroundColor: ACCENT, borderRadius: 8, paddingVertical: 10, alignItems: 'center', opacity: savingFlightId === (f.id || `search-${i}`) ? 0.6 : 1 }}
+                  >
+                    <Text style={{ ...TextStyles.bodyEm, color: '#fff' }}>
+                      {savingFlightId === (f.id || `search-${i}`) ? 'Adding…' : 'Add to Trip'}
+                    </Text>
                   </Pressable>
-                )}
+                  {f.link && (
+                    <Pressable onPress={() => Linking.openURL(f.link)} style={{ flex: 1, backgroundColor: colors.cardBackground, borderRadius: 8, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: ACCENT }}>
+                      <Text style={{ ...TextStyles.bodyEm, color: ACCENT }}>Book</Text>
+                    </Pressable>
+                  )}
+                </View>
               </View>
             );
           })}

@@ -1,4 +1,4 @@
-import { useCallback, useContext } from 'react';
+import { useCallback, useContext, useRef } from 'react';
 import { View, ScrollView, Text, Pressable, Linking, Platform, Share, Alert, Clipboard as RNClipboard } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -232,43 +232,52 @@ export default function InfoScreen() {
 // person inside the trip can share without scrolling back to the hero.
 function ShareTripCard({ trip, accent }: { trip: any; accent: string }) {
   const colors = useThemeColors();
+  // Busy guard so a double-tap can't fire two ensureShareLinkToken
+  // requests in parallel (which could race and leave a stale token).
+  const shareBusyRef = useRef(false);
   const handleShare = useCallback(async () => {
     if (!trip?.id) return;
-    let token: string | null = null;
+    if (shareBusyRef.current) return;
+    shareBusyRef.current = true;
     try {
-      token = await ensureShareLinkToken(trip.id);
-      if (trip.visibility === 'private') {
-        try { await updateTripVisibility(trip.id, 'link'); } catch {}
+      let token: string | null = null;
+      try {
+        token = await ensureShareLinkToken(trip.id);
+        if (trip.visibility === 'private') {
+          try { await updateTripVisibility(trip.id, 'link'); } catch {}
+        }
+      } catch (e: any) {
+        const msg = e?.message ?? 'Could not create a share link.';
+        if (Platform.OS === 'web') (globalThis as any).alert?.(`Share failed: ${msg}`);
+        else Alert.alert('Share failed', msg);
+        return;
       }
-    } catch (e: any) {
-      const msg = e?.message ?? 'Could not create a share link.';
-      if (Platform.OS === 'web') (globalThis as any).alert?.(`Share failed: ${msg}`);
-      else Alert.alert('Share failed', msg);
-      return;
-    }
-    const url = `https://gotravyl.com/trip/${trip.id}/share/${token}`;
-    const message = `Join me planning my trip to ${trip.destination} on Travyl: ${url}`;
-    const title = trip.title ?? `Trip to ${trip.destination}`;
+      const url = `https://gotravyl.com/trip/${trip.id}/share/${token}`;
+      const message = `Join me planning my trip to ${trip.destination} on Travyl: ${url}`;
+      const title = trip.title ?? `Trip to ${trip.destination}`;
 
-    if (Platform.OS === 'web') {
-      const nav = (globalThis as any).navigator;
+      if (Platform.OS === 'web') {
+        const nav = (globalThis as any).navigator;
+        try {
+          if (nav?.share) { await nav.share({ title, text: message, url }); return; }
+        } catch {}
+        try {
+          await nav?.clipboard?.writeText?.(url);
+          (globalThis as any).alert?.(`Link copied to clipboard:\n${url}`);
+        } catch {
+          (globalThis as any).alert?.(`Share link:\n${url}`);
+        }
+        return;
+      }
+
       try {
-        if (nav?.share) { await nav.share({ title, text: message, url }); return; }
-      } catch {}
-      try {
-        await nav?.clipboard?.writeText?.(url);
-        (globalThis as any).alert?.(`Link copied to clipboard:\n${url}`);
+        await Share.share({ message, url, title });
       } catch {
-        (globalThis as any).alert?.(`Share link:\n${url}`);
+        try { RNClipboard.setString(url); } catch {}
+        Alert.alert('Link copied', `Couldn't open the share sheet, but the link is in your clipboard:\n${url}`);
       }
-      return;
-    }
-
-    try {
-      await Share.share({ message, url, title });
-    } catch {
-      try { RNClipboard.setString(url); } catch {}
-      Alert.alert('Link copied', `Couldn't open the share sheet, but the link is in your clipboard:\n${url}`);
+    } finally {
+      shareBusyRef.current = false;
     }
   }, [trip?.id, trip?.destination, trip?.title, trip?.visibility]);
 

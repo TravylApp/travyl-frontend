@@ -66,6 +66,7 @@ export {
   fetchPackingSuggestions,
   updateSuggestionStatus,
   dismissAllSuggestions,
+  seedDefaultPackingItems,
 } from './packingService';
 
 export {
