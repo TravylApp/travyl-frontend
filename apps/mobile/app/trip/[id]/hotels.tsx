@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useContext, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, Image, Linking, Platform, TextInput, Keyboard, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, Image, Linking, Platform, TextInput, Keyboard, ActivityIndicator, Alert } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,7 +22,7 @@ if (Platform.OS !== 'web') {
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { TextStyles, FontFamily, useItineraryScreen, useHotelSearch, upscaleGoogleImage, getWebApiBase } from '@travyl/shared';
+import { TextStyles, FontFamily, useItineraryScreen, useHotelSearch, upscaleGoogleImage, getWebApiBase, supabase } from '@travyl/shared';
 
 
 /* ------------------------------------------------------------------ */
@@ -1449,6 +1450,61 @@ export default function HotelsScreen() {
     setBooked(true);
   };
 
+  const queryClient = useQueryClient();
+  const [savingHotel, setSavingHotel] = useState(false);
+
+  // Persist the currently-selected hotel into trip_context.hotels[0]. The
+  // budget tab pulls accommodation cost from trip_context.hotels[0].price,
+  // so this is what makes the hotel's price show up in Budget after the
+  // user picks a hotel.
+  const addHotelToTrip = useCallback(async () => {
+    if (!id || !hotel) return;
+    const room = currentRoom ?? hotel.roomTypes[selectedRoom];
+    const ctxHotel = {
+      id: hotel.id,
+      name: hotel.name,
+      stars: hotel.stars,
+      rating: hotel.rating,
+      review_count: hotel.reviews,
+      price: room?.price ?? hotel.price,
+      price_per_night: room?.price ?? hotel.price,
+      neighborhood: hotel.neighborhood,
+      address: hotel.address,
+      image: hotel.images?.[0] ?? '',
+      images: hotel.images ?? [],
+      amenities: hotel.amenities,
+      checkIn: hotel.checkIn,
+      checkOut: hotel.checkOut,
+      cancellation: hotel.cancellation,
+      phone: hotel.phone,
+      link: hotel.bookingLink,
+      website: hotel.bookingLink,
+      description: hotel.description,
+      category: hotel.category,
+      hours: hotel.hours,
+      nearby: hotel.nearby,
+      room_type: room?.type ?? '',
+      room_types: hotel.roomTypes,
+    };
+    setSavingHotel(true);
+    try {
+      const { data: row } = await supabase.from('trips').select('trip_context').eq('id', id).single();
+      const ctx = (row?.trip_context || {}) as Record<string, unknown>;
+      (ctx as any).hotels = [ctxHotel];
+      const existingAll = Array.isArray((ctx as any).all_hotels) ? ((ctx as any).all_hotels as any[]) : [];
+      const dedup = [ctxHotel, ...existingAll.filter((h: any) => h?.id !== ctxHotel.id && h?.name !== ctxHotel.name)];
+      (ctx as any).all_hotels = dedup;
+      const { error } = await supabase.from('trips').update({ trip_context: ctx }).eq('id', id);
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ['trip', id] });
+      Alert.alert('Hotel added', 'This hotel is now in your trip and budget.');
+    } catch (e: any) {
+      Alert.alert('Could not add hotel', e?.message || 'Please try again.');
+    } finally {
+      setSavingHotel(false);
+    }
+  }, [id, hotel, currentRoom, selectedRoom, queryClient]);
+
   const scrollRef = useRef<ScrollView>(null);
   const detailRef = useRef<View>(null);
   const detailYRef = useRef(0);
@@ -1645,19 +1701,37 @@ export default function HotelsScreen() {
               </View>
             )}
 
-            {/* ── Book Now — opens hotel site in-app ── */}
-            {!!hotel.bookingLink && (
+            {/* ── Add to Trip + Book Now ── */}
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
               <Pressable
-                onPress={() => WebBrowser.openBrowserAsync(hotel.bookingLink.startsWith('http') ? hotel.bookingLink : `https://www.google.com/search?q=${encodeURIComponent(hotel.name + ' booking')}`)}
+                onPress={addHotelToTrip}
+                disabled={savingHotel}
                 style={({ pressed }) => ({
-                  marginTop: 16, backgroundColor: pressed ? colors.tint : colors.tint, borderRadius: 12, paddingVertical: 15,
+                  flex: 1, backgroundColor: colors.tint, borderRadius: 12, paddingVertical: 15,
                   flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  opacity: pressed || savingHotel ? 0.85 : 1,
                 })}
               >
-                <FontAwesome name="building" size={14} color="#fff" />
-                <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Book Now</Text>
+                <FontAwesome name="plus" size={14} color="#fff" />
+                <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>
+                  {savingHotel ? 'Adding…' : 'Add to Trip'}
+                </Text>
               </Pressable>
-            )}
+              {!!hotel.bookingLink && (
+                <Pressable
+                  onPress={() => WebBrowser.openBrowserAsync(hotel.bookingLink.startsWith('http') ? hotel.bookingLink : `https://www.google.com/search?q=${encodeURIComponent(hotel.name + ' booking')}`)}
+                  style={({ pressed }) => ({
+                    flex: 1, backgroundColor: colors.cardBackground, borderRadius: 12, paddingVertical: 15,
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    borderWidth: 1, borderColor: colors.tint,
+                    opacity: pressed ? 0.9 : 1,
+                  })}
+                >
+                  <FontAwesome name="external-link" size={13} color={colors.tint} />
+                  <Text style={{ ...TextStyles.bodyLgEm, color: colors.tint }}>Book Now</Text>
+                </Pressable>
+              )}
+            </View>
           </View>
         </View>
       </View>

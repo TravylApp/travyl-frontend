@@ -243,12 +243,40 @@ export default function BudgetScreen() {
   const [budgetData, setBudgetData] = useState<BudgetItem[]>(initialBudget);
   const seeded = useRef(false);
 
-  // Load saved budget from trip_context if available
+  // Load saved budget from trip_context if available. Merge with the
+  // freshly-computed initial budget so newly-added categories (e.g.
+  // Flights, which didn't exist in older snapshots) get picked up
+  // automatically. Saved categories keep their user-edited values;
+  // missing ones are appended; "fixed" categories (Flights,
+  // Accommodation) get refreshed from initialBudget every load so a
+  // re-saved hotel price or new flight is reflected immediately
+  // instead of being frozen at whatever was last persisted.
   useEffect(() => {
     if (trip && !seeded.current) {
       const saved = (trip.trip_context as any)?.budget_data;
       if (saved && Array.isArray(saved) && saved.length > 0) {
-        setBudgetData(saved);
+        const initialById = new Map(initialBudget.map((b) => [b.id, b]));
+        const savedById = new Map<string, BudgetItem>(saved.map((b: BudgetItem) => [b.id, b]));
+        const merged: BudgetItem[] = [];
+        // Refresh fixed categories from initial; preserve user edits on others.
+        for (const item of initialBudget) {
+          const savedItem = savedById.get(item.id);
+          if (item.fixed) {
+            merged.push(item);
+          } else if (savedItem) {
+            merged.push(savedItem);
+          } else {
+            merged.push(item);
+          }
+        }
+        // Append saved categories the user added that aren't in the
+        // freshly-built initial set (custom categories, etc.).
+        for (const savedItem of saved) {
+          if (!initialById.has((savedItem as BudgetItem).id)) {
+            merged.push(savedItem as BudgetItem);
+          }
+        }
+        setBudgetData(merged);
       } else {
         setBudgetData(initialBudget);
       }
