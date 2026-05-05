@@ -19,7 +19,11 @@ import type { DbPackingItem, PackingAuditEntry, PackingSuggestion } from '../typ
 export async function fetchPackingItems(tripId: string): Promise<DbPackingItem[]> {
   const { data, error } = await supabase
     .from('packing_items')
-    .select('*, user:profiles!packing_items_user_id_fkey(display_name, avatar_url), owner:profiles!packing_items_owner_id_fkey(display_name)')
+    // Use the column-name disambiguator form (`profiles!user_id`) instead
+    // of the explicit FK constraint name. PostgREST stopped resolving the
+    // `packing_items_user_id_fkey` hint on prod, returning 400 — same root
+    // cause as the trip_collaborators FK fix in #765.
+    .select('*, user:profiles!user_id(display_name, avatar_url), owner:profiles!owner_id(display_name)')
     .eq('trip_id', tripId)
     .order('category')
     .order('sort_order', { ascending: true })
@@ -45,7 +49,7 @@ export async function fetchPackingItems(tripId: string): Promise<DbPackingItem[]
 export async function fetchPackingAuditLog(tripId: string, limit = 50): Promise<PackingAuditEntry[]> {
   const { data, error } = await supabase
     .from('packing_audit_log')
-    .select('*, user:profiles!packing_audit_log_user_id_fkey(display_name,email), target:profiles!packing_audit_log_target_user_id_fkey(display_name,email)')
+    .select('*, user:profiles!user_id(display_name,email), target:profiles!target_user_id(display_name,email)')
     .eq('trip_id', tripId)
     .order('created_at', { ascending: false })
     .limit(limit)

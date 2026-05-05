@@ -2206,7 +2206,13 @@ export default function ProfileScreen() {
     if (user?.id) {
       try {
         const merged = { ...((profile?.preferences ?? {}) as Record<string, any>), ...nextLocalPrefs };
-        await updateProfile(user.id, { preferences: merged });
+        // Also mirror the avatar to the canonical `profiles.avatar_url`
+        // column so web (which reads that field directly) stays in sync.
+        // Without this, mobile-uploaded avatars only landed in
+        // `profiles.preferences.avatar_url` and web would never see them.
+        const updates: Parameters<typeof updateProfile>[1] = { preferences: merged };
+        if (pendingAvatar) updates.avatar_url = pendingAvatar;
+        await updateProfile(user.id, updates);
         queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
       } catch {}
     }
