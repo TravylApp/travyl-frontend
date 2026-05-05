@@ -67,6 +67,14 @@ interface HotelData {
   phone: string;
   bookingLink: string;
   guestRatings: GuestRatings;
+  /** Free-text "About this hotel" — populated from SerpAPI/Booking when available. */
+  description?: string;
+  /** Lodging category (Hotel, Resort, Boutique, Hostel, etc.) — pulled from API tags. */
+  category?: string;
+  /** Optional opening / front-desk hours summary. */
+  hours?: string;
+  /** Walking-distance landmarks summary. */
+  nearby?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1402,9 +1410,15 @@ export default function HotelsScreen() {
       roomTypes,
       checkIn: trip?.start_date ? new Date(trip.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
       checkOut: trip?.end_date ? new Date(trip.end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
-      cancellation: '',
-      phone: '',
-      bookingLink: h.link ?? '',
+      cancellation: h.cancellation ?? '',
+      // Surface phone if the source has one — was hardcoded to '' before,
+      // which silently disabled the Call button.
+      phone: h.phone ?? h.formatted_phone_number ?? '',
+      bookingLink: h.link ?? h.website ?? h.url ?? '',
+      description: h.description ?? h.about ?? h.summary ?? h.tagline ?? '',
+      category: h.category ?? h.type ?? (Array.isArray(h.types) ? h.types[0] : undefined) ?? '',
+      hours: h.hours ?? h.opening_hours_summary ?? '',
+      nearby: h.nearby_summary ?? h.transit ?? '',
       guestRatings: {
         overall: rating,
         label: ratingLabel,
@@ -1524,10 +1538,44 @@ export default function HotelsScreen() {
           {/* Hotel Name */}
           <Text style={{ ...TextStyles.title, fontFamily: FontFamily.serif, color: colors.text, paddingHorizontal: 14, marginTop: 8 }} numberOfLines={2}>{hotel.name}</Text>
 
-          {/* Stars row */}
-          {hotel.stars > 0 && (
-            <View style={{ paddingHorizontal: 14, marginTop: 4 }}>
-              <StarRow count={hotel.stars} />
+          {/* Stars + Type pill */}
+          <View style={{ paddingHorizontal: 14, marginTop: 4, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            {hotel.stars > 0 && <StarRow count={hotel.stars} />}
+            {!!hotel.category && (
+              <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: colors.borderLight }}>
+                <Text style={{ ...TextStyles.xs, color: colors.textSecondary, fontWeight: '600' }}>{hotel.category}</Text>
+              </View>
+            )}
+            {!!hotel.neighborhood && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <FontAwesome name="map-marker" size={11} color={colors.textTertiary} />
+                <Text style={{ ...TextStyles.xs, color: colors.textSecondary }}>{hotel.neighborhood}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Description (if present) */}
+          {!!hotel.description && (
+            <Text style={{ ...TextStyles.body, color: colors.textSecondary, paddingHorizontal: 14, marginTop: 10, lineHeight: 19 }} numberOfLines={4}>
+              {hotel.description}
+            </Text>
+          )}
+
+          {/* Hours / Nearby summary */}
+          {(!!hotel.hours || !!hotel.nearby) && (
+            <View style={{ paddingHorizontal: 14, marginTop: 8, gap: 4 }}>
+              {!!hotel.hours && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <FontAwesome name="clock-o" size={11} color={colors.textTertiary} />
+                  <Text style={{ ...TextStyles.caption, color: colors.textSecondary, flex: 1 }}>{hotel.hours}</Text>
+                </View>
+              )}
+              {!!hotel.nearby && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <FontAwesome name="compass" size={11} color={colors.textTertiary} />
+                  <Text style={{ ...TextStyles.caption, color: colors.textSecondary, flex: 1 }}>{hotel.nearby}</Text>
+                </View>
+              )}
             </View>
           )}
 

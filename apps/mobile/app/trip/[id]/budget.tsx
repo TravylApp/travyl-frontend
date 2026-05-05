@@ -147,13 +147,19 @@ export default function BudgetScreen() {
     const items: BudgetItem[] = [];
 
     // Flights — sums every flight in trip_context.flights[]. Each flight
-    // has a `price` (set by savePlanToSupabase / SerpAPI). Skipped if
-    // the trip wasn't generated with flights or none have a price.
+    // has a `price` (set by savePlanToSupabase / SerpAPI). The expense
+    // description packs in route + airline + date + duration so the user
+    // sees the full booking, not just a price line.
     const flightExpenses = flights
       .map((f, i) => {
         const price = typeof f?.price === 'number' ? f.price : parseFloat(String(f?.price ?? '').replace(/[^0-9.]/g, ''));
         if (!price || !isFinite(price) || price <= 0) return null;
-        const desc = [f?.airline, f?.dest_iata || f?.destination, f?.depart_date].filter(Boolean).join(' · ') || `Flight ${i + 1}`;
+        const route = [f?.origin_iata || f?.origin, f?.dest_iata || f?.destination].filter(Boolean).join('→');
+        const airline = f?.airline || f?.carrier || '';
+        const date = f?.depart_date || f?.date || '';
+        const duration = f?.duration ? ` · ${f.duration}` : '';
+        const stops = typeof f?.stops === 'number' ? (f.stops === 0 ? ' · nonstop' : ` · ${f.stops} stop${f.stops === 1 ? '' : 's'}`) : '';
+        const desc = [airline, route, date].filter(Boolean).join(' · ') + duration + stops || `Flight ${i + 1}`;
         return { id: `flight-${i}`, description: desc, amount: price };
       })
       .filter((e): e is { id: string; description: string; amount: number } => e !== null);
@@ -177,6 +183,28 @@ export default function BudgetScreen() {
       ? parseFloat(String(cost.mid_range_hotel).replace(/[^0-9.]/g, ''))
       : (cost?.budget_hotel ? parseFloat(String(cost.budget_hotel).replace(/[^0-9.]/g, '')) : 0);
     const effectiveNightly = hotelPrice > 0 ? hotelPrice : (colHotel > 0 ? colHotel : 0);
+    // Build a richer description that names the hotel + room type +
+    // check-in/out dates so the user sees their selection at a glance.
+    const hotelRoom = hotel?.roomTypes?.[0]?.type || hotel?.room_type || '';
+    const checkInLabel = trip?.start_date
+      ? new Date(trip.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : '';
+    const checkOutLabel = trip?.end_date
+      ? new Date(trip.end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : '';
+    const hotelDateRange = checkInLabel && checkOutLabel ? `${checkInLabel}–${checkOutLabel}` : '';
+    const hotelDescParts: string[] = [];
+    if (hotelPrice > 0) {
+      hotelDescParts.push(hotel?.name || 'Hotel');
+      if (hotelRoom) hotelDescParts.push(hotelRoom);
+      if (hotelDateRange) hotelDescParts.push(hotelDateRange);
+      hotelDescParts.push(`${days} night${days === 1 ? '' : 's'} × $${hotelPrice}`);
+    } else {
+      hotelDescParts.push(hotel?.name ? `${hotel.name} (estimated)` : 'Estimated lodging');
+      if (hotelDateRange) hotelDescParts.push(hotelDateRange);
+      hotelDescParts.push(`${days} night${days === 1 ? '' : 's'} × $${effectiveNightly}/nt`);
+      hotelDescParts.push('typical mid-range rate');
+    }
     items.push({
       id: 'accommodation',
       category: 'Accommodation',
@@ -186,9 +214,7 @@ export default function BudgetScreen() {
       expenses: effectiveNightly > 0
         ? [{
             id: 'hotel-1',
-            description: hotelPrice > 0
-              ? `${hotel?.name || 'Hotel'} (${days} nights × $${hotelPrice})`
-              : `Estimated lodging (${days} nights × $${effectiveNightly}/nt — typical mid-range rate)`,
+            description: hotelDescParts.join(' · '),
             amount: effectiveNightly * days,
           }]
         : [],
