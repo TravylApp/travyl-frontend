@@ -27,7 +27,7 @@ if (Platform.OS !== 'web') {
   } catch {}
 }
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { PlaceItem } from '@travyl/shared';
+import { getWebApiBase, type PlaceItem } from '@travyl/shared';
 import { MagazineCurtain } from './MagazineCurtain';
 import { AddToTripSheet } from '@/components/AddToTripSheet';
 
@@ -219,7 +219,53 @@ export function CardStackCarousel({
     });
   }, []);
 
-  const place = places[currentIdx];
+  const rawPlace = places[currentIdx];
+
+  // Lazy on-demand geocoding for the visible card. The discover/search
+  // pipeline skips Nominatim batch enrichment on the critical path
+  // (~5-10s saved on first paint), so cards arrive without coords. We
+  // hit the geocode proxy for *just* the card the user is currently
+  // looking at — single request, ~300ms — and stash the result in a
+  // session-lifetime map keyed by place id so swiping back doesn't
+  // re-fetch.
+  const [resolvedCoords, setResolvedCoords] = useState<Record<string, { lat: number; lng: number } | null>>({});
+  useEffect(() => {
+    if (!rawPlace) return;
+    if (rawPlace.latitude != null && rawPlace.longitude != null) return;
+    if (resolvedCoords[rawPlace.id] !== undefined) return; // already tried
+    const cancelled = { current: false };
+    const query = rawPlace.address ? `${rawPlace.name}, ${rawPlace.address}` : rawPlace.name;
+    fetch(`${getWebApiBase()}/api/geocode?q=${encodeURIComponent(query)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: any[]) => {
+        if (cancelled.current) return;
+        if (Array.isArray(data) && data.length > 0 && data[0].lat && data[0].lon) {
+          setResolvedCoords((prev) => ({
+            ...prev,
+            [rawPlace.id]: { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) },
+          }));
+        } else {
+          setResolvedCoords((prev) => ({ ...prev, [rawPlace.id]: null }));
+        }
+      })
+      .catch(() => {
+        if (!cancelled.current) {
+          setResolvedCoords((prev) => ({ ...prev, [rawPlace.id]: null }));
+        }
+      });
+    return () => { cancelled.current = true; };
+  }, [rawPlace?.id, rawPlace?.latitude, rawPlace?.longitude]);
+
+  // Splice the resolved coords back onto the place so every downstream
+  // consumer (map markers, region calc, the "no coords → no map"
+  // fallback) sees a complete record.
+  const place = (() => {
+    if (!rawPlace) return rawPlace;
+    if (rawPlace.latitude != null && rawPlace.longitude != null) return rawPlace;
+    const looked = resolvedCoords[rawPlace.id];
+    if (!looked) return rawPlace;
+    return { ...rawPlace, latitude: looked.lat, longitude: looked.lng };
+  })();
   const isFav = place ? favorites.includes(place.id) : false;
 
   const goNext = useCallback(() => {
