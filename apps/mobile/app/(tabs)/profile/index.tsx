@@ -366,7 +366,11 @@ async function pickAndUploadImage(field: 'avatar' | 'cover', userId?: string): P
 // "didn't persist" when really it was a `file://` from a failed upload.
 function isPersistedImageUrl(url: string | null | undefined): boolean {
   if (!url) return false;
-  return url.startsWith('http://') || url.startsWith('https://');
+  const ok = url.startsWith('http://') || url.startsWith('https://');
+  if (!ok && url.startsWith('file://') && __DEV__) {
+    console.warn('[profile] dropping non-persisted image URL (likely from a failed upload):', url.slice(0, 80));
+  }
+  return ok;
 }
 
 
@@ -715,15 +719,36 @@ function PassportCountryModal({
     [trips, group],
   );
 
-  // Filter the user's favorited places to ones in this country. We match
-  // by address substring (cheapest test) or fall back to lat/lng overlap
-  // with the visited bounding box.
+  // Filter the user's favorited places to ones in this country.
+  // Strategy stack (each stage shipped a place to the country if matched):
+  //   1. Address substring contains the country name (e.g. "..., Japan").
+  //   2. Address substring contains a city the user visited in this country.
+  //   3. The trailing comma-segment of the address matches a list of common
+  //      country aliases (e.g. "USA" → "United States"). Catches places
+  //      where the address says "Honolulu, HI 96813, USA" but the trip
+  //      destination was "Honolulu, United States".
+  //   4. Lat/lng bounding box derived from the user's *visited* places —
+  //      only useful when at least one visited place has coords. For
+  //      Japan/Spain trips with no coords, this stage is empty.
+  const COUNTRY_ALIASES: Record<string, string[]> = {
+    'united states': ['usa', 'us', 'u.s.', 'u.s.a.', 'america'],
+    'united kingdom': ['uk', 'u.k.', 'britain', 'england', 'scotland', 'wales'],
+    'united arab emirates': ['uae', 'u.a.e.'],
+    japan: ['日本', 'jp'],
+    spain: ['españa', 'es'],
+    france: ['fr'],
+    germany: ['deutschland', 'de'],
+    italy: ['italia', 'it'],
+    china: ['中国', 'cn'],
+    'south korea': ['korea', '한국', 'kr'],
+  };
   const favorites = useMemo<VisitedPlace[]>(() => {
     if (!group) return [];
     const idSet = new Set(favoriteIds);
     const candidates = favoritePool.filter((p) => idSet.has(p.id));
     if (candidates.length === 0) return [];
     const targetLower = group.country.toLowerCase();
+    const aliases = COUNTRY_ALIASES[targetLower] ?? [];
     const cityLower = group.cities.map((c) => c.toLowerCase());
     let visBounds: { minLat: number; maxLat: number; minLng: number; maxLng: number } | null = null;
     const visitedWithCoords = visited.filter(
@@ -741,7 +766,11 @@ function PassportCountryModal({
       .filter((p) => {
         const addr = (p.address || '').toLowerCase();
         if (addr.includes(targetLower)) return true;
+        if (aliases.some((alias) => alias && addr.includes(alias))) return true;
         if (cityLower.some((c) => c && addr.includes(c))) return true;
+        // Trailing-segment fallback: address tail matches country or alias.
+        const tail = addr.split(',').slice(-1)[0]?.trim();
+        if (tail && (tail === targetLower || aliases.includes(tail))) return true;
         if (visBounds && p.latitude != null && p.longitude != null) {
           if (
             p.latitude >= visBounds.minLat && p.latitude <= visBounds.maxLat &&
@@ -1667,7 +1696,7 @@ export default function ProfileScreen() {
     isFetchingNextPage: isFetchingDiscoverNext,
     isLoading: discoverLoading,
   } = useInfiniteQuery({
-    queryKey: ['mobile-places-discover', userLocation?.lat],
+    queryKey: ['mobile-places-discover', userLocation?.lat, userLocation?.lng],
     queryFn: ({ pageParam }) => fetchDiscoverPage(pageParam, userLocation),
     initialPageParam: 0,
     getNextPageParam: (lastPage: DiscoverPageResult) =>

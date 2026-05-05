@@ -10,7 +10,7 @@ import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useAddToTrip } from '@/hooks/useAddToTrip';
-import { TextStyles, FontFamily, useItineraryScreen, upscaleGoogleImage, getWebApiBase, shuffle, favoritesKeyFor, useAuthStore } from '@travyl/shared';
+import { TextStyles, FontFamily, useItineraryScreen, upscaleGoogleImage, getWebApiBase, shuffle, favoritesKeyFor, favoritePlacesKeyFor, useAuthStore } from '@travyl/shared';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -665,6 +665,10 @@ export default function RestaurantsScreen() {
   // Favorites — per-user AsyncStorage key (matches profile + favorites tab).
   const userId = useAuthStore((s) => s.user?.id ?? null);
   const [favorites, setFavorites] = useState<string[]>([]);
+  // Ref onto the rendered restaurantPlaces list so toggleFavorite can
+  // look up the full PlaceItem at call time (declaration order: state →
+  // toggleFavorite → restaurantPlaces; the ref bridges that).
+  const restaurantPlacesRef = useRef<PlaceItem[]>([]);
   useEffect(() => {
     setFavorites([]);
     AsyncStorage.getItem(favoritesKeyFor(userId)).then((val) => {
@@ -673,10 +677,23 @@ export default function RestaurantsScreen() {
   }, [userId]);
   const toggleFavorite = useCallback((placeId: string) => {
     setFavorites((prev) => {
-      const next = prev.includes(placeId)
-        ? prev.filter((id) => id !== placeId)
-        : [...prev, placeId];
+      const wasFavorited = prev.includes(placeId);
+      const next = wasFavorited ? prev.filter((id) => id !== placeId) : [...prev, placeId];
       AsyncStorage.setItem(favoritesKeyFor(userId), JSON.stringify(next)).catch(() => {});
+      // Snapshot the full PlaceItem alongside the id so the profile's
+      // "My Saves" grid can render it without depending on the discover
+      // query containing a matching place. Same flow as /favorites tab.
+      AsyncStorage.getItem(favoritePlacesKeyFor(userId)).then((raw) => {
+        let map: Record<string, PlaceItem> = {};
+        if (raw) { try { map = JSON.parse(raw) || {}; } catch {} }
+        if (wasFavorited) {
+          delete map[placeId];
+        } else {
+          const hit = restaurantPlacesRef.current.find((p) => p.id === placeId);
+          if (hit) map[placeId] = hit;
+        }
+        AsyncStorage.setItem(favoritePlacesKeyFor(userId), JSON.stringify(map)).catch(() => {});
+      }).catch(() => {});
       return next;
     });
   }, [userId]);
@@ -941,6 +958,9 @@ export default function RestaurantsScreen() {
     })),
     [realRestaurants],
   );
+  // Keep the ref in sync so toggleFavorite (declared earlier) can resolve
+  // the full PlaceItem at call time for the favorite-snapshot map.
+  useEffect(() => { restaurantPlacesRef.current = restaurantPlaces; }, [restaurantPlaces]);
 
   // Filtered + sorted list
   const filteredRestaurants = useMemo(() => {
