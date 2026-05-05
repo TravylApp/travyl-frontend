@@ -19,7 +19,11 @@ export async function fetchAuditEntries(
     .order('created_at', { ascending: false })
     .limit(options.limit ?? 100)
 
-  if (error || !edits) return []
+  if (error) {
+    console.error('[historyService] Error fetching audit entries:', error.message, error.details)
+    return []
+  }
+  if (!edits) return []
 
   const userIds = [...new Set(edits.map((e) => e.user_id).filter(Boolean))]
   const { data: profiles } = await supabase
@@ -40,7 +44,7 @@ export async function fetchAuditEntries(
       (e.original_data as any)?.title ??
       (e.new_data as any)?.activity_name ??
       (e.original_data as any)?.activity_name ??
-      'Activity',
+      (e.activity_id ? 'Activity' : 'Trip'),
   }))
 }
 

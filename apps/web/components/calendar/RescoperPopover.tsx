@@ -97,7 +97,7 @@ export function RescoperPopover({
   const isLoading = status === 'loading'
 
   function handleApply() {
-    rescope({ destination, startDate, endDate }, oldStartRef.current, oldEndRef.current)
+    rescope({ destination, startDate, endDate }, oldStartRef.current, oldEndRef.current, trip.destination)
   }
 
   return (
