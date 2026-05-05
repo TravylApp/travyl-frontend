@@ -16,7 +16,10 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: 18
+          # eas-cli 18+ requires Node 20+. Was pinned to 18 here, which
+          # made every push to develop fail with "engine node ... Expected
+          # version >=20.0.0" while installing eas-cli@18.11.
+          node-version: 20
           cache: 'npm'
 
       - name: Setup Expo

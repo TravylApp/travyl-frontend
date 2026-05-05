@@ -417,13 +417,30 @@ export async function forkTrip(tripId: string): Promise<Trip> {
  * Fetch all public trips (for explore page)
  */
 export async function fetchPublicTrips(): Promise<Trip[]> {
-  const { data, error } = await supabase
+  // The previous `profiles!user_id(...)` PostgREST embed 400s on prod
+  // because the relation between `trips.user_id` and `public.profiles`
+  // isn't reliably resolvable (trips.user_id FKs to auth.users; the
+  // public.profiles row is keyed by the same id but PostgREST can't
+  // always follow that). Fetch trips first, then batch-fetch the
+  // referenced profiles in a single follow-up query and merge.
+  const { data: trips, error } = await supabase
     .from('trips')
-    .select('*, profiles!user_id(display_name, avatar_url)')
+    .select('*')
     .eq('visibility', 'public')
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return data ?? [];
+  const rows = (trips ?? []) as Trip[];
+  const userIds = Array.from(new Set(rows.map((t) => t.user_id).filter(Boolean)));
+  if (userIds.length === 0) return rows;
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, display_name, avatar_url')
+    .in('id', userIds);
+  const byId = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+  return rows.map((t) => ({
+    ...t,
+    profiles: byId.get(t.user_id) ?? null,
+  })) as Trip[];
 }
 
 /**

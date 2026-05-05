@@ -17,24 +17,35 @@ import type { DbPackingItem, PackingAuditEntry, PackingSuggestion } from '../typ
  * @throws PostgrestError if the query fails
  */
 export async function fetchPackingItems(tripId: string): Promise<DbPackingItem[]> {
+  // The PostgREST embed of profiles via `packing_items_user_id_fkey` /
+  // `profiles!user_id` was returning 400 (FK hint) and then 500 (column
+  // disambiguator) on prod. Bypass the relation resolution entirely:
+  // fetch items, then batch-fetch the referenced profiles in one query.
   const { data, error } = await supabase
     .from('packing_items')
-    // Use the column-name disambiguator form (`profiles!user_id`) instead
-    // of the explicit FK constraint name. PostgREST stopped resolving the
-    // `packing_items_user_id_fkey` hint on prod, returning 400 — same root
-    // cause as the trip_collaborators FK fix in #765.
-    .select('*, user:profiles!user_id(display_name, avatar_url), owner:profiles!owner_id(display_name)')
+    .select('*')
     .eq('trip_id', tripId)
     .order('category')
     .order('sort_order', { ascending: true })
   if (error) throw error
-  return (data ?? []).map((row: any) => ({
+  const rows = (data ?? []) as any[]
+  const ids = Array.from(new Set([
+    ...rows.map((r) => r.user_id),
+    ...rows.map((r) => r.owner_id),
+  ].filter(Boolean)))
+  let byId = new Map<string, any>()
+  if (ids.length > 0) {
+    const { data: profs } = await supabase
+      .from('profiles')
+      .select('id, display_name, avatar_url')
+      .in('id', ids)
+    byId = new Map((profs ?? []).map((p: any) => [p.id, p]))
+  }
+  return rows.map((row: any) => ({
     ...row,
-    user_display_name: row.user?.display_name ?? null,
-    user_avatar_url: row.user?.avatar_url ?? null,
-    owner_display_name: row.owner?.display_name ?? null,
-    user: undefined,
-    owner: undefined,
+    user_display_name: byId.get(row.user_id)?.display_name ?? null,
+    user_avatar_url: byId.get(row.user_id)?.avatar_url ?? null,
+    owner_display_name: row.owner_id ? (byId.get(row.owner_id)?.display_name ?? null) : null,
   }))
 }
 
@@ -47,19 +58,33 @@ export async function fetchPackingItems(tripId: string): Promise<DbPackingItem[]
  * @throws PostgrestError if the query fails
  */
 export async function fetchPackingAuditLog(tripId: string, limit = 50): Promise<PackingAuditEntry[]> {
+  // Same approach as fetchPackingItems — drop the embedded profile join,
+  // batch-fetch profiles separately so this is resilient to PostgREST FK
+  // resolution quirks.
   const { data, error } = await supabase
     .from('packing_audit_log')
-    .select('*, user:profiles!user_id(display_name,email), target:profiles!target_user_id(display_name,email)')
+    .select('*')
     .eq('trip_id', tripId)
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) throw error
-  return (data ?? []).map((row: any) => ({
+  const rows = (data ?? []) as any[]
+  const ids = Array.from(new Set([
+    ...rows.map((r) => r.user_id),
+    ...rows.map((r) => r.target_user_id),
+  ].filter(Boolean)))
+  let byId = new Map<string, any>()
+  if (ids.length > 0) {
+    const { data: profs } = await supabase
+      .from('profiles')
+      .select('id, display_name, email')
+      .in('id', ids)
+    byId = new Map((profs ?? []).map((p: any) => [p.id, p]))
+  }
+  return rows.map((row: any) => ({
     ...row,
-    user_display_name: row.user?.display_name ?? row.user?.email ?? null,
-    target_display_name: row.target?.display_name ?? row.target?.email ?? null,
-    user: undefined,
-    target: undefined,
+    user_display_name: byId.get(row.user_id)?.display_name ?? byId.get(row.user_id)?.email ?? null,
+    target_display_name: row.target_user_id ? (byId.get(row.target_user_id)?.display_name ?? byId.get(row.target_user_id)?.email ?? null) : null,
   }))
 }
 
