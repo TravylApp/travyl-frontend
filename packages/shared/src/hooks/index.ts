@@ -31,6 +31,7 @@ export { useHeroConfig } from './useHeroConfig';
 export { useTagUsDestinations } from './useTagUsDestinations';
 export { useTrip } from './useTrip';
 export { useItineraryDays } from './useItineraryDays';
+export { useTripActivities, type TripActivityRow } from './useTripActivities';
 export { useFlights } from './useFlights';
 export { useHotels } from './useHotels';
 export { useItineraryScreen } from './useItineraryScreen';

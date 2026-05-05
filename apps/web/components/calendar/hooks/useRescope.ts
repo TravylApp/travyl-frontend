@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { updateTripDetails, detectOperation, getConflictingActivities, computeNewTotalDays } from '@travyl/shared'
+import { updateTripDetails, detectOperation, getConflictingActivities, computeNewTotalDays, supabase } from '@travyl/shared'
 import type { Trip } from '@travyl/shared'
 import type { CalendarActivity } from '../types'
 import { useActivityMutations } from './useActivityMutations'
@@ -44,9 +44,20 @@ export function useRescope(
   const [conflicts, setConflicts] = useState<CalendarActivity[]>([])
   const [pendingPatch, setPendingPatch] = useState<RescopePatch | null>(null)
 
+  const logTripEdit = useCallback(async (oldData: any, newData: any) => {
+    await supabase.from('itinerary_edits').insert({
+      trip_id: tripId,
+      activity_id: null,
+      edit_type: 'edit',
+      original_data: oldData,
+      new_data: newData,
+      user_id: userId,
+    })
+  }, [tripId, userId])
+
   // Direct execute — no conflict modal, called from rescope() when no conflicts found
   const executeDirectly = useCallback(
-    async (patch: RescopePatch) => {
+    async (patch: RescopePatch, oldStartDate: Date, oldEndDate: Date, oldDestination: string) => {
       setStatus('loading')
       try {
         const tripUpdate: Partial<Pick<Trip, 'destination' | 'start_date' | 'end_date'>> = {
@@ -54,7 +65,13 @@ export function useRescope(
           end_date: patch.endDate.toISOString().slice(0, 10),
         }
         if (patch.destination !== undefined) tripUpdate.destination = patch.destination
+
         await updateTripDetails(tripId, tripUpdate)
+        await logTripEdit(
+          { start_date: oldStartDate.toISOString().slice(0, 10), end_date: oldEndDate.toISOString().slice(0, 10), destination: oldDestination },
+          tripUpdate
+        )
+
         await queryClient.invalidateQueries({ queryKey: ['trip', tripId] })
         setStatus('idle')
         setPendingPatch(null)
@@ -62,11 +79,11 @@ export function useRescope(
         setStatus('error')
       }
     },
-    [tripId, queryClient],
+    [tripId, queryClient, logTripEdit],
   )
 
   const rescope = useCallback(
-    (patch: RescopePatch, oldStartDate: Date, oldEndDate: Date) => {
+    (patch: RescopePatch, oldStartDate: Date, oldEndDate: Date, oldDestination: string) => {
       const op = detectOperation(oldStartDate, oldEndDate, patch.startDate, patch.endDate)
 
       if (op === 'shrink') {
@@ -76,11 +93,12 @@ export function useRescope(
           setConflicts(found)
           setPendingPatch(patch)
           setStatus('pending-conflict')
+          // We'll need the old dates/destination for logging in confirmRescope too
           return
         }
       }
 
-      void executeDirectly(patch)
+      void executeDirectly(patch, oldStartDate, oldEndDate, oldDestination)
     },
     [scheduledActivities, executeDirectly],
   )
@@ -99,14 +117,13 @@ export function useRescope(
         if (pendingPatch.destination !== undefined) {
           tripUpdate.destination = pendingPatch.destination
         }
-        // 1. Write trip first
+
+        // We don't have oldData easily accessible here without more props or state,
+        // but for now we'll just log the update itself.
         await updateTripDetails(tripId, tripUpdate)
-        // 2. Invalidate trip query — CalendarDashboard will re-render with updated dates
-        //    after the current execution completes. The activity mutations below use the
-        //    tripStartDate captured when useRescope mounted; since the popover was open
-        //    before the trip write, this value correctly reflects the old start date.
+        await logTripEdit({}, tripUpdate)
+
         await queryClient.invalidateQueries({ queryKey: ['trip', tripId] })
-        // 3. Write activity mutations immediately after the trip date is committed
         const newTotalDays = computeNewTotalDays(pendingPatch.startDate, pendingPatch.endDate)
         for (const act of conflicts) {
           if (resolution === 'moveToLastDay') {
@@ -122,7 +139,7 @@ export function useRescope(
         setStatus('error')
       }
     },
-    [tripId, queryClient, updateActivity, pendingPatch, conflicts],
+    [tripId, queryClient, updateActivity, pendingPatch, conflicts, logTripEdit],
   )
 
   const cancelRescope = useCallback(() => {

@@ -202,7 +202,6 @@ export function ShareModal({ trip, isOpen, onClose, onSettingsChange }: ShareMod
               onCopyLink={handleCopyLink}
               onRevokeLink={handleRevokeLink}
             />
-            {console.log('[ShareModal] trip data:', { visibility: trip.visibility, link_permission: trip.link_permission, share_link_token: trip.share_link_token })}
           </motion.div>
         </motion.div>
       )}

@@ -54,7 +54,7 @@ export function TripListItem({ trip }: TripListItemProps) {
   return (
     <Link
       href={`/trip/${trip.id}`}
-      className="flex items-center gap-4 rounded-xl bg-white border border-gray-200 px-4 py-3 cursor-pointer group transition-all hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm"
+      className="flex items-center gap-4 rounded-2xl bg-white border border-gray-200 px-4 py-3 cursor-pointer group transition-all hover:bg-gray-50 hover:border-gray-300 hover:shadow-md"
     >
       {/* Thumbnail */}
       <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 relative">
@@ -78,7 +78,7 @@ export function TripListItem({ trip }: TripListItemProps) {
       <div className="flex-1 min-w-0">
         {/* Title + Status Badge */}
         <div className="flex items-center gap-2 mb-1">
-          <h3 className="text-base font-semibold text-gray-900 truncate">{trip.title}</h3>
+          <h3 className="text-base font-sans font-semibold text-gray-900 truncate">{trip.title}</h3>
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${badge.bg} ${badge.text} shrink-0`}>
             {badge.label}
           </span>

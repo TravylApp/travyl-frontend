@@ -14,6 +14,7 @@ import {
   upscaleGoogleImage,
   Brand, Navy, getWebApiBase,
   TextStyles, FontFamily,
+  shuffle,
   type PlaceItem,
 } from '@travyl/shared';
 import { CardStackCarousel } from '../../../components/places/CardStackCarousel';
@@ -133,8 +134,11 @@ export default function OverviewScreen() {
           address: p.address, website: p.website, rating: p.rating,
         }));
         if (deduped.length > 0) {
-          liveExploreRef.current = deduped;
-          setLiveExploreItems(deduped);
+          // Shuffle so the magazine feels fresh each visit even though the
+          // /api/places endpoint returns the same ranked list.
+          const shuffled = shuffle(deduped);
+          liveExploreRef.current = shuffled;
+          setLiveExploreItems(shuffled);
         }
       })
       .catch(() => {});
@@ -193,26 +197,51 @@ export default function OverviewScreen() {
     ].filter(i => i.value != null);
   }, [ctx?.cost_of_living]);
 
+  // ─── Hero image cycle for cards missing/low-res images (matches web) ─
+  const heroImages: string[] = useMemo(() => {
+    const arr = (ctx?.hero_images as string[] | undefined) || [];
+    const cover = (ctx?.hero_image_url as string | undefined)
+      || (ctx as any)?.destination_photo_url
+      || arr[0];
+    return [...arr, ...(cover ? [cover] : [])].filter(Boolean);
+  }, [ctx?.hero_images, ctx?.hero_image_url, (ctx as any)?.destination_photo_url]);
+
+  const isLowResImage = (url: string | undefined) => {
+    if (!url) return true;
+    return url.includes('encrypted-tbn')
+      || url.includes('news.google.com/api')
+      || (url.includes('googleusercontent') && url.includes('s100'));
+  };
+
+  const fallbackImage = (raw: string | undefined, i: number): string => {
+    if (raw && !isLowResImage(raw)) return raw;
+    if (heroImages.length === 0) return raw || '';
+    return heroImages[i % heroImages.length];
+  };
+
   // ─── Place showcase state ────────────────────────────
   const [showcaseIdx, setShowcaseIdx] = useState(-1);
   const explorePlaces: PlaceItem[] = useMemo(() =>
-    exploreItems.map((item: any, i: number) => ({
-      id: item.id || `explore-${i}`,
-      name: item.title || item.name || '',
-      image: item.image || '',
-      images: item.image ? [item.image] : [],
-      type: 'attraction' as const,
-      rating: item.rating ?? 4.0,
-      tagline: item.description || '',
-      category: item.category || '',
-      description: item.description,
-      tags: item.tags ?? [item.category].filter(Boolean),
-      latitude: item.lat,
-      longitude: item.lng,
-      website: item.website,
-      address: item.address,
-    })),
-    [exploreItems],
+    exploreItems.map((item: any, i: number) => {
+      const img = fallbackImage(item.image, i);
+      return {
+        id: item.id || `explore-${i}`,
+        name: item.title || item.name || '',
+        image: img,
+        images: img ? [img] : [],
+        type: 'attraction' as const,
+        rating: item.rating ?? 4.0,
+        tagline: item.description || '',
+        category: item.category || '',
+        description: item.description,
+        tags: item.tags ?? [item.category].filter(Boolean),
+        latitude: item.lat,
+        longitude: item.lng,
+        website: item.website,
+        address: item.address,
+      };
+    }),
+    [exploreItems, heroImages],
   );
 
   // ─── News reader state ──────────────────────────────
@@ -576,12 +605,20 @@ export default function OverviewScreen() {
 
       </View>{/* end opaque content area */}
 
-      {/* ─── Bottom Photo Bleed — hero image fades back in ── */}
+      {/* ─── Bottom Photo Bleed — picks a non-header image so it
+              doesn't duplicate the trip hero ────────────────────── */}
       {(() => {
-        const heroUrl = ctx?.hero_image_url || ctx?.hero_images?.[0];
+        const headerHero: string | undefined = ctx?.hero_image_url || ctx?.hero_images?.[0];
+        const pool: string[] = [
+          ...((ctx?.hero_images as string[] | undefined) || []),
+          ...(headerHero ? [headerHero] : []),
+        ].filter(Boolean);
+        // Prefer any image that isn't the one shown in the trip header.
+        const candidates = pool.filter((u) => u !== headerHero);
+        const heroUrl = candidates[0] || pool[pool.length - 1] || headerHero;
         if (!heroUrl) return null;
         return (
-          <View style={{ height: 360, overflow: 'hidden' }}>
+          <View style={{ height: 360, overflow: 'hidden', marginTop: -40 }}>
             <Image
               source={{ uri: heroUrl.includes?.('googleusercontent.com') ? heroUrl.replace(/=w\d+-h\d+[^&]*/, '=w1200-h800-k-no') : heroUrl, headers: { Referer: '' } }}
               style={{ width: '100%', height: '100%' }}

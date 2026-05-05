@@ -126,7 +126,12 @@ export function useYjsSync(
             edit_type: isMove ? 'move' : 'edit',
             original_data: before,
             new_data: isMove
-              ? { day: after.day, endDay: after.endDay, startHour: after.startHour }
+              ? {
+                  title: after.title,
+                  day: after.day,
+                  endDay: after.endDay,
+                  startHour: after.startHour,
+                }
               : after,
             user_id: userIdRef.current,
           }
@@ -135,7 +140,11 @@ export function useYjsSync(
 
       if (auditRows.length > 0) {
         supabase.from('itinerary_edits').insert(auditRows).then(({ error }) => {
-          if (error) console.warn('[useYjsSync] audit insert error:', error.message)
+          if (error) {
+            console.error('[useYjsSync] CRITICAL: audit insert error:', error.message, error.details)
+          } else {
+            console.log('[useYjsSync] Successfully logged audit rows:', auditRows.length)
+          }
         })
       }
     }
@@ -191,13 +200,17 @@ export function useYjsSync(
           if (event.target instanceof Y.Map && event instanceof Y.YMapEvent) {
             activitiesMap.forEach((yMap, key) => {
               if (yMap === event.target) {
-                if (!beforeSnapshotRef.current.has(key)) {
-                  const before: Record<string, unknown> = {}
-                  event.changes.keys.forEach(({ oldValue }, field) => {
-                    before[field] = oldValue
-                  })
-                  beforeSnapshotRef.current.set(key, before as Partial<CalendarActivity>)
+                let before = beforeSnapshotRef.current.get(key)
+                if (!before) {
+                  before = {}
+                  beforeSnapshotRef.current.set(key, before)
                 }
+                event.changes.keys.forEach(({ oldValue }, field) => {
+                  // Only capture the VERY FIRST oldValue for each field in this window
+                  if (!(field in before!)) {
+                    (before as any)[field] = oldValue
+                  }
+                })
               }
             })
           }

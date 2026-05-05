@@ -129,19 +129,23 @@ export function pickRandomActivity(
   pool?: DiscoverItem[]
 ): DiscoverItem | null {
   // Filter pool by category if specified
-  let candidates = pool ?? [];
-  if (category && candidates.length > 0) {
+  let categoryFiltered = pool ?? [];
+  if (category && categoryFiltered.length > 0) {
     const catLower = category.toLowerCase();
-    candidates = candidates.filter(
+    categoryFiltered = categoryFiltered.filter(
       (item) =>
         item.category?.toLowerCase().includes(catLower) ||
         item.tags?.some((t) => t.toLowerCase().includes(catLower))
     );
   }
-  // Exclude already-used items
+  // Try to exclude already-used items, but if every candidate is
+  // excluded (common when the trip was generated from the same
+  // discover pool — every SerpAPI id is already a trip activity),
+  // fall back to the un-excluded list. Better to add a duplicate
+  // than to silently do nothing on "Add Random".
   const excludeSet = new Set(excludeIds);
-  candidates = candidates.filter((item) => !excludeSet.has(item.id));
-  // Return random candidate or null if empty
+  const unused = categoryFiltered.filter((item) => !excludeSet.has(item.id));
+  const candidates = unused.length > 0 ? unused : categoryFiltered;
   if (candidates.length === 0) return null;
   return candidates[Math.floor(Math.random() * candidates.length)];
 }

@@ -77,9 +77,9 @@ function SkeletonCard() {
 export default function MyTripsPage() {
   return (
     <Suspense fallback={
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-serif font-normal text-gray-900 dark:text-white tracking-wide">My Trips</h1>
+          <h1 className="text-3xl font-serif font-normal text-gray-900 dark:text-white tracking-wide">My Trips</h1>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <SkeletonCard />
@@ -155,22 +155,36 @@ function TripMasonryGrid({ trips }: { trips: TripCardType[] }) {
   const rows = buildRows(items);
 
   return (
-    <div className="flex flex-col gap-3">
-      {rows.map((row, rowIdx) => {
-        const maxDays = Math.max(...row.map((r) => r.duration));
-        const height = getRowHeight(maxDays);
-
-        return (
-          <div key={rowIdx} className="flex gap-3" style={{ height }}>
-            {row.map((item, j) => (
-              <div key={item.trip.id} className="h-full" style={{ flex: item.weight }}>
-                <TripCard trip={item.trip} />
-              </div>
-            ))}
+    <>
+      {/* Mobile (<640px): simple single-column stack. The masonry packs
+          2-3 cards per row regardless of width, which crushes the title
+          to "Honol..." and dates wrap awkwardly at narrow viewports. */}
+      <div className="flex flex-col gap-4 sm:hidden">
+        {trips.map((trip) => (
+          <div key={trip.id} className="h-[200px]">
+            <TripCard trip={trip} />
           </div>
-        );
-      })}
-    </div>
+        ))}
+      </div>
+
+      {/* Tablet+ (>=640px): the masonry packing reads well at this width. */}
+      <div className="hidden sm:flex sm:flex-col gap-3">
+        {rows.map((row, rowIdx) => {
+          const maxDays = Math.max(...row.map((r) => r.duration));
+          const height = getRowHeight(maxDays);
+
+          return (
+            <div key={rowIdx} className="flex gap-3" style={{ height }}>
+              {row.map((item) => (
+                <div key={item.trip.id} className="h-full" style={{ flex: item.weight }}>
+                  <TripCard trip={item.trip} />
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -234,9 +248,9 @@ function TripsContent() {
   if (isLoading && !isError) {
     return (
       <div className="flex flex-col min-h-screen">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex-1 w-full">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 flex-1 w-full">
           <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl font-serif font-normal text-gray-900 dark:text-white tracking-wide">My Trips</h1>
+            <h1 className="text-3xl font-serif font-normal text-gray-900 dark:text-white tracking-wide">My Trips</h1>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             <SkeletonCard />
@@ -252,18 +266,17 @@ function TripsContent() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex-1 w-full">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 flex-1 w-full">
         {/* Header Row: Title | View Toggle | Button */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-          <h1 className="text-2xl font-serif font-normal text-gray-900 dark:text-white tracking-wide">My Trips</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <h1 className="text-3xl font-serif font-normal text-gray-900 dark:text-white tracking-wide">My Trips</h1>
 
           <div className="flex items-center gap-3 flex-wrap">
             {/* View Toggle */}
             <ViewToggle view={viewMode} onChange={setViewMode} />
 
             {/* Plan a Trip Button */}
-            <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all"
-              style={{ background: 'linear-gradient(135deg, #1e3a5f, #2d4a6f)' }}
+            <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1e3a5f] hover:bg-[#162d4a] text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all"
               onClick={() => setModalOpen(true)}
             >
               <Plus size={16} />
@@ -342,7 +355,7 @@ function TripsContent() {
                 {pastTrips.length > 0 && (
                   <div className="mt-10">
                     <div className="flex items-center gap-3 mb-4">
-                      <h2 className="text-lg font-serif font-normal text-gray-400 tracking-wide">Past Trips</h2>
+<h2 className="text-lg font-sans font-semibold text-gray-400">Past Trips</h2>
                       <div className="flex-1 h-px bg-gray-200" />
                     </div>
                     {viewMode === 'grid' ? (
@@ -368,10 +381,9 @@ function TripsContent() {
             <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mb-4">
               <PaperPlane size={32} className="text-gray-400" />
             </div>
-            <h2 className="text-lg font-serif font-normal text-gray-800 mb-1 tracking-wide">No trips yet</h2>
+            <h2 className="text-xl font-serif font-normal text-gray-800 mb-2 tracking-wide">No trips yet</h2>
             <p className="text-sm text-gray-500 mb-6 max-w-xs">Start planning your next adventure and it will appear here.</p>
-            <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold"
-              style={{ background: 'linear-gradient(135deg, #1e3a5f, #2d4a6f)' }}
+            <button className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1e3a5f] hover:bg-[#162d4a] text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all"
               onClick={() => setModalOpen(true)}
             >
               <Plus size={16} />

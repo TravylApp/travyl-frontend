@@ -22,6 +22,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
@@ -249,6 +250,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const { addToTrip, state: tripSheetState, selectTrip, selectDay, dismiss, createTrip } = useAddToTrip();
   const { height: screenHeight } = useWindowDimensions();
   const {
@@ -441,6 +443,15 @@ export default function HomeScreen() {
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
     },
+  });
+
+  // Status-bar backdrop: invisible while hero is on screen, fades in once
+  // scrolled past so content doesn't render under the system status bar.
+  const topCapStyle = useAnimatedStyle(() => {
+    const start = screenHeight - 100;
+    const end = screenHeight - 40;
+    const t = Math.min(1, Math.max(0, (scrollY.value - start) / (end - start)));
+    return { opacity: t };
   });
 
   const launchTakeoff = useCallback((query: string) => {
@@ -869,6 +880,22 @@ export default function HomeScreen() {
 
     </Animated.ScrollView>
     </KeyboardAvoidingView>
+
+    {/* Status-bar backdrop — masks scrolled content under the iOS status bar */}
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        {
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: insets.top,
+          backgroundColor: colors.background,
+        },
+        topCapStyle,
+      ]}
+    />
 
     {/* ─── Takeoff Animation Overlay ─────────────────────────── */}
     <TakeoffTransition

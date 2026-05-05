@@ -703,7 +703,7 @@ export async function updateTripThemeSettings(
 export async function fetchCollaborators(tripId: string): Promise<TripCollaborator[]> {
   const { data, error } = await supabase
     .from('trip_collaborators')
-    .select('*, profile:profiles!trip_collaborators_user_id_fkey(display_name, avatar_url)')
+    .select('*, profile:profiles(display_name, avatar_url)')
     .eq('trip_id', tripId)
     .order('created_at', { ascending: true })
   if (error) throw error
@@ -915,10 +915,15 @@ export async function savePlanToSupabase(
   if (!ext.dates.start || ext.dates.start < tomorrowStr) {
     ext.dates.start = tomorrowStr
   }
-  if (!ext.dates.end || ext.dates.end <= ext.dates.start) {
-    const end = new Date(ext.dates.start)
-    end.setDate(end.getDate() + duration - 1)
-    ext.dates.end = end.toISOString().split('T')[0]
+  // Always recompute end_date from the capped duration so the day-strip count
+  // matches `trip_context.itinerary.length`. Previously, the AI could return
+  // a month-long range (e.g. May 1 → May 31) and only the itinerary was capped,
+  // leaving the trip header showing 31 days against a 14-day itinerary.
+  const startMs = new Date(ext.dates.start + 'T00:00:00').getTime()
+  const computedEnd = new Date(startMs + (duration - 1) * 86400000)
+    .toISOString().split('T')[0]
+  if (!ext.dates.end || ext.dates.end <= ext.dates.start || ext.dates.end > computedEnd) {
+    ext.dates.end = computedEnd
   }
 
   // Cap itinerary to requested duration — API sometimes returns more days than asked

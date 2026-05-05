@@ -160,9 +160,11 @@ export function MagazineCurtain({
             </>
           )}
 
-          {/* Top left — close button or flip hint */}
-          <View style={{ position: 'absolute', top: 14, left: 14, zIndex: 50 }}>
-            {onClose ? (
+          {/* Top-left — close button (when provided). Sits in the same slot
+              the flip hint normally occupies so the placement is consistent
+              across overlay + slide-up cards. */}
+          {onClose && (
+            <View style={{ position: 'absolute', top: 14, left: 14, zIndex: 50 }}>
               <Pressable
                 hitSlop={16}
                 onPress={(e) => { e.stopPropagation?.(); onClose(); }}
@@ -174,12 +176,24 @@ export function MagazineCurtain({
               >
                 <FontAwesome name="times" size={14} color="#fff" />
               </Pressable>
-            ) : (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <FontAwesome name="repeat" size={10} color="rgba(255,255,255,0.4)" />
-                <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.4)' }}>Tap to flip</Text>
-              </View>
-            )}
+            </View>
+          )}
+
+          {/* Flip hint — top-left when no close button is showing; otherwise
+              shifts to top-center so it stays visible alongside the close. */}
+          <View
+            style={{
+              position: 'absolute', zIndex: 40,
+              ...(onClose
+                ? { top: 22, left: 0, right: 0, alignItems: 'center' }
+                : { top: 14, left: 14 }),
+            }}
+            pointerEvents="none"
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <FontAwesome name="repeat" size={10} color="rgba(255,255,255,0.4)" />
+              <Text style={{ ...TextStyles.xs, color: 'rgba(255,255,255,0.4)' }}>Tap to flip</Text>
+            </View>
           </View>
 
           {/* Top-right buttons: map, add to trip, heart */}

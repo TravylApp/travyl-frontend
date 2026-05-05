@@ -16,4 +16,16 @@ config.resolver.nodeModulesPaths = [
   path.resolve(monorepoRoot, 'node_modules'),
 ];
 
+// On web, swap react-native-maps for a stub — its native modules can't be
+// bundled for web. Native targets resolve normally.
+const mapsShim = path.resolve(projectRoot, 'maps-shim.web.js');
+const baseResolveRequest = config.resolver.resolveRequest;
+config.resolver.resolveRequest = (context, moduleName, platform) => {
+  if (platform === 'web' && moduleName === 'react-native-maps') {
+    return { filePath: mapsShim, type: 'sourceFile' };
+  }
+  if (baseResolveRequest) return baseResolveRequest(context, moduleName, platform);
+  return context.resolveRequest(context, moduleName, platform);
+};
+
 module.exports = withNativeWind(config, { input: './global.css' });
