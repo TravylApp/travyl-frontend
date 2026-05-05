@@ -703,7 +703,7 @@ export async function updateTripThemeSettings(
 export async function fetchCollaborators(tripId: string): Promise<TripCollaborator[]> {
   const { data, error } = await supabase
     .from('trip_collaborators')
-    .select('*, profile:profiles!trip_collaborators_user_id_fkey(display_name, avatar_url)')
+    .select('*, profile:profiles(display_name, avatar_url)')
     .eq('trip_id', tripId)
     .order('created_at', { ascending: true })
   if (error) throw error
