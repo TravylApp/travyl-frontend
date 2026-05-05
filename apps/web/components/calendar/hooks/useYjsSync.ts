@@ -63,6 +63,15 @@ export function useYjsSync(
     dirtyRef.current.clear()
 
     const rows: ReturnType<typeof toActivityRow>[] = []
+    const tripStartDate = tripStartDateRef.current
+
+    if (!tripStartDate || isNaN(new Date(tripStartDate + 'T00:00:00Z').getTime())) {
+      console.warn('[useYjsSync] Skipping flush: tripStartDate is not yet available or invalid:', tripStartDate)
+      // Keep ids marked as dirty for the next flush attempt once tripStartDate is ready
+      ids.forEach(id => dirtyRef.current.add(id))
+      return
+    }
+
     for (const id of ids) {
       const yMap = activitiesMap.get(id)
       if (!yMap) continue

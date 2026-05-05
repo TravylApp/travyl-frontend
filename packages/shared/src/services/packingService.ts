@@ -73,19 +73,92 @@ export async function fetchPackingAuditLog(tripId: string, limit = 50): Promise<
  */
 export async function insertPackingItem(
   tripId: string, userId: string, name: string, category: string, sortOrder: number,
-  ownerId?: string | null, groupTag?: string | null,
+  ownerId?: string | null, groupTag?: string | null, quantity: number = 1,
 ): Promise<DbPackingItem> {
   const { data, error } = await supabase
     .from('packing_items')
     .insert({
       trip_id: tripId, user_id: userId, name, category, sort_order: sortOrder,
-      quantity: 1, packed_count: 0,
+      quantity, packed_count: 0,
       ...(ownerId !== undefined && { owner_id: ownerId }),
       ...(groupTag !== undefined && { group_tag: groupTag }),
     })
     .select().single()
   if (error) throw error
   return data
+}
+
+/**
+ * Bulk-insert default packing items for a freshly-created trip. Builds
+ * essentials, clothing (quantity-aware to trip duration), toiletries, and
+ * electronics; conditional items based on weather (swimsuit if warm, jacket
+ * if cold, umbrella if rain). Idempotent: callers should gate via the
+ * `trip.trip_context.packing_seeded` flag so this runs at most once per trip.
+ *
+ * @param tripId - UUID of the trip
+ * @param userId - UUID of the inserting user (used as user_id attribution)
+ * @param opts - Trip-derived signals: `days`, `isWarm`, `isCold`, `hasRain`
+ * @returns The inserted rows
+ */
+export async function seedDefaultPackingItems(
+  tripId: string,
+  userId: string,
+  opts: { days: number; isWarm: boolean; isCold: boolean; hasRain: boolean },
+): Promise<DbPackingItem[]> {
+  const days = Math.max(1, opts.days || 5)
+  const clothesQty = Math.min(days + 1, 7)
+  const bottomsQty = Math.min(Math.ceil(days / 2), 4)
+  type Seed = { name: string; category: string; quantity?: number }
+  const seeds: Seed[] = [
+    // Essentials
+    { name: 'Passport / ID', category: 'essentials' },
+    { name: 'Phone & charger', category: 'essentials' },
+    { name: 'Wallet & cards', category: 'essentials' },
+    { name: 'Travel insurance docs', category: 'documents' },
+    { name: 'Boarding pass / tickets', category: 'documents' },
+    // Clothing
+    { name: 'T-shirts / tops', category: 'clothing', quantity: clothesQty },
+    { name: 'Underwear', category: 'clothing', quantity: clothesQty },
+    { name: 'Socks (pairs)', category: 'clothing', quantity: clothesQty },
+    { name: 'Pants / shorts', category: 'clothing', quantity: bottomsQty },
+    { name: 'Sleepwear', category: 'clothing' },
+    ...(opts.isWarm ? [
+      { name: 'Swimsuit', category: 'clothing' },
+      { name: 'Sunglasses', category: 'accessories' },
+    ] : []),
+    ...(opts.isCold ? [
+      { name: 'Warm jacket', category: 'clothing' },
+      { name: 'Scarf & gloves', category: 'accessories' },
+    ] : []),
+    ...(opts.hasRain ? [{ name: 'Rain jacket / umbrella', category: 'clothing' }] : []),
+    // Toiletries
+    { name: 'Toothbrush & toothpaste', category: 'toiletries' },
+    { name: 'Shampoo & conditioner', category: 'toiletries' },
+    { name: 'Deodorant', category: 'toiletries' },
+    { name: 'Sunscreen', category: 'toiletries' },
+    { name: 'Medications', category: 'toiletries' },
+    // Electronics
+    { name: 'Power adapter', category: 'electronics' },
+    { name: 'Headphones', category: 'electronics' },
+    { name: 'Camera', category: 'electronics' },
+  ]
+  const sortByCategory: Record<string, number> = {}
+  const rows = seeds.map((s) => {
+    const idx = sortByCategory[s.category] ?? 0
+    sortByCategory[s.category] = idx + 1
+    return {
+      trip_id: tripId,
+      user_id: userId,
+      name: s.name,
+      category: s.category,
+      sort_order: idx,
+      quantity: s.quantity ?? 1,
+      packed_count: 0,
+    }
+  })
+  const { data, error } = await supabase.from('packing_items').insert(rows).select()
+  if (error) throw error
+  return data ?? []
 }
 
 /**

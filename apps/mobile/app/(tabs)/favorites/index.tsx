@@ -133,7 +133,7 @@ export default function FavoritesScreen() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['mobile-places-discover', userLocation?.lat],
+    queryKey: ['mobile-places-discover', userLocation?.lat, userLocation?.lng],
     queryFn: ({ pageParam }) => fetchDiscoverPage(pageParam, userLocation),
     initialPageParam: 0,
     getNextPageParam: (lastPage: DiscoverPageResult) =>

@@ -10,9 +10,9 @@ import {
   Phone, Mail, Map, X, Camera, Shield, CreditCard, Share2,
   Snowflake, UtensilsCrossed, Sparkles, LayoutGrid, List, BookOpen,
 } from 'lucide-react';
-import { useItineraryScreen, useHotels as useDbHotels, useHomeCurrency } from '@travyl/shared';
+import { useItineraryScreen, useHotels as useDbHotels, useHomeCurrency, supabase } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PinCard } from '@/components/PinCard';
 
 /* ------------------------------------------------------------------ */
@@ -1923,7 +1923,8 @@ export default function Hotels({ params }: { params: Promise<{ id: string }> }) 
     setActiveSearchQuery(searchInput);
   };
 
-  const handleSelect = (hotel: HotelData) => {
+  const queryClient = useQueryClient();
+  const handleSelect = async (hotel: HotelData) => {
     setBookedHotel(hotel);
     setBrowsingOpen(false);
     setJustSelected(true);
@@ -1932,6 +1933,43 @@ export default function Hotels({ params }: { params: Promise<{ id: string }> }) 
       bookedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       setTimeout(() => setJustSelected(false), 1500);
     }, 100);
+    // Persist into trip_context.hotels[0] so the budget tab picks up the
+    // hotel's nightly price and the Itinerary tab shows the booking. Also
+    // prepend onto all_hotels[] so the user can re-pick later without
+    // searching again.
+    if (!id) return;
+    try {
+      const ctxHotel = {
+        id: hotel.id,
+        name: hotel.name,
+        stars: hotel.stars,
+        rating: hotel.rating,
+        review_count: hotel.reviews,
+        price: hotel.price,
+        price_per_night: hotel.price,
+        address: hotel.address,
+        neighborhood: hotel.neighborhood,
+        image: hotel.images?.[0] ?? '',
+        images: hotel.images ?? [],
+        amenities: hotel.amenities,
+        lat: hotel.lat,
+        lng: hotel.lng,
+        room_types: hotel.roomTypes,
+        phone: hotel.phone,
+        link: hotel.email,
+        website: hotel.email,
+      };
+      const { data: row } = await supabase.from('trips').select('trip_context').eq('id', id).single();
+      const ctx = (row?.trip_context || {}) as Record<string, unknown>;
+      (ctx as any).hotels = [ctxHotel];
+      const existingAll = Array.isArray((ctx as any).all_hotels) ? ((ctx as any).all_hotels as any[]) : [];
+      (ctx as any).all_hotels = [ctxHotel, ...existingAll.filter((h: any) => h?.id !== ctxHotel.id && h?.name !== ctxHotel.name)];
+      const { error } = await supabase.from('trips').update({ trip_context: ctx }).eq('id', id);
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ['trip', id] });
+    } catch (e) {
+      console.error('Failed to persist selected hotel', e);
+    }
   };
 
   const handleCancel = () => {

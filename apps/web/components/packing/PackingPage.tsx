@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Sparks, SidebarCollapse, SidebarExpand } from 'iconoir-react'
-import { usePackingList, useAuthStore, usePackingSuggestions } from '@travyl/shared'
+import { usePackingList, useAuthStore, usePackingSuggestions, useItineraryScreen, supabase, seedDefaultPackingItems } from '@travyl/shared'
 import { SpotlightSearch } from './SpotlightSearch'
 import { PackingProgress } from './PackingProgress'
 import { PackingCategoryList } from './PackingCategoryList'
@@ -17,8 +18,47 @@ export function PackingPage({ tripId }: PackingPageProps) {
   const userId = user?.id
   const [filterBy, setFilterBy] = useState<string>('all')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { trip } = useItineraryScreen(tripId)
+  const queryClient = useQueryClient()
 
   const { items, itemsByCategory, orderedCategories, filteredItems, auditLog, progress, isLoading, error, addItem, togglePacked, incrementPacked, updateQuantity, removeItem, claimItem, releaseItem, transferItem } = usePackingList(tripId, userId, filterBy)
+
+  // Auto-seed default items once when the trip's packing_items table is empty.
+  // Mobile auto-generates a list from trip_context.packing_data when the
+  // trip loads; the web equivalent is the packing_items table, which has
+  // never been seeded for new trips — so users were landing on a blank
+  // tab. Gate via trip_context.packing_seeded so this runs at most once,
+  // even if the user later deletes everything.
+  const seedAttempted = useRef(false)
+  useEffect(() => {
+    if (seedAttempted.current) return
+    if (isLoading || !trip || !userId || !tripId) return
+    if (items.length > 0) { seedAttempted.current = true; return }
+    const ctx = (trip.trip_context as any) || {}
+    if (ctx.packing_seeded) { seedAttempted.current = true; return }
+    seedAttempted.current = true
+    ;(async () => {
+      try {
+        const days = trip.start_date && trip.end_date
+          ? Math.max(1, Math.ceil((new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000))
+          : (ctx.weather?.forecast?.length ?? 5)
+        const forecast: any[] = ctx.weather?.forecast ?? []
+        const avgTemp = forecast.length > 0
+          ? forecast.reduce((sum: number, d: any) => sum + (d.high ?? 20), 0) / forecast.length
+          : 20
+        const isWarm = avgTemp > 22
+        const isCold = avgTemp < 12
+        const hasRain = forecast.some((d: any) => (d.conditions || d.icon || '').toLowerCase().includes('rain'))
+        await seedDefaultPackingItems(tripId, userId, { days, isWarm, isCold, hasRain })
+        await supabase.from('trips').update({ trip_context: { ...ctx, packing_seeded: true } }).eq('id', tripId)
+        queryClient.invalidateQueries({ queryKey: ['packingItems', tripId] })
+        queryClient.invalidateQueries({ queryKey: ['trip', tripId] })
+      } catch (e) {
+        console.error('Failed to seed packing items', e)
+        seedAttempted.current = false
+      }
+    })()
+  }, [isLoading, trip, userId, tripId, items.length, queryClient])
   const {
     suggestionsByCategory,
     isGenerating,
