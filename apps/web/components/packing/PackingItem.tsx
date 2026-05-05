@@ -156,14 +156,28 @@ export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantit
         </span>
       )}
 
-      {/* User avatar */}
-      <span
-        className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white"
-        style={{ backgroundColor: avatarColor }}
-        title={displayName}
-      >
-        {displayName[0].toUpperCase()}
-      </span>
+      {/* User avatar or initial */}
+      {item.owner_id && item.owner_avatar_url ? (
+        <img
+          src={item.owner_avatar_url}
+          alt={`${item.owner_display_name}'s avatar`}
+          className="shrink-0 w-5 h-5 rounded-full object-cover"
+        />
+      ) : item.user_avatar_url ? (
+        <img
+          src={item.user_avatar_url}
+          alt={`${displayName}'s avatar`}
+          className="shrink-0 w-5 h-5 rounded-full object-cover"
+        />
+      ) : (
+        <span
+          className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white"
+          style={{ backgroundColor: avatarColor }}
+          title={displayName}
+        >
+          {displayName[0].toUpperCase()}
+        </span>
+      )}
 
       {/* Claim/Release buttons — appear on hover */}
       {!item.owner_id && !item.group_tag && onClaim && (
