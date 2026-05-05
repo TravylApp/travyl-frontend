@@ -37,7 +37,14 @@ export async function GET(req: NextRequest) {
   url.searchParams.set('departure_id', origin)
   url.searchParams.set('arrival_id', destination)
   url.searchParams.set('outbound_date', date)
-  if (returnDate) url.searchParams.set('return_date', returnDate)
+  if (returnDate) {
+    url.searchParams.set('return_date', returnDate)
+  } else {
+    // SerpAPI defaults to type=1 (round trip), which 400s without
+    // return_date. Mark one-way explicitly when the caller didn't supply
+    // a return date.
+    url.searchParams.set('type', '2')
+  }
   url.searchParams.set('adults', passengers)
   url.searchParams.set('travel_class', String(CABIN_MAP[cabin] || 1))
   url.searchParams.set('currency', 'USD')

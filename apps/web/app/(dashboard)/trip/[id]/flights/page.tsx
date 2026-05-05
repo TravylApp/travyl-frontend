@@ -133,11 +133,12 @@ function useFlightSearch(tripId: string, searchParams?: FlightSearchParams) {
   const destAirport = searchParams?.destination || undefined;
   const originAirport = searchParams?.origin || '';
   const departDate = searchParams?.date || trip?.start_date || new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+  const returnDate = trip?.end_date || '';
   const passengers = searchParams?.passengers || trip?.travelers || 1;
   const cabinClass = searchParams?.cabinClass || '';
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['flights-search', originAirport, destAirport, departDate, passengers, cabinClass],
+    queryKey: ['flights-search', originAirport, destAirport, departDate, returnDate, passengers, cabinClass],
     queryFn: async (): Promise<ComparisonFlight[]> => {
       if (!originAirport || (!destAirport && !destination)) return [];
       // Backend resolves airports from city names, not IATA codes
@@ -151,6 +152,10 @@ function useFlightSearch(tripId: string, searchParams?: FlightSearchParams) {
         date: departDate,
         passengers: String(passengers),
       });
+      // Pass the trip's end_date as the return date when present so
+      // SerpAPI runs as round-trip; otherwise the route falls back to
+      // type=2 (one-way) so the request doesn't 400 on missing return.
+      if (returnDate) params.set('return', returnDate);
       if (originCtry) params.set('origin_country', originCtry);
       if (destCtry) params.set('destination_country', destCtry);
       if (cabinClass) params.set('cabin', cabinClass);

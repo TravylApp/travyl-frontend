@@ -419,7 +419,7 @@ export async function forkTrip(tripId: string): Promise<Trip> {
 export async function fetchPublicTrips(): Promise<Trip[]> {
   const { data, error } = await supabase
     .from('trips')
-    .select('*, profiles!trips_user_id_fkey(display_name, avatar_url)')
+    .select('*, profiles!user_id(display_name, avatar_url)')
     .eq('visibility', 'public')
     .order('created_at', { ascending: false });
   if (error) throw error;
