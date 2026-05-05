@@ -1103,7 +1103,7 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="relative h-48 overflow-hidden rounded-t-2xl">
-                  {selectedActivity.image ? (
+                  {selectedActivity.image && selectedActivity.image.trim() !== '' ? (
                     <img src={selectedActivity.image} alt={selectedActivity.title} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full" style={{ background: getConfig(selectedActivity.type).bgGradient }} />
