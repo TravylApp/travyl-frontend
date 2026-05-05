@@ -134,26 +134,64 @@ export default function BudgetScreen() {
   }, [displayCurrency, rates]);
   const fx = useCallback((usd: number) => fmtCurrency(cx(usd), displayCurrency), [cx, displayCurrency]);
 
-  // Build budget items from trip_context (cost_of_living + hotels + trip.budget)
+  // Build budget items from trip_context (cost_of_living + hotels + flights + trip.budget)
   const initialBudget = useMemo((): BudgetItem[] => {
     const ctx = trip?.trip_context as any;
     const cost = ctx?.cost_of_living;
     const hotel = (ctx?.hotels?.[0] || ctx?.all_hotels?.[0]) as any;
+    const flights: any[] = ctx?.flights ?? [];
     const days = trip?.start_date && trip?.end_date
       ? Math.max(1, Math.ceil((new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000))
       : 5;
 
     const items: BudgetItem[] = [];
 
-    // Accommodation
+    // Flights — sums every flight in trip_context.flights[]. Each flight
+    // has a `price` (set by savePlanToSupabase / SerpAPI). Skipped if
+    // the trip wasn't generated with flights or none have a price.
+    const flightExpenses = flights
+      .map((f, i) => {
+        const price = typeof f?.price === 'number' ? f.price : parseFloat(String(f?.price ?? '').replace(/[^0-9.]/g, ''));
+        if (!price || !isFinite(price) || price <= 0) return null;
+        const desc = [f?.airline, f?.dest_iata || f?.destination, f?.depart_date].filter(Boolean).join(' · ') || `Flight ${i + 1}`;
+        return { id: `flight-${i}`, description: desc, amount: price };
+      })
+      .filter((e): e is { id: string; description: string; amount: number } => e !== null);
+    const flightTotal = flightExpenses.reduce((s, e) => s + e.amount, 0);
+    if (flightTotal > 0 || flights.length > 0) {
+      items.push({
+        id: 'flights',
+        category: 'Flights',
+        budgeted: flightTotal,
+        actual: 0,
+        fixed: true,
+        expenses: flightExpenses,
+      });
+    }
+
+    // Accommodation. If hotel.price is missing, fall back to a
+    // cost-of-living estimate so the category isn't always $0 for
+    // older trips. mid_range_hotel is the typical SerpAPI field.
     const hotelPrice = hotel?.price ?? hotel?.price_per_night ?? 0;
+    const colHotel = cost?.mid_range_hotel
+      ? parseFloat(String(cost.mid_range_hotel).replace(/[^0-9.]/g, ''))
+      : (cost?.budget_hotel ? parseFloat(String(cost.budget_hotel).replace(/[^0-9.]/g, '')) : 0);
+    const effectiveNightly = hotelPrice > 0 ? hotelPrice : (colHotel > 0 ? colHotel : 0);
     items.push({
       id: 'accommodation',
       category: 'Accommodation',
-      budgeted: hotelPrice * days,
+      budgeted: effectiveNightly * days,
       actual: 0,
       fixed: true,
-      expenses: hotelPrice ? [{ id: 'hotel-1', description: `${hotel?.name || 'Hotel'} (${days} nights × $${hotelPrice})`, amount: hotelPrice * days }] : [],
+      expenses: effectiveNightly > 0
+        ? [{
+            id: 'hotel-1',
+            description: hotelPrice > 0
+              ? `${hotel?.name || 'Hotel'} (${days} nights × $${hotelPrice})`
+              : `Estimated lodging (${days} nights × $${effectiveNightly}/nt — typical mid-range rate)`,
+            amount: effectiveNightly * days,
+          }]
+        : [],
     });
 
     // Food & Dining

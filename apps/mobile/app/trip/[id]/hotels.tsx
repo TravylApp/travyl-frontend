@@ -591,10 +591,15 @@ function OtherHotelCard({ hotel, onPress }: { hotel: { id: string; name: string;
               {hotel.rating > 0 && <RatingBadge rating={hotel.rating} />}
             </View>
           </View>
-          {hotel.price > 0 && (
+          {hotel.price > 0 ? (
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT }}>${hotel.price}</Text>
               <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>per night</Text>
+            </View>
+          ) : (
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={{ ...TextStyles.captionEm, color: colors.textTertiary }}>Rates vary</Text>
+              <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>tap to view</Text>
             </View>
           )}
         </View>
@@ -834,13 +839,19 @@ function BrowseHotelCard({ hotel, onPress, isSelected, isBooked }: { hotel: { id
           </View>
         )}
 
-        {/* Price row */}
-        {hotel.price > 0 && (
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
-            <Text style={{ ...TextStyles.title, color: colors.text }}>${hotel.price}</Text>
-            <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 6 }}>/night</Text>
-          </View>
-        )}
+        {/* Price row — always rendered. Live rates aren't always
+            available (older trips, off-the-grid hotels), so we surface
+            "Rates vary" rather than silently dropping the row. */}
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
+          {hotel.price > 0 ? (
+            <>
+              <Text style={{ ...TextStyles.title, color: colors.text }}>${hotel.price}</Text>
+              <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 6 }}>/night</Text>
+            </>
+          ) : (
+            <Text style={{ ...TextStyles.bodyEm, color: colors.textSecondary }}>Rates vary — tap for details</Text>
+          )}
+        </View>
       </View>
     </Pressable>
   );
@@ -980,7 +991,17 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
             </View>
           )}
 
-          {/* Price */}
+          {/* Price — always rendered. Live rates aren't always
+              available (older trips, third-party listings); surface a
+              graceful fallback rather than silently dropping the row. */}
+          {hotel.price <= 0 && (
+            <View style={{ marginTop: 16 }}>
+              <Text style={{ fontSize: 18, fontFamily: FontFamily.sansBold, color: colors.text }}>Rates not available</Text>
+              <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 2 }}>
+                {hotel.link ? 'Tap "View on Booking" below for current pricing' : `Live rates depend on dates · ${nights} night${nights !== 1 ? 's' : ''}`}
+              </Text>
+            </View>
+          )}
           {hotel.price > 0 && (
             <View style={{ marginTop: 16 }}>
               <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
