@@ -73,6 +73,30 @@ const PLACEHOLDER_PHRASES = [
   "Ski holiday in the French Alps...",
 ];
 
+const TRIP_TYPE_PILLS = [
+  { id: "tt-1", label: "Beach vacation" },
+  { id: "tt-2", label: "Solo backpacking" },
+  { id: "tt-3", label: "Honeymoon" },
+  { id: "tt-4", label: "Road trip" },
+  { id: "tt-5", label: "Family trip" },
+];
+
+const TRAVEL_STYLE_PILLS = [
+  { id: "ts-1", label: "Luxury escape" },
+  { id: "ts-2", label: "Budget adventure" },
+  { id: "ts-3", label: "Cultural immersion" },
+  { id: "ts-4", label: "Wellness retreat" },
+];
+
+const ACTIVITY_PILLS = [
+  { id: "ac-1", label: "Food & wine tour" },
+  { id: "ac-2", label: "Ski holiday" },
+  { id: "ac-3", label: "Surf trip" },
+  { id: "ac-4", label: "Scuba diving" },
+];
+
+const PILLS_VISIBLE = 4;
+
 const SUBTITLE_PHRASES = [
   "Type your dream trip and let us plan it for you",
   "Discover hidden gems around the world",
@@ -293,20 +317,51 @@ export default function Home() {
     refetchOnMount: false,
   });
 
-  const allSuggestions = (trendingDestinations ?? []).map((d, i) => ({ id: `td-${i}`, label: d.name }));
-  const PILLS_VISIBLE = 4;
+  const allDestinationPills = (trendingDestinations ?? []).map((d, i) => ({ id: `td-${i}`, label: d.name }));
+  const hasDestinations = allDestinationPills.length > 0;
+  const destGroupCount = Math.ceil(allDestinationPills.length / PILLS_VISIBLE);
+  const categoryCount = hasDestinations ? 4 : 3;
+
+  // Categories array — first entry is dynamic, rest are static
+  const CATEGORIES = hasDestinations
+    ? [
+        { label: "Destination", pills: allDestinationPills },
+        { label: "Trip Type",  pills: TRIP_TYPE_PILLS },
+        { label: "Style",      pills: TRAVEL_STYLE_PILLS },
+        { label: "Activity",   pills: ACTIVITY_PILLS },
+      ]
+    : [
+        { label: "Trip Type",  pills: TRIP_TYPE_PILLS },
+        { label: "Style",      pills: TRAVEL_STYLE_PILLS },
+        { label: "Activity",   pills: ACTIVITY_PILLS },
+      ];
+
+  const [pillCategory, setPillCategory] = useState(0);
   const [pillGroup, setPillGroup] = useState(0);
-  const pillGroupCount = Math.ceil(allSuggestions.length / PILLS_VISIBLE);
 
   useEffect(() => {
-    if (pillGroupCount <= 1) return;
     const interval = setInterval(() => {
-      setPillGroup((prev) => (prev + 1) % pillGroupCount);
+      if (pillCategory === 0 && hasDestinations && destGroupCount > 1) {
+        // Destinations: advance group within category
+        setPillGroup((prev) => {
+          const next = prev + 1;
+          if (next >= destGroupCount) {
+            setPillCategory((pc) => (pc + 1) % categoryCount);
+            return 0;
+          }
+          return next;
+        });
+      } else {
+        // Static category or single destination group: advance category
+        setPillCategory((pc) => (pc + 1) % categoryCount);
+      }
     }, 3500);
     return () => clearInterval(interval);
-  }, [pillGroupCount]);
+  }, [pillCategory, hasDestinations, destGroupCount, categoryCount]);
 
-  const visiblePills = allSuggestions.slice(
+  // Resolve current pills to show
+  const currentCategory = CATEGORIES[pillCategory];
+  const visiblePills = currentCategory.pills.slice(
     pillGroup * PILLS_VISIBLE,
     pillGroup * PILLS_VISIBLE + PILLS_VISIBLE
   );
@@ -784,27 +839,36 @@ export default function Home() {
             )}
 
             {/* Suggestion Pills — only show when idle */}
-            {planner.state.phase === 'idle' && allSuggestions.length > 0 && (
-              <div className="flex justify-center gap-1.5 sm:gap-2 mt-4 h-[36px]">
-                <div
-                  key={pillGroup}
-                  className="flex justify-center gap-1.5 sm:gap-2 animate-[fadeSlideIn_0.4s_ease-out]"
-                >
-                  {visiblePills.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => {
-                        const prompt = `Plan a trip to ${s.label}`;
-                        if (requireAuth(prompt)) return;
-                        skipQuestionsRef.current = true;
-                        skipRetryCountRef.current = 0;
-                        planner.submitPrompt(prompt);
-                      }}
-                      className="text-[10px] sm:text-xs text-white font-semibold border border-white/50 rounded-full px-2.5 sm:px-3.5 py-1 sm:py-1.5 hover:bg-white/30 transition-colors backdrop-blur-md bg-white/20 shadow-md drop-shadow-md whitespace-nowrap"
-                    >
-                      {s.label}
-                    </button>
-                  ))}
+            {planner.state.phase === 'idle' && CATEGORIES.some((c) => c.pills.length > 0) && (
+              <div className="flex flex-col items-center gap-2 mt-4 min-h-[56px]">
+                {/* Category label */}
+                <span className="text-[10px] text-[#9a7b5a] uppercase tracking-widest font-semibold">
+                  {currentCategory.label}
+                </span>
+                {/* Pills */}
+                <div className="flex justify-center gap-1.5 sm:gap-2">
+                  <div
+                    key={`${pillCategory}-${pillGroup}`}
+                    className="flex justify-center gap-1.5 sm:gap-2 animate-[fadeSlideIn_0.4s_ease-out]"
+                  >
+                    {visiblePills.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => {
+                          const promptForCategory = pillCategory === 0
+                            ? `Plan a trip to ${s.label}`
+                            : `Plan a ${s.label.toLowerCase()}`;
+                          if (requireAuth(promptForCategory)) return;
+                          skipQuestionsRef.current = true;
+                          skipRetryCountRef.current = 0;
+                          planner.submitPrompt(promptForCategory);
+                        }}
+                        className="text-[10px] sm:text-xs text-white font-semibold border border-white/50 rounded-full px-2.5 sm:px-3.5 py-1 sm:py-1.5 hover:bg-white/30 transition-colors backdrop-blur-md bg-white/20 shadow-md drop-shadow-md whitespace-nowrap"
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
