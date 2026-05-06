@@ -249,6 +249,30 @@ export function Footer() {
           </div>
         </div>
 
+        {/* Tag us — social CTA */}
+        <div className="mt-10 mb-6 text-center">
+          <p className="text-sm font-medium text-[#2a1f17] dark:text-[var(--magazine-heading)] mb-2">
+            Tag us on your next trip
+          </p>
+          <div className="flex items-center justify-center gap-4">
+            {SOCIAL_LINKS.map((link) => (
+              <a
+                key={link.platform}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-colors bg-[#d4bc94] hover:bg-[#c4a882] dark:bg-white/10 dark:hover:bg-white/20"
+                title={link.platform}
+              >
+                <SocialIcon platform={link.platform} size={16} className="text-[#2a1f17] dark:text-[var(--magazine-text)]" />
+              </a>
+            ))}
+          </div>
+          <p className="text-xs text-[#5c4a3a] dark:text-[var(--magazine-text)] mt-2">
+            #Travyl
+          </p>
+        </div>
+
         {/* Copyright + Theme toggle */}
         <div className="mt-8 pt-6 flex items-center justify-between border-t border-[#c4a882] dark:border-white/[0.06]">
           <p className="text-xs text-[#2a1f17] dark:text-[var(--magazine-text)]">

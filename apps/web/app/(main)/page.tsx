@@ -22,20 +22,16 @@ const GetInspired = dynamic(
   () => import("@/components/home/GetInspired").then((m) => ({ default: m.GetInspired })),
   { ssr: false }
 );
-const TagUs = dynamic(
-  () => import("@/components/home/TagUs").then((m) => ({ default: m.TagUs })),
-  { ssr: false }
-);
-const OceanWave = dynamic(
-  () => import("@/components/home/OceanWave").then((m) => ({ default: m.OceanWave })),
-  { ssr: false }
-);
 const TakeoffTransition = dynamic(
   () => import("@/components/home/TakeoffTransition").then((m) => ({ default: m.TakeoffTransition })),
   { ssr: false }
 );
 const Footer = dynamic(
   () => import("@/components/home/Footer").then((m) => ({ default: m.Footer })),
+  { ssr: false }
+);
+const ProductDemo = dynamic(
+  () => import("@/components/home/ProductDemo").then((m) => ({ default: m.ProductDemo })),
   { ssr: false }
 );
 const ParallaxQuoteDivider = dynamic(
@@ -361,9 +357,17 @@ export default function Home() {
     if (heroConfig?.background_image_url) return [heroConfig.background_image_url];
     const loaded = heroImageQueries
       .map((q) => q.data?.url)
-      .filter((url): url is string => !!url);
+      .filter((url): url is string => !!url)
+      .map((url) => {
+        // Bump Unsplash images to high resolution for retina hero display
+        if (url.includes('images.unsplash.com')) {
+          const separator = url.includes('?') ? '&' : '?';
+          return `${url}${separator}w=2880&q=80`;
+        }
+        return url;
+      });
     return loaded.length > 0 ? loaded : [
-      `https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=1600&fit=crop&fm=webp&q=80`
+      `https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=2880&fit=crop&fm=webp&q=80`
     ];
   }, [heroConfig?.background_image_url, heroImageQueries]);
 
@@ -487,16 +491,6 @@ export default function Home() {
       : val;
     if (requireAuth(prompt)) return;
     planner.submitPrompt(prompt);
-    setTripQuery("");
-  };
-
-  const onRefine = () => {
-    const val = tripQuery.trim();
-    if (!val) return;
-    if (requireAuth(val)) return;
-    skipQuestionsRef.current = false;
-    setShowQuestions(true);
-    planner.submitPrompt(val);
     setTripQuery("");
   };
 
@@ -624,7 +618,8 @@ export default function Home() {
             transition={{ duration: 0.7, delay: 0.2, ease: EASE_OUT_EXPO }}
             className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-normal text-white mb-4 leading-tight tracking-wide"
           >
-            {heroConfig?.title ?? "Explore the world from one place."}
+            Plan your trip with AI.<br />
+            <span className="italic">Plan it with friends.</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 30 }}
@@ -718,15 +713,6 @@ export default function Home() {
                     staticPlaceholder={heroConfig?.search_placeholder}
                     inputRef={inputRef}
                   />
-                  <button
-                    onClick={onRefine}
-                    disabled={isExtracting || isPlanning || !tripQuery.trim()}
-                    className="text-[#1e3a5f]/70 hover:text-[#1e3a5f] hover:bg-[#1e3a5f]/8 disabled:opacity-0 disabled:pointer-events-none px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-200 flex items-center gap-1.5 shrink-0 border border-transparent hover:border-[#1e3a5f]/15"
-                    title="Answer a few questions for a more personalized trip"
-                  >
-                    <Sparkles size={14} />
-                    <span className="hidden sm:inline">Refine</span>
-                  </button>
                   <button
                     ref={sendButtonRef}
                     onClick={onSearch}
@@ -827,20 +813,15 @@ export default function Home() {
 
       </section>
 
+      {/* ─── Static Content Sections ──────────────────────────── */}
+      <HowItWorks onCtaPress={() => router.push("/trips")} />
+      <ProductDemo />
       {/* ─── Trip Statistics — Live from Supabase ────────────── */}
       <LiveStats />
 
-
-      {/* ─── Static Content Sections ──────────────────────────── */}
-      <HowItWorks onCtaPress={() => router.push("/trips")} />
+      <GetInspired />
       {/* ─── Parallax Divider — cycling quotes + images ─────── */}
       <ParallaxQuoteDivider bgY={dividerBgY} trendingDestinations={trendingDestinations} />
-
-      <GetInspired />
-      <TagUs />
-
-      {/* ─── Ocean Wave ─────────────────────────────────────── */}
-      <OceanWave />
 
       {/* ─── Footer ─────────────────────────────────────────── */}
       <Footer />

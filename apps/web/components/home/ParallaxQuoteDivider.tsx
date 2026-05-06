@@ -102,7 +102,7 @@ export const ParallaxQuoteDivider = forwardRef<HTMLDivElement, Props>(
     }, [slides.length]);
 
     return (
-      <section ref={ref} className="relative h-[50vh] overflow-hidden">
+      <section ref={ref} className="relative h-[40vh] overflow-hidden">
         <motion.div className="absolute inset-[-20%]" style={{ y: bgY }}>
           {slides.map((slide, i) => (
             <img
