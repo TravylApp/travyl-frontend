@@ -1,5 +1,6 @@
 'use client';
 
+import { computeHealth } from './budgetMath';
 import { EditableCell } from './EditableCell';
 
 export interface BudgetMetricStripProps {
@@ -23,9 +24,10 @@ export function BudgetMetricStrip({
       ? remaining / (daysInTrip - daysElapsed)
       : 0;
 
+  const health = computeHealth(pct);
   const remainingColor =
-    pct >= 100 ? 'text-red-700 dark:text-red-400'
-    : pct >= 80 ? 'text-amber-700 dark:text-amber-400'
+    health === 'over' ? 'text-red-700 dark:text-red-400'
+    : health === 'warn' ? 'text-amber-700 dark:text-amber-400'
     : 'text-emerald-700 dark:text-emerald-400';
 
   const pace =

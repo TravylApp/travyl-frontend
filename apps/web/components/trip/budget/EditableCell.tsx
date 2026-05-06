@@ -19,13 +19,16 @@ export function EditableCell({ value, onCommit, format, ariaLabel, className = '
   useEffect(() => {
     if (editing) {
       setDraft(String(value));
-      // Defer focus so the input is mounted
       requestAnimationFrame(() => {
         inputRef.current?.focus();
         inputRef.current?.select();
       });
     }
-  }, [editing, value]);
+    // We intentionally seed `draft` only when entering edit mode;
+    // changes to `value` while editing are ignored so the user's
+    // in-progress input isn't overwritten.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing]);
 
   const commit = () => {
     const parsed = Number(draft);

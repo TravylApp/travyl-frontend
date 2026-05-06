@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { AnimatePresence } from 'motion/react';
 import { iconFor } from './categoryIcons';
 import { computeHealth } from './budgetMath';
 import { ExpensesDrawer } from './ExpensesDrawer';
@@ -90,20 +89,18 @@ export function BudgetTableRow({
           </div>
         </td>
       </tr>
-      <AnimatePresence initial={false}>
-        {expanded && (
-          <tr id={`expenses-${item.id}`}>
-            <td colSpan={6} className="px-1">
-              <ExpensesDrawer
-                expenses={item.expenses ?? []}
-                formatAmount={formatAmount}
-                onAddExpense={(d, a, dt) => onAddExpense(item.id, d, a, dt)}
-                onDeleteExpense={(eid) => onDeleteExpense(item.id, eid)}
-              />
-            </td>
-          </tr>
-        )}
-      </AnimatePresence>
+      {expanded && (
+        <tr id={`expenses-${item.id}`}>
+          <td colSpan={6} className="px-1">
+            <ExpensesDrawer
+              expenses={item.expenses ?? []}
+              formatAmount={formatAmount}
+              onAddExpense={(d, a, dt) => onAddExpense(item.id, d, a, dt)}
+              onDeleteExpense={(eid) => onDeleteExpense(item.id, eid)}
+            />
+          </td>
+        </tr>
+      )}
     </>
   );
 }
