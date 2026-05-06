@@ -3,6 +3,13 @@
 // session-derived markup until React hydrates. Force per-request rendering.
 export const dynamic = 'force-dynamic'
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Plan Your Trip with AI — Travyl",
+  description: "AI-powered collaborative travel planning. Build itineraries, discover places, and plan trips with friends.",
+};
+
 export default function MainLayout({
   children,
 }: {

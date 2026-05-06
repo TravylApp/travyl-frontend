@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useTrips, useAuthStore, useProfile } from '@travyl/shared'
 import type { Trip, TripCard as TripCardType } from '@travyl/shared'
 import { TripCard } from '@/components/trips/TripCard'
+import { PlaceholderAvatar } from '@/components/ui/PlaceholderAvatar'
 import { Settings, LogOut, MapPin, Calendar, Heart } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -54,14 +55,14 @@ export default function ProfilePage() {
   const tripCount = trips?.length || 0
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-6">
               {/* Avatar */}
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+              <div className="w-24 h-24 rounded-full shadow-lg overflow-hidden shrink-0">
                 {profile?.avatar_url ? (
                   <img
                     src={profile.avatar_url}
@@ -69,31 +70,31 @@ export default function ProfilePage() {
                     className="w-full h-full rounded-full object-cover"
                   />
                 ) : (
-                  initials
+                  <PlaceholderAvatar userId={user?.id} size={96} />
                 )}
               </div>
 
               {/* User Info */}
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">{displayName}</h1>
-                <p className="text-gray-600 mb-4">{user?.email}</p>
+                <h1 className="text-3xl font-bold text-foreground mb-2">{displayName}</h1>
+                <p className="text-muted-foreground mb-4">{user?.email}</p>
 
                 {/* Stats */}
                 <div className="flex gap-6">
                   <div className="flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-blue-500" />
+                    <MapPin className="w-5 h-5 text-primary" />
                     <div>
-                      <p className="text-2xl font-bold text-gray-900">{tripCount}</p>
-                      <p className="text-sm text-gray-600">Trips</p>
+                      <p className="text-2xl font-bold text-foreground">{tripCount}</p>
+                      <p className="text-sm text-muted-foreground">Trips</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-green-500" />
+                    <Calendar className="w-5 h-5 text-[#F59E0B]" />
                     <div>
-                      <p className="text-2xl font-bold text-gray-900">
+                      <p className="text-2xl font-bold text-foreground">
                         {trips?.filter(t => t.status === 'completed').length || 0}
                       </p>
-                      <p className="text-sm text-gray-600">Completed</p>
+                      <p className="text-sm text-muted-foreground">Completed</p>
                     </div>
                   </div>
                 </div>
@@ -104,7 +105,7 @@ export default function ProfilePage() {
             <div className="flex gap-3">
               <Link
                 href="/profile/settings"
-                className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-muted-foreground hover:bg-muted rounded-lg transition-colors"
               >
                 <Settings className="w-5 h-5" />
                 Settings
@@ -122,15 +123,15 @@ export default function ProfilePage() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex gap-8">
             <button
               onClick={() => setActiveTab('trips')}
               className={`py-4 px-2 border-b-2 font-medium transition-colors ${
                 activeTab === 'trips'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               My Trips
@@ -139,8 +140,8 @@ export default function ProfilePage() {
               onClick={() => setActiveTab('favorites')}
               className={`py-4 px-2 border-b-2 font-medium transition-colors ${
                 activeTab === 'favorites'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-900'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
               }`}
             >
               Favorites
@@ -155,8 +156,8 @@ export default function ProfilePage() {
           <div>
             {tripsLoading ? (
               <div className="text-center py-12">
-                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-gray-600">Loading trips...</p>
+                <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-muted-foreground">Loading trips...</p>
               </div>
             ) : trips && trips.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -166,12 +167,12 @@ export default function ProfilePage() {
               </div>
             ) : (
               <div className="text-center py-12">
-                <MapPin className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">No trips yet</h3>
-                <p className="text-gray-600 mb-6">Create your first trip to get started!</p>
+                <MapPin className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-foreground mb-2">No trips yet</h3>
+                <p className="text-muted-foreground mb-6">Create your first trip to get started!</p>
                 <Link
                   href="/trips"
-                  className="inline-block px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                  className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
                 >
                   Explore Trips
                 </Link>
@@ -182,14 +183,14 @@ export default function ProfilePage() {
 
         {activeTab === 'favorites' && (
           <div className="text-center py-12">
-            <Heart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No favorites yet</h3>
-            <p className="text-gray-600 mb-6">
+            <Heart className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-foreground mb-2">No favorites yet</h3>
+            <p className="text-muted-foreground mb-6">
               Save places and destinations to see them here
             </p>
             <Link
               href="/"
-              className="inline-block px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
             >
               Explore Destinations
             </Link>

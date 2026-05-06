@@ -1,27 +1,20 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useScroll, useTransform } from "motion/react";
 import { Search, Sparkles, MapPin } from "lucide-react";
 import { useHomeScreen, useHeroConfig, usePlaceImages, useTripPlanner, useAuthStore, EASE_OUT_EXPO } from "@travyl/shared";
 import type { FollowUpQuestion } from "@travyl/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { savePlanToSupabase } from "@travyl/shared/src/services/api";
 import { PaperPlane } from "@/components/icons/PaperPlane";
-import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { TypeWriter } from "@/components/TypeWriter";
-import { useCyclingPlaceholder, useCyclingPlaceholderRef } from "@/hooks/useCyclingPlaceholder";
+import { useCyclingPlaceholder } from "@/hooks/useCyclingPlaceholder";
+import { SafeImage } from "@/components/ui/SafeImage";
 import dynamic from "next/dynamic";
 
-const HowItWorks = dynamic(
-  () => import("@/components/home/HowItWorks").then((m) => ({ default: m.HowItWorks })),
-  { ssr: false }
-);
-const GetInspired = dynamic(
-  () => import("@/components/home/GetInspired").then((m) => ({ default: m.GetInspired })),
-  { ssr: false }
-);
 const TakeoffTransition = dynamic(
   () => import("@/components/home/TakeoffTransition").then((m) => ({ default: m.TakeoffTransition })),
   { ssr: false }
@@ -34,11 +27,44 @@ const ProductDemo = dynamic(
   () => import("@/components/home/ProductDemo").then((m) => ({ default: m.ProductDemo })),
   { ssr: false }
 );
-const ParallaxQuoteDivider = dynamic(
-  () => import("@/components/home/ParallaxQuoteDivider").then((m) => ({ default: m.ParallaxQuoteDivider })),
+const UseCases = dynamic(
+  () => import("@/components/home/UseCases").then((m) => ({ default: m.UseCases })),
   { ssr: false }
 );
-import { memo } from "react";
+const Testimonials = dynamic(
+  () => import("@/components/home/Testimonials").then((m) => ({ default: m.Testimonials })),
+  { ssr: false }
+);
+const PressStats = dynamic(
+  () => import("@/components/home/PressStats").then((m) => ({ default: m.PressStats })),
+  { ssr: false }
+);
+const PressMarquee = dynamic(
+  () => import("@/components/home/PressMarquee").then((m) => ({ default: m.PressMarquee })),
+  { ssr: false }
+);
+const FinalCTA = dynamic(
+  () => import("@/components/home/FinalCTA").then((m) => ({ default: m.FinalCTA })),
+  { ssr: false }
+);
+const TagUs = dynamic(
+  () => import("@/components/home/TagUs").then((m) => ({ default: m.TagUs })),
+  { ssr: false }
+);
+const MobileShowcase = dynamic(
+  () => import("@/components/home/MobileShowcase").then((m) => ({ default: m.MobileShowcase })),
+  { ssr: false }
+);
+
+// ─── Pick random items from an array (Fisher-Yates) ──────────
+function pickRandom<T>(arr: readonly T[], count: number): T[] {
+  const pool = [...arr];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, count);
+}
 
 const PLACEHOLDER_PHRASES = [
   "7 days in Paris with my partner...",
@@ -46,20 +72,38 @@ const PLACEHOLDER_PHRASES = [
   "Family beach vacation in Bali...",
   "Weekend getaway to the Swiss Alps...",
   "Solo backpacking through Southeast Asia...",
+  "Honeymoon in Santorini...",
+  "Road trip along the Amalfi Coast...",
+  "Surf trip to Costa Rica...",
+  "Wine tour through Tuscany...",
+  "Digital nomad trip to Lisbon...",
+  "Wellness retreat in Bali...",
+  "Ski holiday in the French Alps...",
 ];
 
-const SUBTITLE_PHRASES = [
-  "Type your dream trip and let us plan it for you",
-  "Discover hidden gems around the world",
-  "Your next adventure starts with a single search",
-  "From idea to itinerary in seconds",
-  "Tell us where you want to go",
+const TRIP_TYPE_PILLS = [
+  { id: "tt-1", label: "Beach vacation" },
+  { id: "tt-2", label: "Solo backpacking" },
+  { id: "tt-3", label: "Honeymoon" },
+  { id: "tt-4", label: "Road trip" },
+  { id: "tt-5", label: "Family trip" },
 ];
 
-const CyclingSubtitle = memo(function CyclingSubtitle() {
-  const textRef = useCyclingPlaceholderRef(SUBTITLE_PHRASES, 40, 2500, 25);
-  return <><span ref={textRef} /><span className="animate-pulse">|</span></>;
-});
+const TRAVEL_STYLE_PILLS = [
+  { id: "ts-1", label: "Luxury escape" },
+  { id: "ts-2", label: "Budget adventure" },
+  { id: "ts-3", label: "Cultural immersion" },
+  { id: "ts-4", label: "Wellness retreat" },
+];
+
+const ACTIVITY_PILLS = [
+  { id: "ac-1", label: "Food & wine tour" },
+  { id: "ac-2", label: "Ski holiday" },
+  { id: "ac-3", label: "Surf trip" },
+  { id: "ac-4", label: "Scuba diving" },
+];
+
+const PILLS_VISIBLE = 4;
 
 interface AutocompleteSuggestion {
   id: string;
@@ -157,6 +201,7 @@ const HeroSearchInput = memo(function HeroSearchInput({
         placeholder={tripQuery ? "" : (staticPlaceholder ?? typingPlaceholder)}
         className="flex-1 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 min-w-0"
         autoComplete="off"
+        aria-label="Search destinations"
       />
       {showSuggestions && suggestions.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50">
@@ -179,54 +224,6 @@ const HeroSearchInput = memo(function HeroSearchInput({
   );
 });
 
-// ─── Live stats from /api/stats ──────────────────────────────
-function LiveStats() {
-  const { data: stats, isLoading } = useQuery({
-    queryKey: ['live-stats'],
-    queryFn: async () => {
-      const res = await fetch('/api/stats');
-      if (!res.ok) return { destinations: 0, travelers: 0, trips: 0 };
-      return res.json() as Promise<{ destinations: number; travelers: number; trips: number }>;
-    },
-    staleTime: 60 * 1000,
-    refetchOnMount: 'always',
-  });
-
-  const items = [
-    { value: stats?.destinations ?? 0, suffix: "+", label: "Destinations", desc: "Real places our community has explored." },
-    { value: stats?.travelers ?? 0, suffix: "", label: "Travelers", desc: "People planning their next adventure." },
-    { value: stats?.trips ?? 0, suffix: "+", label: "Trips Planned", desc: "AI-powered itineraries created and counting." },
-  ];
-
-  return (
-    <section className="py-8 sm:py-14 px-4 sm:px-6 border-y bg-[#e8d5c0] border-[#5c4a3a]">
-      <div className="max-w-5xl mx-auto grid grid-cols-3 gap-3 sm:gap-8 text-center">
-        {isLoading ? (
-          <>
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="flex flex-col items-center gap-2">
-                <div className="h-8 sm:h-12 w-20 sm:w-28 bg-[#2a1f17]/10 rounded-lg animate-pulse" />
-                <div className="h-3 w-16 sm:w-24 bg-[#2a1f17]/10 rounded animate-pulse" />
-                <div className="h-3 w-28 sm:w-40 bg-[#2a1f17]/8 rounded animate-pulse" />
-              </div>
-            ))}
-          </>
-        ) : (
-          items.map((item) => (
-            <div key={item.label}>
-              <p className="text-2xl sm:text-4xl md:text-5xl font-[550] tracking-tight mb-1 text-[#2a1f17]">
-                <AnimatedCounter value={item.value} suffix={item.suffix} decimals={0} />
-              </p>
-              <p className="text-[8px] sm:text-xs font-bold uppercase tracking-widest mb-1 sm:mb-2 text-[#1e3a5f]">{item.label}</p>
-              <p className="text-[11px] sm:text-sm max-w-[220px] mx-auto leading-snug sm:leading-relaxed text-[#2a1f17]">{item.desc}</p>
-            </div>
-          ))
-        )}
-      </div>
-    </section>
-  );
-}
-
 // ─── Follow-up question option card ─────────────────────────
 function OptionCard({ label, index, selected, onSelect }: {
   label: string; index: number; selected: boolean; onSelect: () => void;
@@ -235,6 +232,7 @@ function OptionCard({ label, index, selected, onSelect }: {
   return (
     <button
       onClick={onSelect}
+      aria-pressed={selected}
       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm transition-all duration-200 w-full ${
         selected
           ? "bg-[#1e3a5f] text-white shadow-md ring-1 ring-white/30"
@@ -260,8 +258,10 @@ export default function Home() {
   } = useHomeScreen();
   const { data: heroConfig } = useHeroConfig();
 
+  const sendButtonRef = useRef<HTMLButtonElement>(null);
   const heroSectionRef = useRef<HTMLElement>(null);
   const [showTakeoff, setShowTakeoff] = useState(false);
+  const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
   const [heroSlide, setHeroSlide] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -287,6 +287,7 @@ export default function Home() {
     if (isClarifying && skipQuestionsRef.current) {
       if (skipRetryCountRef.current < 1) {
         skipRetryCountRef.current += 1;
+        setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
         setShowTakeoff(true);
         planner.submitAnswers({});
       } else {
@@ -311,22 +312,80 @@ export default function Home() {
     },
     staleTime: 30 * 60 * 1000,
     refetchOnMount: false,
+    retry: 2,
+    retryDelay: 2000,
   });
 
-  const allSuggestions = (trendingDestinations ?? []).map((d, i) => ({ id: `td-${i}`, label: d.name }));
-  const PILLS_VISIBLE = 4;
+  // Live stats for compact trust bar
+  const { data: stats } = useQuery({
+    queryKey: ['live-stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/stats');
+      if (!res.ok) return { destinations: 0, travelers: 0, trips: 0 };
+      return res.json() as Promise<{ destinations: number; travelers: number; trips: number }>;
+    },
+    staleTime: 60 * 1000,
+    retry: 2,
+    retryDelay: 2000,
+  });
+
+  // Live inspirational travel quote
+  const { data: quote } = useQuery({
+    queryKey: ['hero-quote'],
+    queryFn: async () => {
+      const res = await fetch('/api/quote?tag=travel');
+      if (!res.ok) return null;
+      return res.json() as Promise<{ content: string; author: string }>;
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 2,
+  });
+
+  const allDestinationPills = (trendingDestinations ?? []).map((d, i) => ({ id: `td-${i}`, label: d.name }));
+  const hasDestinations = allDestinationPills.length > 0;
+  const destGroupCount = Math.ceil(allDestinationPills.length / PILLS_VISIBLE);
+  const categoryCount = hasDestinations ? 4 : 3;
+
+  // Categories array — first entry is dynamic, rest are static
+  const CATEGORIES = hasDestinations
+    ? [
+        { label: "Destination", pills: allDestinationPills },
+        { label: "Trip Type",  pills: TRIP_TYPE_PILLS },
+        { label: "Style",      pills: TRAVEL_STYLE_PILLS },
+        { label: "Activity",   pills: ACTIVITY_PILLS },
+      ]
+    : [
+        { label: "Trip Type",  pills: TRIP_TYPE_PILLS },
+        { label: "Style",      pills: TRAVEL_STYLE_PILLS },
+        { label: "Activity",   pills: ACTIVITY_PILLS },
+      ];
+
+  const [pillCategory, setPillCategory] = useState(0);
   const [pillGroup, setPillGroup] = useState(0);
-  const pillGroupCount = Math.ceil(allSuggestions.length / PILLS_VISIBLE);
 
   useEffect(() => {
-    if (pillGroupCount <= 1) return;
     const interval = setInterval(() => {
-      setPillGroup((prev) => (prev + 1) % pillGroupCount);
+      if (pillCategory === 0 && hasDestinations && destGroupCount > 1) {
+        // Destinations: advance group within category
+        setPillGroup((prev) => {
+          const next = prev + 1;
+          if (next >= destGroupCount) {
+            setPillCategory((pc) => (pc + 1) % categoryCount);
+            return 0;
+          }
+          return next;
+        });
+      } else {
+        // Static category or single destination group: advance category
+        setPillCategory((pc) => (pc + 1) % categoryCount);
+      }
     }, 3500);
     return () => clearInterval(interval);
-  }, [pillGroupCount]);
+  }, [pillCategory, hasDestinations, destGroupCount, categoryCount]);
 
-  const visiblePills = allSuggestions.slice(
+  // Resolve current pills to show
+  const currentCategory = CATEGORIES[pillCategory];
+  const visiblePills = currentCategory.pills.slice(
     pillGroup * PILLS_VISIBLE,
     pillGroup * PILLS_VISIBLE + PILLS_VISIBLE
   );
@@ -341,13 +400,16 @@ export default function Home() {
   const heroBgY = useTransform(heroScroll, [0, 1], [0, -120]);
   const heroBgScale = useTransform(heroScroll, [0, 1], [1, 1.15]);
 
-  // Parallax divider — uses document scroll (fires only in divider viewport range)
-  const { scrollYProgress: pageScroll } = useScroll();
-  const dividerBgY = useTransform(pageScroll, [0.3, 0.7], [-80, 80]);
-
-  // Hero slideshow — fetch from backend API, no hardcoded fallbacks
-  const HERO_DESTINATIONS = ["Maldives Beach", "Paris Eiffel Tower", "Grand Canyon", "Tokyo Skyline"];
-  const heroImageQueries = usePlaceImages(HERO_DESTINATIONS);
+  // Hero slideshow — use live trending destinations, fall back to curated pool
+  const FALLBACK_HERO_DESTINATIONS = ["Paris", "Tokyo", "New York City", "Bali"];
+  const heroDestinations = useMemo(() => {
+    const count = heroConfig?.background_image_url ? 3 : 4;
+    const source = trendingDestinations && trendingDestinations.length > 0
+      ? trendingDestinations.map((d) => d.name)
+      : FALLBACK_HERO_DESTINATIONS;
+    return pickRandom(source, count);
+  }, [trendingDestinations, heroConfig?.background_image_url]);
+  const heroImageQueries = usePlaceImages(heroDestinations);
 
   // Only include slides that have actually loaded
   const heroSlides = useMemo(() => {
@@ -356,15 +418,19 @@ export default function Home() {
       .map((q) => q.data?.url)
       .filter((url): url is string => !!url)
       .map((url) => {
-        // Bump Unsplash images to high resolution for retina hero display
-        if (url.includes('images.unsplash.com')) {
-          const separator = url.includes('?') ? '&' : '?';
-          return `${url}${separator}w=2880&q=80`;
+        // Pexels — 4K width via CDN params (works with or without existing params)
+        if (url.includes('images.pexels.com')) {
+          if (url.includes('?')) {
+            // Already has CDN params (large/large2x variant) — replace width & dpr
+            return url.replace(/w=\d+/, 'w=3840').replace(/dpr=\d+/, 'dpr=2');
+          }
+          // Bare URL (original variant) — add params from scratch
+          return `${url}?auto=compress&cs=tinysrgb&w=3840&dpr=2`;
         }
         return url;
       });
     return loaded.length > 0 ? loaded : [
-      `https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=2880&fit=crop&fm=webp&q=80`
+      `https://images.pexels.com/photos/30978583/pexels-photo-30978583.jpeg?auto=compress&cs=tinysrgb&w=3840&dpr=2`
     ];
   }, [heroConfig?.background_image_url, heroImageQueries]);
 
@@ -393,21 +459,28 @@ export default function Home() {
       ? current.filter((o) => o !== option)
       : [...current, option];
 
-    const newAnswers = { ...selectedAnswers, [questionId]: newSelection };
-    setSelectedAnswers(newAnswers);
+    setSelectedAnswers((prev) => ({ ...prev, [questionId]: newSelection }));
 
     // Auto-advance after selecting (not deselecting)
     if (!isDeselecting) {
       setTimeout(() => {
-        if (currentQIdx < questions.length - 1) {
-          setCurrentQIdx((i) => i + 1);
-        } else {
-          setShowTakeoff(true);
-          planner.submitAnswers(flattenAnswers(newAnswers));
-        }
+        setCurrentQIdx((i) => {
+          if (i < questions.length - 1) {
+            return i + 1;
+          } else {
+            setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
+            setShowTakeoff(true);
+            // Read latest answers from state via functional updater
+            setSelectedAnswers((latest) => {
+              planner.submitAnswers(flattenAnswers(latest));
+              return latest;
+            });
+            return i;
+          }
+        });
       }, 600);
     }
-  }, [selectedAnswers, currentQIdx, questions.length, planner, flattenAnswers]);
+  }, [questions.length, planner, flattenAnswers]);
 
   // Advance to next question or submit
   const handleNextQuestion = useCallback(() => {
@@ -415,6 +488,7 @@ export default function Home() {
       setCurrentQIdx((i) => i + 1);
     } else {
       // All questions done — submit
+      setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
       setShowTakeoff(true);
       planner.submitAnswers(flattenAnswers(selectedAnswers));
     }
@@ -425,6 +499,7 @@ export default function Home() {
     if (currentQIdx < questions.length - 1) {
       setCurrentQIdx((i) => i + 1);
     } else {
+      setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
       setShowTakeoff(true);
       planner.submitAnswers(flattenAnswers(selectedAnswers));
     }
@@ -434,6 +509,10 @@ export default function Home() {
   useEffect(() => {
     if (!isClarifying || !currentQuestion) return;
     const handler = (e: KeyboardEvent) => {
+      // Don't intercept when user is typing in a custom input
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
       const opts = currentQuestion.options;
       let idx = -1;
       if (e.key >= '1' && e.key <= '5') idx = parseInt(e.key) - 1;
@@ -453,17 +532,25 @@ export default function Home() {
     setCurrentQIdx(0);
     setSelectedAnswers({});
     setShowQuestions(false);
+    setValidationError(null);
+    setLoadingError(null);
     skipQuestionsRef.current = false;
     skipRetryCountRef.current = 0;
     setTripQuery("");
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [planner, setTripQuery]);
 
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [takeoffCompleted, setTakeoffCompleted] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
   const isSaving = useRef(false);
   const user = useAuthStore((s) => s.user);
+
+  // Clear validation error when user edits the search query
+  useEffect(() => {
+    if (tripQuery && validationError) setValidationError(null);
+  }, [tripQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const requireAuth = (prompt: string) => {
     if (user) return false;
@@ -472,9 +559,55 @@ export default function Home() {
     return true;
   };
 
+  // Validate trip queries — catch obviously nonsensical inputs
+  const validateTripQuery = (query: string): string | null => {
+    const lower = query.toLowerCase().trim();
+
+    // Extract explicit duration mentions like "1000 days", "2 years", "3 months"
+    const durationMatch = lower.match(/(\d+)\s*(day|days?|week|weeks?|month|months?|year|years?)/);
+    if (durationMatch) {
+      const num = parseInt(durationMatch[1], 10);
+      const unit = durationMatch[2];
+      // Convert to approximate days for comparison
+      let approxDays = num;
+      if (unit.startsWith('week')) approxDays = num * 7;
+      else if (unit.startsWith('month')) approxDays = num * 30;
+      else if (unit.startsWith('year')) approxDays = num * 365;
+
+      if (approxDays > 365) return `A ${num}-${unit} trip seems a bit long — try something under a year.`;
+      if (approxDays === 0) return `How about a trip with at least one day to explore?`;
+    }
+
+    // Reject purely numeric queries
+    if (/^\d+$/.test(lower)) return `Try describing a destination instead of just numbers.`;
+
+    // Reject queries that are too short to be meaningful
+    if (lower.length < 3) return `Tell us a bit more about where you'd like to go.`;
+
+    // Reject obviously non-travel queries
+    const nonsensePatterns = [
+      /^(hi|hello|test|asdf|qwerty|lol|haha)\s*$/i,
+      /^(what|how)\s+(is|are|do)\b/i,
+      /^(why|when|who)\b.*\?$/i,
+      /^\d+\s*(km|miles?|kg|lbs?|liters?|gallons?)$/i,
+    ];
+    for (const pat of nonsensePatterns) {
+      if (pat.test(lower)) return `Looks like you're asking something else — try describing a trip you'd like to plan.`;
+    }
+
+    return null;
+  };
+
   const onSearch = () => {
     const val = tripQuery.trim();
     if (!val) return;
+    // Validate query before proceeding
+    const vErr = validateTripQuery(val);
+    if (vErr) {
+      setValidationError(vErr);
+      return;
+    }
+    setValidationError(null);
     skipQuestionsRef.current = true;
     skipRetryCountRef.current = 0;
     clarifyRoundRef.current = 0;
@@ -505,6 +638,7 @@ export default function Home() {
   // Show takeoff when planning starts
   useEffect(() => {
     if ((planner.state.phase === 'extracting' || planner.state.phase === 'planning') && !showTakeoff) {
+      setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
       setShowTakeoff(true);
       setLoadingError(null);
       setTakeoffCompleted(false);
@@ -580,7 +714,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)] -mt-16">
       {/* ─── Hero Section ─────────────────────────────────────── */}
-      <section ref={heroSectionRef} className="relative flex items-center justify-center px-6 pt-36 pb-0 md:pt-44 md:pb-0 overflow-hidden min-h-screen bg-[#e8d5c0]">
+      <section ref={heroSectionRef} aria-label="Hero" className="relative flex items-center justify-center px-6 pt-36 pb-0 md:pt-44 md:pb-0 overflow-hidden min-h-screen bg-[#f2e6d8]">
         {/* Slideshow background */}
         <motion.div className="absolute top-0 left-0 right-0 -bottom-[150px] z-0 will-change-transform" style={{ scale: heroBgScale, y: heroBgY }}>
           {heroSlides.map((src, i) => (
@@ -595,6 +729,7 @@ export default function Home() {
               decoding={i === 0 ? "sync" : "async"}
               className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-in-out"
               style={{ opacity: heroSlide % heroSlides.length === i ? 1 : 0 }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
           ))}
         </motion.div>
@@ -614,18 +749,6 @@ export default function Home() {
             Plan your trip with AI.<br />
             <span className="italic">Plan it with friends.</span>
           </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4, ease: EASE_OUT_EXPO }}
-            className="text-xs sm:text-sm md:text-base text-white mb-10 w-fit mx-auto font-medium px-4 py-1.5 rounded-full bg-black/25 backdrop-blur-md border border-white/25 shadow-lg drop-shadow-md"
-          >
-            {heroConfig?.subtitle ? (
-              <TypeWriter text={heroConfig.subtitle} delay={600} speed={35} />
-            ) : (
-              <CyclingSubtitle />
-            )}
-          </motion.p>
 
           {/* Search Bar */}
           <motion.div
@@ -685,6 +808,15 @@ export default function Home() {
               </div>
             )}
 
+            {/* Validation error */}
+            {validationError && (
+              <div className="mb-3 animate-[fadeSlideIn_0.3s_ease-out]">
+                <div className="bg-amber-500/20 backdrop-blur-md rounded-full px-5 py-2.5 border border-amber-400/30 flex items-center justify-between gap-3 shadow-lg">
+                  <p className="text-sm text-white">{validationError}</p>
+                </div>
+              </div>
+            )}
+
             {/* Error state */}
             {planner.state.phase === 'error' && (
               <div className="mb-3 animate-[fadeSlideIn_0.3s_ease-out]">
@@ -707,6 +839,7 @@ export default function Home() {
                     inputRef={inputRef}
                   />
                   <button
+                    ref={sendButtonRef}
                     onClick={onSearch}
                     disabled={isExtracting || isPlanning}
                     aria-label="Generate trip"
@@ -757,12 +890,14 @@ export default function Home() {
                       name="custom"
                       type="text"
                       placeholder="Or type your own..."
+                      aria-label="Or type your own answer"
                       className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/15 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/30"
                     />
                   </form>
                   {/* Plan it now — escape hatch */}
                   <button
                     onClick={() => {
+                      setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
                       setShowTakeoff(true);
                       planner.submitAnswers(flattenAnswers(selectedAnswers));
                     }}
@@ -775,28 +910,48 @@ export default function Home() {
             )}
 
             {/* Suggestion Pills — only show when idle */}
-            {planner.state.phase === 'idle' && allSuggestions.length > 0 && (
-              <div className="flex justify-center gap-1.5 sm:gap-2 mt-4 h-[36px]">
-                <div
-                  key={pillGroup}
-                  className="flex justify-center gap-1.5 sm:gap-2 animate-[fadeSlideIn_0.4s_ease-out]"
-                >
-                  {visiblePills.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => {
-                        const prompt = `Plan a trip to ${s.label}`;
-                        if (requireAuth(prompt)) return;
-                        skipQuestionsRef.current = true;
-                        skipRetryCountRef.current = 0;
-                        planner.submitPrompt(prompt);
-                      }}
-                      className="text-[10px] sm:text-xs text-white font-semibold border border-white/50 rounded-full px-2.5 sm:px-3.5 py-1 sm:py-1.5 hover:bg-white/30 transition-colors backdrop-blur-md bg-white/20 shadow-md drop-shadow-md whitespace-nowrap"
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </div>
+            {planner.state.phase === 'idle' && CATEGORIES.some((c) => c.pills.length > 0) && (
+              <div className="mt-4 animate-[fadeSlideIn_0.3s_ease-out] min-h-[76px]">
+                  <div className="flex flex-col items-center gap-2">
+                    {/* Category label */}
+                    <span className="text-[10px] text-white/50 uppercase tracking-widest font-semibold">
+                      {currentCategory.label}
+                    </span>
+                    {/* Pills */}
+                    <div className="flex justify-center gap-1.5 sm:gap-2">
+                      <div
+                        key={`${pillCategory}-${pillGroup}`}
+                        className="flex justify-center gap-1.5 sm:gap-2 animate-[fadeSlideIn_0.4s_ease-out]"
+                      >
+                        {visiblePills.map((s) => (
+                          <button
+                            key={s.id}
+                            onClick={() => {
+                              // Update search bar to show what's being searched
+                              setTripQuery(s.label);
+                              const promptForCategory = pillCategory === 0
+                                ? `Plan a trip to ${s.label}`
+                                : `Plan a ${s.label.toLowerCase()}`;
+                              if (requireAuth(promptForCategory)) return;
+                              skipQuestionsRef.current = true;
+                              skipRetryCountRef.current = 0;
+                              planner.submitPrompt(promptForCategory);
+                            }}
+                            className="text-[10px] sm:text-xs text-white font-semibold border border-white/50 rounded-full px-2.5 sm:px-3.5 py-1 sm:py-1.5 hover:bg-white/30 transition-colors backdrop-blur-md bg-white/20 shadow-md drop-shadow-md whitespace-nowrap"
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Live travel quote */}
+                    {quote && (
+                      <p className="text-[11px] text-white/40 italic max-w-md text-center leading-relaxed mt-2">
+                        &ldquo;{quote.content}&rdquo;
+                        <span className="not-italic text-white/30"> — {quote.author}</span>
+                      </p>
+                    )}
+                  </div>
               </div>
             )}
           </motion.div>
@@ -804,23 +959,38 @@ export default function Home() {
 
       </section>
 
-      {/* ─── Static Content Sections ──────────────────────────── */}
-      <HowItWorks onCtaPress={() => router.push("/trips")} />
+      {/* ─── Use Cases — warm sand ────────────────────────── */}
+      <UseCases />
+
+      {/* ─── Stats — trust signals ────────────────────────── */}
+      <PressStats statsOnly />
+
+      {/* ─── Press Marquee — As Seen In ──────────────────── */}
+      <PressMarquee />
+
+      {/* ─── Product Demo — existing, dark bg ─────────────── */}
       <ProductDemo />
-      {/* ─── Trip Statistics — Live from Supabase ────────────── */}
-      <LiveStats />
 
-      <GetInspired />
-      {/* ─── Parallax Divider — cycling quotes + images ─────── */}
-      <ParallaxQuoteDivider bgY={dividerBgY} trendingDestinations={trendingDestinations} />
+      {/* ─── Testimonials — warm sand ─────────────────────── */}
+      <Testimonials />
 
-      {/* ─── Footer ─────────────────────────────────────────── */}
+      {/* ─── Tag Us — social feed ─────────────────────────── */}
+      <TagUs />
+
+      {/* ─── Final CTA — full-bleed dark ──────────────────── */}
+      <FinalCTA />
+
+      {/* ─── Mobile Showcase — iOS device mockup ───────────── */}
+      <MobileShowcase />
+
+      {/* ─── Footer ────────────────────────────────────────── */}
       <Footer />
 
 
       {/* ─── Takeoff Animation Overlay ─────────────────────────── */}
       <TakeoffTransition
         visible={showTakeoff}
+        buttonRect={buttonRect}
         statusMessage={plannerStatusMessage}
         completed={takeoffCompleted}
         error={loadingError}
@@ -835,16 +1005,22 @@ export default function Home() {
       />
 
       {/* ─── Auth gate for trip planning ─────────────────────────── */}
-      {showAuthGate && (
+      {showAuthGate && (() => {
+        const authGateId = "auth-gate-heading";
+        return (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
           onClick={() => setShowAuthGate(false)}
+          onKeyDown={(e) => { if (e.key === "Escape") setShowAuthGate(false); }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={authGateId}
         >
           <div
             className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-2xl font-serif text-slate-900 dark:text-white mb-2">Sign in to plan your trip</h2>
+            <h2 id={authGateId} className="text-2xl font-serif text-slate-900 dark:text-white mb-2">Sign in to plan your trip</h2>
             <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
               We&apos;ll save your itinerary, hotels, and flights to your account so you can come back to it anytime.
             </p>
@@ -870,7 +1046,8 @@ export default function Home() {
             </div>
           </div>
         </div>
-      )}
+      );
+      })()}
     </div>
   );
 }

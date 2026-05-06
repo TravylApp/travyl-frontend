@@ -18,7 +18,7 @@ export function SuggestionChip({ suggestion, onAccept, onDismiss }: SuggestionCh
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -8 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
-      className="group flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg border border-dashed border-[var(--cal-border)] bg-[var(--cal-surface)]/50 hover:bg-[var(--cal-surface)] transition-colors duration-150"
+      className="group flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg border border-dashed border-[var(--cal-border)] bg-cal-surface/50 hover:bg-cal-surface transition-colors duration-150"
     >
       {/* Accept button */}
       <button

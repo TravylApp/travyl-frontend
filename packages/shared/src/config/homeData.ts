@@ -97,6 +97,14 @@ export function getCyclicGradient(index: number) {
 }
 
 // ─── Footer ──────────────────────────────────────────────────
+export const PRESS_ITEMS = [
+  'Travel Weekly',
+  'The Points Guy',
+  'Condé Nast Traveler',
+  'Skift',
+  'AFAR',
+] as const;
+
 export const FOOTER_COLUMNS = [
   {
     heading: 'Company',
@@ -104,6 +112,19 @@ export const FOOTER_COLUMNS = [
       { label: 'About Us', href: '/about' },
       { label: 'Privacy Policy', href: '/privacy' },
       { label: 'Terms of Service', href: '/terms' },
+    ],
+  },
+  {
+    heading: 'Explore',
+    links: [
+      { label: 'Destinations', href: '/explore' },
+      { label: 'Trip Planner', href: '/' },
+    ],
+  },
+  {
+    heading: 'Resources',
+    links: [
+      { label: 'Travel Blog', href: '/blog' },
     ],
   },
 ] as const;

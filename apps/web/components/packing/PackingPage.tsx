@@ -104,7 +104,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
         <PackingProgress packed={progress.packed} total={progress.total} percent={progress.percent} />
         <button
           onClick={() => setSidebarOpen((v) => !v)}
-          className="p-1.5 rounded-lg text-[var(--cal-text-muted)] hover:text-[var(--cal-text)] hover:bg-[var(--cal-surface)] transition-colors"
+          className="p-1.5 rounded-lg text-[var(--cal-text-muted)] hover:text-[var(--cal-text)] hover:bg-cal-surface transition-colors"
           aria-label={sidebarOpen ? 'Hide activity sidebar' : 'Show activity sidebar'}
           title={sidebarOpen ? 'Hide activity' : 'Show activity'}
         >

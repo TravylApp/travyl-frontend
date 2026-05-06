@@ -338,3 +338,9 @@ api.route('GET /places/nearby', {
   link: [supabaseSecretKey, supabaseUrl, foursquareApiKey],
   timeout: '15 seconds',
 })
+
+api.route('GET /api/places/{id}', {
+  handler: 'services/place-detail.handler',
+  link: [foursquareApiKey],
+  timeout: '10 seconds',
+})

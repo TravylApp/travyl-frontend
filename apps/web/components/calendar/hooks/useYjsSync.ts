@@ -145,7 +145,7 @@ export function useYjsSync(
             user_id: userIdRef.current,
           }
         })
-        .filter(Boolean)
+        .filter(<T>(x: T): x is NonNullable<T> => x != null)
 
       if (auditRows.length > 0) {
         supabase.from('itinerary_edits').insert(auditRows).then(({ error }) => {

@@ -264,7 +264,7 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
         >
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-[var(--trip-base)] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-trip-base flex items-center justify-center">
                 <PaperPlane size={14} className="text-white -rotate-12" />
               </div>
               <h2 id="create-trip-title" className="text-lg font-bold text-[var(--trip-base)]">Plan a Trip</h2>
@@ -335,7 +335,7 @@ export function CreateTripModal({ open, onClose }: CreateTripModalProps) {
             </div>
 
             <button type="submit" disabled={submitting}
-              className="w-full h-11 rounded-xl bg-[var(--trip-base)] text-white text-sm font-semibold hover:brightness-125 disabled:opacity-50 transition-all mt-2">
+              className="w-full h-11 rounded-xl bg-trip-base text-white text-sm font-semibold hover:brightness-125 disabled:opacity-50 transition-all mt-2">
               {submitting ? 'Creating...' : 'Create Trip'}
             </button>
           </form>

@@ -17,7 +17,7 @@ export function ActivityCard({ activity, onClick }: ActivityCardProps) {
   const hasImage = !!(activity as any).image && !imgError;
 
   return (
-    <div className="rounded-[14px] bg-white dark:bg-[var(--muted)] border border-gray-200 dark:border-white/[0.08] overflow-hidden cursor-pointer group transition-all hover:shadow-lg hover:scale-[1.02]" onClick={onClick}>
+    <div className="rounded-[14px] bg-white dark:bg-muted border border-gray-200 dark:border-white/[0.08] overflow-hidden cursor-pointer group transition-all hover:shadow-lg hover:scale-[1.02]" onClick={onClick}>
       {/* Image section */}
       <div className="relative h-[150px] overflow-hidden" style={{ backgroundColor: typeColor.bg }}>
         {hasImage ? (
@@ -61,7 +61,7 @@ export function ActivityCard({ activity, onClick }: ActivityCardProps) {
       </div>
 
       {/* Info bar */}
-      <div className="flex items-center justify-between px-3 py-2.5 bg-white dark:bg-[var(--muted)]">
+      <div className="flex items-center justify-between px-3 py-2.5 bg-white dark:bg-muted">
         <div className="flex items-center gap-2.5">
           {activity.timeDisplay && (
             <div className="flex items-center gap-1">

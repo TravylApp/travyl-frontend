@@ -5,19 +5,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MapPin, Luggage, User, Settings, LogOut, Sun, Moon, Menu, X } from "lucide-react";
 import { PaperPlane } from "@/components/icons/PaperPlane";
-import { useAuthStore, useProfile } from "@travyl/shared";
+import { PlaceholderAvatar } from "@/components/ui/PlaceholderAvatar";
+import { useAuthStore, useTrips } from "@travyl/shared";
 
 const baseNavLinks = [
   { href: "/places", label: "Places", icon: MapPin },
   { href: "/trips", label: "Trips", icon: Luggage },
 ];
-
-function getInitials(name: string | undefined): string {
-  if (!name) return "U";
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-}
 
 const AUTH_PAGES = ["/login", "/signup"];
 
@@ -26,25 +20,29 @@ export default function GlobalNavbar() {
   const user = useAuthStore((s) => s.user);
   const loading = useAuthStore((s) => s.loading);
   const signOut = useAuthStore((s) => s.signOut);
-  const { data: profile } = useProfile(); // Fetch from profiles table
+  const { data: trips } = useTrips();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Use profile avatar_url first, then fall back to auth metadata
-  const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url;
   const displayName = user?.user_metadata?.display_name || user?.user_metadata?.full_name;
   const email = user?.email;
-  const initials = getInitials(displayName);
+
+  const hasTrips = !!user;
 
   const navLinks = user
     ? [...baseNavLinks, { href: "/profile", label: "Profile", icon: User }]
     : baseNavLinks;
 
+  const visibleNavLinks = navLinks.filter(
+    (link) => link.href !== "/trips" || hasTrips,
+  );
+
   const isAuthPage = AUTH_PAGES.some((p) => pathname.startsWith(p));
-  const isDashboardRoute = false; // navbar always visible
+  const isTripRoute = pathname.startsWith('/trip/'); // trip pages have their own nav
+  const isDashboardRoute = isTripRoute;
   const isHomePage = pathname === "/";
   const useLightNav = isHomePage && !scrolled;
 
@@ -134,8 +132,7 @@ export default function GlobalNavbar() {
           contain: layout style;
           backdrop-filter: blur(20px) saturate(180%);
           -webkit-backdrop-filter: blur(20px) saturate(180%);
-          border-bottom: 1px solid rgba(0,0,0,0.06);
-          box-shadow: none;
+          box-shadow: 0 1px 0 rgba(0,0,0,0.04);
           will-change: max-width, border-radius;
           transition:
             max-width 0.35s cubic-bezier(0.22, 1, 0.36, 1),
@@ -151,22 +148,22 @@ export default function GlobalNavbar() {
         }
 
         /* Light mode backgrounds */
-        .gnav-bar.bg-clear { background: rgba(255,255,255,0.45); }
-        .gnav-bar.bg-clear-hero { background: rgba(255,255,255,0.05); border-bottom-color: rgba(255,255,255,0.1); }
+        .gnav-bar.bg-clear { background: rgba(255,255,255,0.30); }
+        .gnav-bar.bg-clear-hero { background: rgba(255,255,255,0.05); box-shadow: 0 1px 0 rgba(255,255,255,0.06); }
         .gnav-shell.scrolled .gnav-bar.bg-clear {
-          background: rgba(255,255,255,0.95);
+          background: rgba(255,255,255,0.88);
           border: 1px solid rgba(0,0,0,0.08);
           box-shadow: 0 4px 20px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.06);
         }
         .gnav-shell.scrolled .gnav-bar.bg-clear-hero {
-          background: rgba(0,0,0,0.25);
+          background: rgba(0,0,0,0.18);
           border: 1px solid rgba(255,255,255,0.15);
           box-shadow: 0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.08);
         }
         /* Dark mode backgrounds */
-        :root.dark .gnav-bar.bg-clear { background: rgba(10,21,32,0.5); border-bottom-color: rgba(30,58,95,0.2); }
+        :root.dark .gnav-bar.bg-clear { background: rgba(10,21,32,0.35); box-shadow: 0 1px 0 rgba(30,58,95,0.15); }
         :root.dark .gnav-shell.scrolled .gnav-bar.bg-clear {
-          background: rgba(10,21,32,0.85);
+          background: rgba(10,21,32,0.75);
           border: 1px solid rgba(255,255,255,0.06);
           box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04);
         }
@@ -214,7 +211,7 @@ export default function GlobalNavbar() {
 
           {/* Center nav — desktop only */}
           <div className="hidden sm:flex flex-1 items-center justify-center gap-1.5 min-w-0">
-            {navLinks.map(({ href, label, icon: Icon }) => (
+            {visibleNavLinks.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
                 href={href}
@@ -238,25 +235,30 @@ export default function GlobalNavbar() {
 
           {/* Right side — desktop */}
           <div className="hidden sm:flex items-center shrink-0">
+            {/* Dark mode toggle */}
+            <button
+              onClick={toggleTheme}
+              aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+              className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-300 mr-2 ${
+                useLightNav
+                  ? "text-white/80 hover:text-white hover:bg-white/10"
+                  : "text-[#1e3a5f]/60 dark:text-[#f5efe8]/60 hover:text-[#1e3a5f] dark:hover:text-[#f5efe8] hover:bg-[#1e3a5f]/5 dark:hover:bg-white/8"
+              }`}
+            >
+              {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
             {loading ? (
               <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-white/10 animate-pulse" />
             ) : user ? (
               <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
+                  aria-label="User menu"
+                  aria-haspopup="true"
+                  aria-expanded={dropdownOpen}
                   className="flex items-center rounded-full hover:ring-2 hover:ring-[#1e3a5f]/20 dark:hover:ring-white/20 transition-all"
                 >
-                  <div
-                    className={`h-8 w-8 flex items-center justify-center rounded-full overflow-hidden font-medium text-sm transition-colors duration-300 ${
-                      useLightNav ? "bg-white/20 text-white" : "bg-[#1e3a5f] text-white"
-                    }`}
-                  >
-                    {avatarUrl ? (
-                      <img src={avatarUrl} alt={displayName || "User"} className="h-full w-full object-cover" />
-                    ) : (
-                      initials
-                    )}
-                  </div>
+                  <PlaceholderAvatar key={user?.id ?? 'anon'} userId={user?.id} size={32} />
                 </button>
 
                 {dropdownOpen && (
@@ -272,13 +274,7 @@ export default function GlobalNavbar() {
                   >
                     <div className="px-3 py-2 border-b border-gray-100 dark:border-[#1e3a5f]/20">
                       <div className="flex items-center gap-2.5">
-                        <div className="h-8 w-8 flex items-center justify-center rounded-full overflow-hidden bg-[#1e3a5f] text-white font-medium text-sm shrink-0">
-                          {avatarUrl ? (
-                            <img src={avatarUrl} alt={displayName || "User"} className="h-full w-full object-cover" />
-                          ) : (
-                            initials
-                          )}
-                        </div>
+                        <PlaceholderAvatar key={user?.id ?? 'anon'} userId={user?.id} size={32} />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-gray-900 dark:text-[#f5efe8] truncate">
                             {displayName || "User"}
@@ -294,19 +290,6 @@ export default function GlobalNavbar() {
                       <Link href="/profile/settings" onClick={() => setDropdownOpen(false)} className="flex items-center gap-2.5 px-3 py-1.5 text-sm text-gray-700 dark:text-[#cdd9e5] hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded-lg mx-1">
                         <Settings size={15} className="text-gray-400" /> Settings
                       </Link>
-                    </div>
-                    <div className="border-t border-gray-100 dark:border-[#1e3a5f]/20 py-1">
-                      <button onClick={toggleTheme} className="w-[calc(100%-8px)] flex items-center justify-between px-3 py-1.5 text-sm text-gray-700 dark:text-[#cdd9e5] hover:bg-black/5 dark:hover:bg-white/5 transition-colors rounded-lg mx-1">
-                        <span className="flex items-center gap-2.5">
-                          {isDarkMode ? <Moon size={15} className="text-gray-400" /> : <Sun size={15} className="text-gray-400" />}
-                          {isDarkMode ? "Dark Mode" : "Light Mode"}
-                        </span>
-                        <div className={`relative h-5 w-9 rounded-full transition-colors duration-200 ${isDarkMode ? "bg-[#1e3a5f]" : "bg-gray-200"}`}>
-                          <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 flex items-center justify-center ${isDarkMode ? "translate-x-4" : "translate-x-0.5"}`}>
-                            {isDarkMode ? <Moon size={10} className="text-[#1e3a5f]" /> : <Sun size={10} className="text-amber-500" />}
-                          </div>
-                        </div>
-                      </button>
                     </div>
                     <div className="border-t border-gray-100 dark:border-[#1e3a5f]/20 py-0.5">
                       <button onClick={handleSignOut} className="w-[calc(100%-8px)] flex items-center gap-2.5 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-colors rounded-lg mx-1">
@@ -330,20 +313,8 @@ export default function GlobalNavbar() {
             )}
           </div>
 
-          {/* Mobile — hamburger + CTA */}
+          {/* Mobile — hamburger */}
           <div className="flex sm:hidden items-center gap-2 shrink-0">
-            {!loading && !user && (
-              <Link
-                href="/login"
-                className={`px-3 py-1 rounded-full text-xs border transition-all duration-300 ${
-                  useLightNav
-                    ? "border-white/30 text-white hover:bg-white hover:text-[#1e3a5f]"
-                    : "border-[#1e3a5f]/20 text-[#1e3a5f] hover:bg-[#1e3a5f] hover:text-white"
-                }`}
-              >
-                Log In
-              </Link>
-            )}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
@@ -371,7 +342,7 @@ export default function GlobalNavbar() {
         }}
       >
         <div className="px-4 py-3 flex flex-col gap-1">
-          {navLinks.map(({ href, label, icon: Icon }) => (
+          {visibleNavLinks.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
@@ -388,6 +359,16 @@ export default function GlobalNavbar() {
             </Link>
           ))}
           <div className="border-t border-gray-100 dark:border-white/10 mt-1 pt-1">
+            {!user && (
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-gray-700 dark:text-[#cdd9e5] hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+              >
+                <LogOut size={18} className="rotate-90" />
+                Log In
+              </Link>
+            )}
             <button onClick={toggleTheme} className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm text-gray-700 dark:text-[#cdd9e5] hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
               <span className="flex items-center gap-3">
                 {isDarkMode ? <Moon size={18} /> : <Sun size={18} />}

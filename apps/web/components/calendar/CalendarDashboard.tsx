@@ -795,7 +795,7 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
 
         {/* Week navigation and overflow notification */}
         {viewMode === 'week' && tripTotalDays > 7 && (
-          <div className="px-4 py-2 bg-[var(--cal-bg)] border-b border-[var(--cal-border)] flex items-center justify-between">
+          <div className="px-4 py-2 bg-cal-bg border-b border-[var(--cal-border)] flex items-center justify-between">
             <div className="flex items-center gap-2">
               {hasMoreWeeks && (
                 <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
@@ -809,7 +809,7 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
               <button
                 onClick={() => setWeekOffset(Math.max(0, weekOffset - 1))}
                 disabled={!hasPreviousWeeks}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-[var(--cal-surface)] hover:bg-[var(--cal-hover)] text-[var(--cal-text)] border border-[var(--cal-border)]"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-cal-surface hover:bg-[var(--cal-hover)] text-[var(--cal-text)] border border-[var(--cal-border)]"
               >
                 ← Previous week
               </button>
@@ -819,7 +819,7 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
               <button
                 onClick={() => setWeekOffset(weekOffset + 1)}
                 disabled={!hasMoreWeeks}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-[var(--cal-surface)] hover:bg-[var(--cal-hover)] text-[var(--cal-text)] border border-[var(--cal-border)]"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-cal-surface hover:bg-[var(--cal-hover)] text-[var(--cal-text)] border border-[var(--cal-border)]"
               >
                 Next week →
               </button>
@@ -829,7 +829,7 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
 
         {/* Day navigation controls */}
         {viewMode === 'day' && tripTotalDays > 1 && (
-          <div className="px-4 py-2 bg-[var(--cal-bg)] border-b border-[var(--cal-border)] flex items-center justify-between">
+          <div className="px-4 py-2 bg-cal-bg border-b border-[var(--cal-border)] flex items-center justify-between">
             <div className="flex items-center gap-2">
               {/* Empty div to match week navigation layout */}
             </div>
@@ -837,7 +837,7 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
               <button
                 onClick={() => selectDay(Math.max(0, selectedDayIndex - 1))}
                 disabled={selectedDayIndex === 0}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-[var(--cal-surface)] hover:bg-[var(--cal-hover)] text-[var(--cal-text)] border border-[var(--cal-border)]"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-cal-surface hover:bg-[var(--cal-hover)] text-[var(--cal-text)] border border-[var(--cal-border)]"
               >
                 ← Previous day
               </button>
@@ -847,7 +847,7 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
               <button
                 onClick={() => selectDay(Math.min(tripTotalDays - 1, selectedDayIndex + 1))}
                 disabled={selectedDayIndex === tripTotalDays - 1}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-[var(--cal-surface)] hover:bg-[var(--cal-hover)] text-[var(--cal-text)] border border-[var(--cal-border)]"
+                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-cal-surface hover:bg-[var(--cal-hover)] text-[var(--cal-text)] border border-[var(--cal-border)]"
               >
                 Next day →
               </button>
