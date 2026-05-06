@@ -16,7 +16,7 @@
 
 'use client';
 
-import { useEffect, useMemo, useCallback } from 'react'
+import { useEffect, useMemo, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../services/supabase'
 import { fetchPackingItems, fetchPackingAuditLog, insertPackingItem, insertAuditEntry, updatePackingItemPacked, updatePackingQuantity, updatePackedCount, deletePackingItem, claimPackingItem, releasePackingItem, transferPackingItem } from '../services/packingService'
@@ -71,10 +71,15 @@ export function usePackingList(tripId: string | undefined, userId: string | unde
     enabled: !!tripId,
   })
 
+  const channelRef = useRef<string | null>(null)
+
   useEffect(() => {
     if (!tripId || !userId) return
+    if (!channelRef.current) {
+      channelRef.current = `packing-${tripId}-${Math.random().toString(36).slice(2, 8)}`
+    }
     const channel = supabase
-      .channel(`packing-${tripId}`)
+      .channel(channelRef.current)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'packing_items', filter: `trip_id=eq.${tripId}` }, (payload) => {
         const record = (payload.new ?? payload.old) as any
         if (record?.user_id === userId) return

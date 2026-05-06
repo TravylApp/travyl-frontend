@@ -1086,3 +1086,67 @@ export interface TimelineGroup {
   timestamp: string
   earliestId: string
 }
+
+// ─── Document OCR Types ─────────────────────────────────────
+
+export type DocumentType = 'hotel' | 'flight' | 'car' | 'activity' | 'other'
+
+export interface AlternativeValue<T> {
+  value: T
+  alternatives?: T[]
+  note?: string
+}
+
+export interface HotelParseData {
+  name: string
+  address?: string
+  checkIn: string
+  checkOut: string
+  pricePerNight?: number | AlternativeValue<number>
+  totalPrice?: number | AlternativeValue<number>
+  currency?: string
+  bookingRef?: string
+}
+
+export interface FlightParseData {
+  airline: string
+  flightNumber?: string
+  origin?: string
+  destination?: string
+  departureAt?: string
+  arrivalAt?: string
+  bookingRef?: string
+  cabinClass?: string
+}
+
+export interface CarParseData {
+  company: string
+  pickupLocation?: string
+  dropoffLocation?: string
+  pickupAt?: string
+  dropoffAt?: string
+  price?: number | AlternativeValue<number>
+  currency?: string
+  bookingRef?: string
+}
+
+export interface ActivityParseData {
+  name: string
+  date?: string
+  time?: string
+  location?: string
+  price?: number | AlternativeValue<number>
+  currency?: string
+  bookingRef?: string
+  duration?: string
+  notes?: string
+}
+
+export type DocumentParseData = HotelParseData | FlightParseData | CarParseData | ActivityParseData | Record<string, never>
+
+export interface DocumentParseResult {
+  documentType: DocumentType
+  confidence: number
+  rawText: string | null
+  data: DocumentParseData
+}
