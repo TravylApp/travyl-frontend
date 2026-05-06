@@ -198,7 +198,85 @@ export function Testimonials() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Mobile carousel — only below md */}
+        {TESTIMONIALS.length > 1 ? (
+          <div className="md:hidden">
+            <div
+              role="region"
+              aria-roledescription="carousel"
+              aria-label="Testimonials carousel"
+              onMouseEnter={() => setIsPaused(true)}
+              onMouseLeave={() => setIsPaused(false)}
+              onTouchStart={() => setIsPaused(true)}
+              onTouchEnd={() => setIsPaused(false)}
+            >
+              <AnimatePresence mode="popLayout" custom={direction}>
+                <motion.div
+                  key={currentIndex}
+                  custom={direction}
+                  variants={carouselVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{ duration: 0.35, ease: EASE_OUT_EXPO }}
+                  role="group"
+                  aria-label={`Testimonial ${currentIndex + 1} of ${TESTIMONIALS.length}`}
+                  aria-live="polite"
+                >
+                  <TestimonialCard t={TESTIMONIALS[currentIndex]} i={currentIndex} carousel />
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Dot indicators */}
+              <div className="flex items-center justify-center gap-2 mt-6" role="tablist" aria-label="Testimonial navigation">
+                {TESTIMONIALS.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => { setDirection(i > currentIndex ? 1 : -1); setCurrentIndex(i); }}
+                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                      i === currentIndex
+                        ? "bg-magazine-accent w-5"
+                        : "bg-magazine-text/20 hover:bg-magazine-text/40"
+                    }`}
+                    role="tab"
+                    aria-selected={i === currentIndex}
+                    aria-current={i === currentIndex ? "true" : undefined}
+                    aria-label={`Go to testimonial ${i + 1}`}
+                  />
+                ))}
+              </div>
+
+              {/* Arrow controls */}
+              <div className="flex items-center justify-center gap-4 mt-4">
+                <button
+                  onClick={goPrev}
+                  className="w-9 h-9 rounded-full border border-magazine-border flex items-center justify-center text-magazine-text hover:bg-magazine-surface/80 transition-colors"
+                  aria-label="Previous testimonial"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <span className="text-xs text-magazine-text/60 tabular-nums">
+                  {currentIndex + 1} / {TESTIMONIALS.length}
+                </span>
+                <button
+                  onClick={goNext}
+                  className="w-9 h-9 rounded-full border border-magazine-border flex items-center justify-center text-magazine-text hover:bg-magazine-surface/80 transition-colors"
+                  aria-label="Next testimonial"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Single testimonial — no carousel controls */
+          <div className="md:hidden">
+            <TestimonialCard t={TESTIMONIALS[0]} i={0} />
+          </div>
+        )}
+
+        {/* Desktop grid — hidden below md */}
+        <div className="hidden md:grid md:grid-cols-2 gap-5">
           {TESTIMONIALS.map((t, i) => (
             <TestimonialCard key={t.name} t={t} i={i} />
           ))}
