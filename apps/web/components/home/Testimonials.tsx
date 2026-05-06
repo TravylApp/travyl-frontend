@@ -183,6 +183,20 @@ export function Testimonials() {
     };
   }, [isPaused, currentIndex]);
 
+  // Reset index when crossing desktop/mobile boundary
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const handler = () => setCurrentIndex(0);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+
+  // After initial mount, enable direction animations
+  useEffect(() => {
+    const timer = setTimeout(() => setDirection(1), 50);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <section className="py-20 sm:py-28 px-6 bg-sand-base">
       <div className="max-w-6xl mx-auto">
