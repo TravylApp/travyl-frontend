@@ -17,6 +17,7 @@ export default function TakeoffScene3D({ completed, onExit }: TakeoffScene3DProp
   const planeGroupRef = useRef<THREE.Group>(null);
   const [enteringDone, setEnteringDone] = useState(false);
   const compHandledRef = useRef(false);
+  const handleEnteringDone = useCallback(() => setEnteringDone(true), []);
 
   // Handle completed prop transition
   useEffect(() => {
@@ -47,7 +48,7 @@ export default function TakeoffScene3D({ completed, onExit }: TakeoffScene3DProp
       <PaperPlane
         planeGroupRef={planeGroupRef}
         completed={completed}
-        onEnteringDone={() => setEnteringDone(true)}
+        onEnteringDone={handleEnteringDone}
       />
     </Canvas>
   );
