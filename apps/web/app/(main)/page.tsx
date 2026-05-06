@@ -7,16 +7,14 @@ import { Search, Sparkles, MapPin } from "lucide-react";
 import { useHomeScreen, useHeroConfig, usePlaceImages, useTripPlanner, useAuthStore, EASE_OUT_EXPO } from "@travyl/shared";
 import type { FollowUpQuestion } from "@travyl/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { savePlanToSupabase } from "@travyl/shared/src/services/api";
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import { TypeWriter } from "@/components/TypeWriter";
-import { useCyclingPlaceholder, useCyclingPlaceholderRef } from "@/hooks/useCyclingPlaceholder";
+import { useCyclingPlaceholder } from "@/hooks/useCyclingPlaceholder";
+import { SafeImage } from "@/components/ui/SafeImage";
 import dynamic from "next/dynamic";
 
-const GetInspired = dynamic(
-  () => import("@/components/home/GetInspired").then((m) => ({ default: m.GetInspired })),
-  { ssr: false }
-);
 const TakeoffTransition = dynamic(
   () => import("@/components/home/TakeoffTransition").then((m) => ({ default: m.TakeoffTransition })),
   { ssr: false }
@@ -37,12 +35,12 @@ const Testimonials = dynamic(
   () => import("@/components/home/Testimonials").then((m) => ({ default: m.Testimonials })),
   { ssr: false }
 );
-const ComparisonSection = dynamic(
-  () => import("@/components/home/ComparisonSection").then((m) => ({ default: m.ComparisonSection })),
-  { ssr: false }
-);
 const PressStats = dynamic(
   () => import("@/components/home/PressStats").then((m) => ({ default: m.PressStats })),
+  { ssr: false }
+);
+const PressMarquee = dynamic(
+  () => import("@/components/home/PressMarquee").then((m) => ({ default: m.PressMarquee })),
   { ssr: false }
 );
 const FinalCTA = dynamic(
@@ -57,6 +55,16 @@ const MobileShowcase = dynamic(
   () => import("@/components/home/MobileShowcase").then((m) => ({ default: m.MobileShowcase })),
   { ssr: false }
 );
+
+// ─── Pick random items from an array (Fisher-Yates) ──────────
+function pickRandom<T>(arr: readonly T[], count: number): T[] {
+  const pool = [...arr];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, count);
+}
 
 const PLACEHOLDER_PHRASES = [
   "7 days in Paris with my partner...",
@@ -96,19 +104,6 @@ const ACTIVITY_PILLS = [
 ];
 
 const PILLS_VISIBLE = 4;
-
-const SUBTITLE_PHRASES = [
-  "Type your dream trip and let us plan it for you",
-  "Discover hidden gems around the world",
-  "Your next adventure starts with a single search",
-  "From idea to itinerary in seconds",
-  "Tell us where you want to go",
-];
-
-const CyclingSubtitle = memo(function CyclingSubtitle() {
-  const textRef = useCyclingPlaceholderRef(SUBTITLE_PHRASES, 40, 2500, 25);
-  return <><span ref={textRef} /><span className="animate-pulse">|</span></>;
-});
 
 interface AutocompleteSuggestion {
   id: string;
@@ -206,6 +201,7 @@ const HeroSearchInput = memo(function HeroSearchInput({
         placeholder={tripQuery ? "" : (staticPlaceholder ?? typingPlaceholder)}
         className="flex-1 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400 min-w-0"
         autoComplete="off"
+        aria-label="Search destinations"
       />
       {showSuggestions && suggestions.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50">
@@ -236,6 +232,7 @@ function OptionCard({ label, index, selected, onSelect }: {
   return (
     <button
       onClick={onSelect}
+      aria-pressed={selected}
       className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm transition-all duration-200 w-full ${
         selected
           ? "bg-[#1e3a5f] text-white shadow-md ring-1 ring-white/30"
@@ -315,6 +312,33 @@ export default function Home() {
     },
     staleTime: 30 * 60 * 1000,
     refetchOnMount: false,
+    retry: 2,
+    retryDelay: 2000,
+  });
+
+  // Live stats for compact trust bar
+  const { data: stats } = useQuery({
+    queryKey: ['live-stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/stats');
+      if (!res.ok) return { destinations: 0, travelers: 0, trips: 0 };
+      return res.json() as Promise<{ destinations: number; travelers: number; trips: number }>;
+    },
+    staleTime: 60 * 1000,
+    retry: 2,
+    retryDelay: 2000,
+  });
+
+  // Live inspirational travel quote
+  const { data: quote } = useQuery({
+    queryKey: ['hero-quote'],
+    queryFn: async () => {
+      const res = await fetch('/api/quote?tag=travel');
+      if (!res.ok) return null;
+      return res.json() as Promise<{ content: string; author: string }>;
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 2,
   });
 
   const allDestinationPills = (trendingDestinations ?? []).map((d, i) => ({ id: `td-${i}`, label: d.name }));
@@ -376,26 +400,15 @@ export default function Home() {
   const heroBgY = useTransform(heroScroll, [0, 1], [0, -120]);
   const heroBgScale = useTransform(heroScroll, [0, 1], [1, 1.15]);
 
-  // Hero slideshow — large pool, random subset each page load
-  const HERO_DESTINATION_POOL = [
-    "Maldives Beach", "Paris Eiffel Tower", "Grand Canyon", "Tokyo Skyline",
-    "Santorini Greece", "Bali Indonesia", "New York City", "Dubai Marina",
-    "Amsterdam Canals", "Cape Town South Africa", "Bora Bora", "Swiss Alps",
-    "Hong Kong Skyline", "Sydney Opera House", "Rio de Janeiro Brazil",
-    "Prague Castle", "Machu Picchu", "Banff Canada Lake",
-    "Maui Hawaii Beach", "Kyoto Japan Temple", "Iceland Northern Lights",
-    "Tulum Mexico Beach", "Rome Colosseum", "Barcelona Spain",
-    "Phuket Thailand", "Safari Serengeti Tanzania",
-  ];
-  const [heroDestinations] = useState(() => {
-    const pool = [...HERO_DESTINATION_POOL];
+  // Hero slideshow — use live trending destinations, fall back to curated pool
+  const FALLBACK_HERO_DESTINATIONS = ["Paris", "Tokyo", "New York City", "Bali"];
+  const heroDestinations = useMemo(() => {
     const count = heroConfig?.background_image_url ? 3 : 4;
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
-    return pool.slice(0, count);
-  });
+    const source = trendingDestinations && trendingDestinations.length > 0
+      ? trendingDestinations.map((d) => d.name)
+      : FALLBACK_HERO_DESTINATIONS;
+    return pickRandom(source, count);
+  }, [trendingDestinations, heroConfig?.background_image_url]);
   const heroImageQueries = usePlaceImages(heroDestinations);
 
   // Only include slides that have actually loaded
@@ -405,11 +418,6 @@ export default function Home() {
       .map((q) => q.data?.url)
       .filter((url): url is string => !!url)
       .map((url) => {
-        // Bump to high resolution for retina hero display
-        if (url.includes('images.unsplash.com')) {
-          const separator = url.includes('?') ? '&' : '?';
-          return `${url}${separator}w=2880&q=80`;
-        }
         // Pexels — 4K width via CDN params (works with or without existing params)
         if (url.includes('images.pexels.com')) {
           if (url.includes('?')) {
@@ -422,7 +430,7 @@ export default function Home() {
         return url;
       });
     return loaded.length > 0 ? loaded : [
-      `https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=2880&fit=crop&fm=webp&q=80`
+      `https://images.pexels.com/photos/30978583/pexels-photo-30978583.jpeg?auto=compress&cs=tinysrgb&w=3840&dpr=2`
     ];
   }, [heroConfig?.background_image_url, heroImageQueries]);
 
@@ -451,22 +459,28 @@ export default function Home() {
       ? current.filter((o) => o !== option)
       : [...current, option];
 
-    const newAnswers = { ...selectedAnswers, [questionId]: newSelection };
-    setSelectedAnswers(newAnswers);
+    setSelectedAnswers((prev) => ({ ...prev, [questionId]: newSelection }));
 
     // Auto-advance after selecting (not deselecting)
     if (!isDeselecting) {
       setTimeout(() => {
-        if (currentQIdx < questions.length - 1) {
-          setCurrentQIdx((i) => i + 1);
-        } else {
-          setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
-          setShowTakeoff(true);
-          planner.submitAnswers(flattenAnswers(newAnswers));
-        }
+        setCurrentQIdx((i) => {
+          if (i < questions.length - 1) {
+            return i + 1;
+          } else {
+            setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
+            setShowTakeoff(true);
+            // Read latest answers from state via functional updater
+            setSelectedAnswers((latest) => {
+              planner.submitAnswers(flattenAnswers(latest));
+              return latest;
+            });
+            return i;
+          }
+        });
       }, 600);
     }
-  }, [selectedAnswers, currentQIdx, questions.length, planner, flattenAnswers]);
+  }, [questions.length, planner, flattenAnswers]);
 
   // Advance to next question or submit
   const handleNextQuestion = useCallback(() => {
@@ -495,6 +509,10 @@ export default function Home() {
   useEffect(() => {
     if (!isClarifying || !currentQuestion) return;
     const handler = (e: KeyboardEvent) => {
+      // Don't intercept when user is typing in a custom input
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
       const opts = currentQuestion.options;
       let idx = -1;
       if (e.key >= '1' && e.key <= '5') idx = parseInt(e.key) - 1;
@@ -514,17 +532,25 @@ export default function Home() {
     setCurrentQIdx(0);
     setSelectedAnswers({});
     setShowQuestions(false);
+    setValidationError(null);
+    setLoadingError(null);
     skipQuestionsRef.current = false;
     skipRetryCountRef.current = 0;
     setTripQuery("");
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [planner, setTripQuery]);
 
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [loadingError, setLoadingError] = useState<string | null>(null);
   const [takeoffCompleted, setTakeoffCompleted] = useState(false);
   const [showAuthGate, setShowAuthGate] = useState(false);
   const isSaving = useRef(false);
   const user = useAuthStore((s) => s.user);
+
+  // Clear validation error when user edits the search query
+  useEffect(() => {
+    if (tripQuery && validationError) setValidationError(null);
+  }, [tripQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const requireAuth = (prompt: string) => {
     if (user) return false;
@@ -533,9 +559,55 @@ export default function Home() {
     return true;
   };
 
+  // Validate trip queries — catch obviously nonsensical inputs
+  const validateTripQuery = (query: string): string | null => {
+    const lower = query.toLowerCase().trim();
+
+    // Extract explicit duration mentions like "1000 days", "2 years", "3 months"
+    const durationMatch = lower.match(/(\d+)\s*(day|days?|week|weeks?|month|months?|year|years?)/);
+    if (durationMatch) {
+      const num = parseInt(durationMatch[1], 10);
+      const unit = durationMatch[2];
+      // Convert to approximate days for comparison
+      let approxDays = num;
+      if (unit.startsWith('week')) approxDays = num * 7;
+      else if (unit.startsWith('month')) approxDays = num * 30;
+      else if (unit.startsWith('year')) approxDays = num * 365;
+
+      if (approxDays > 365) return `A ${num}-${unit} trip seems a bit long — try something under a year.`;
+      if (approxDays === 0) return `How about a trip with at least one day to explore?`;
+    }
+
+    // Reject purely numeric queries
+    if (/^\d+$/.test(lower)) return `Try describing a destination instead of just numbers.`;
+
+    // Reject queries that are too short to be meaningful
+    if (lower.length < 3) return `Tell us a bit more about where you'd like to go.`;
+
+    // Reject obviously non-travel queries
+    const nonsensePatterns = [
+      /^(hi|hello|test|asdf|qwerty|lol|haha)\s*$/i,
+      /^(what|how)\s+(is|are|do)\b/i,
+      /^(why|when|who)\b.*\?$/i,
+      /^\d+\s*(km|miles?|kg|lbs?|liters?|gallons?)$/i,
+    ];
+    for (const pat of nonsensePatterns) {
+      if (pat.test(lower)) return `Looks like you're asking something else — try describing a trip you'd like to plan.`;
+    }
+
+    return null;
+  };
+
   const onSearch = () => {
     const val = tripQuery.trim();
     if (!val) return;
+    // Validate query before proceeding
+    const vErr = validateTripQuery(val);
+    if (vErr) {
+      setValidationError(vErr);
+      return;
+    }
+    setValidationError(null);
     skipQuestionsRef.current = true;
     skipRetryCountRef.current = 0;
     clarifyRoundRef.current = 0;
@@ -642,7 +714,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)] -mt-16">
       {/* ─── Hero Section ─────────────────────────────────────── */}
-      <section ref={heroSectionRef} className="relative flex items-center justify-center px-6 pt-36 pb-0 md:pt-44 md:pb-0 overflow-hidden min-h-screen bg-[#f2e6d8]">
+      <section ref={heroSectionRef} aria-label="Hero" className="relative flex items-center justify-center px-6 pt-36 pb-0 md:pt-44 md:pb-0 overflow-hidden min-h-screen bg-[#f2e6d8]">
         {/* Slideshow background */}
         <motion.div className="absolute top-0 left-0 right-0 -bottom-[150px] z-0 will-change-transform" style={{ scale: heroBgScale, y: heroBgY }}>
           {heroSlides.map((src, i) => (
@@ -657,6 +729,7 @@ export default function Home() {
               decoding={i === 0 ? "sync" : "async"}
               className="absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ease-in-out"
               style={{ opacity: heroSlide % heroSlides.length === i ? 1 : 0 }}
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
           ))}
         </motion.div>
@@ -676,18 +749,6 @@ export default function Home() {
             Plan your trip with AI.<br />
             <span className="italic">Plan it with friends.</span>
           </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4, ease: EASE_OUT_EXPO }}
-            className="text-xs sm:text-sm md:text-base text-white mb-10 w-fit mx-auto font-medium px-4 py-1.5 rounded-full bg-black/25 backdrop-blur-md border border-white/25 shadow-lg drop-shadow-md"
-          >
-            {heroConfig?.subtitle ? (
-              <TypeWriter text={heroConfig.subtitle} delay={600} speed={35} />
-            ) : (
-              <CyclingSubtitle />
-            )}
-          </motion.p>
 
           {/* Search Bar */}
           <motion.div
@@ -743,6 +804,15 @@ export default function Home() {
                       />
                     ))}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Validation error */}
+            {validationError && (
+              <div className="mb-3 animate-[fadeSlideIn_0.3s_ease-out]">
+                <div className="bg-amber-500/20 backdrop-blur-md rounded-full px-5 py-2.5 border border-amber-400/30 flex items-center justify-between gap-3 shadow-lg">
+                  <p className="text-sm text-white">{validationError}</p>
                 </div>
               </div>
             )}
@@ -820,6 +890,7 @@ export default function Home() {
                       name="custom"
                       type="text"
                       placeholder="Or type your own..."
+                      aria-label="Or type your own answer"
                       className="w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/15 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/30"
                     />
                   </form>
@@ -840,61 +911,62 @@ export default function Home() {
 
             {/* Suggestion Pills — only show when idle */}
             {planner.state.phase === 'idle' && CATEGORIES.some((c) => c.pills.length > 0) && (
-              <div className="flex flex-col items-center gap-2 mt-4 min-h-[56px]">
-                {/* Category label */}
-                <span className="text-[10px] text-[#9a7b5a] uppercase tracking-widest font-semibold">
-                  {currentCategory.label}
-                </span>
-                {/* Pills */}
-                <div className="flex justify-center gap-1.5 sm:gap-2">
-                  <div
-                    key={`${pillCategory}-${pillGroup}`}
-                    className="flex justify-center gap-1.5 sm:gap-2 animate-[fadeSlideIn_0.4s_ease-out]"
-                  >
-                    {visiblePills.map((s) => (
-                      <button
-                        key={s.id}
-                        onClick={() => {
-                          const promptForCategory = pillCategory === 0
-                            ? `Plan a trip to ${s.label}`
-                            : `Plan a ${s.label.toLowerCase()}`;
-                          if (requireAuth(promptForCategory)) return;
-                          skipQuestionsRef.current = true;
-                          skipRetryCountRef.current = 0;
-                          planner.submitPrompt(promptForCategory);
-                        }}
-                        className="text-[10px] sm:text-xs text-white font-semibold border border-white/50 rounded-full px-2.5 sm:px-3.5 py-1 sm:py-1.5 hover:bg-white/30 transition-colors backdrop-blur-md bg-white/20 shadow-md drop-shadow-md whitespace-nowrap"
+              <div className="mt-4 animate-[fadeSlideIn_0.3s_ease-out] min-h-[76px]">
+                  <div className="flex flex-col items-center gap-2">
+                    {/* Category label */}
+                    <span className="text-[10px] text-white/50 uppercase tracking-widest font-semibold">
+                      {currentCategory.label}
+                    </span>
+                    {/* Pills */}
+                    <div className="flex justify-center gap-1.5 sm:gap-2">
+                      <div
+                        key={`${pillCategory}-${pillGroup}`}
+                        className="flex justify-center gap-1.5 sm:gap-2 animate-[fadeSlideIn_0.4s_ease-out]"
                       >
-                        {s.label}
-                      </button>
-                    ))}
+                        {visiblePills.map((s) => (
+                          <button
+                            key={s.id}
+                            onClick={() => {
+                              // Update search bar to show what's being searched
+                              setTripQuery(s.label);
+                              const promptForCategory = pillCategory === 0
+                                ? `Plan a trip to ${s.label}`
+                                : `Plan a ${s.label.toLowerCase()}`;
+                              if (requireAuth(promptForCategory)) return;
+                              skipQuestionsRef.current = true;
+                              skipRetryCountRef.current = 0;
+                              planner.submitPrompt(promptForCategory);
+                            }}
+                            className="text-[10px] sm:text-xs text-white font-semibold border border-white/50 rounded-full px-2.5 sm:px-3.5 py-1 sm:py-1.5 hover:bg-white/30 transition-colors backdrop-blur-md bg-white/20 shadow-md drop-shadow-md whitespace-nowrap"
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {/* Live travel quote */}
+                    {quote && (
+                      <p className="text-[11px] text-white/40 italic max-w-md text-center leading-relaxed mt-2">
+                        &ldquo;{quote.content}&rdquo;
+                        <span className="not-italic text-white/30"> — {quote.author}</span>
+                      </p>
+                    )}
                   </div>
-                </div>
               </div>
             )}
           </motion.div>
-        </motion.div>
-
-        {/* Trust bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 1.0, ease: EASE_OUT_EXPO }}
-          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10"
-        >
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/30 backdrop-blur-md border border-white/15 text-[11px] text-white/70">
-            <span className="font-semibold text-white/90">5,000+</span>
-            <span className="text-white/50">trips planned</span>
-            <span className="text-white/20">·</span>
-            <span className="font-semibold text-white/90">50+</span>
-            <span className="text-white/50">countries</span>
-          </div>
         </motion.div>
 
       </section>
 
       {/* ─── Use Cases — warm sand ────────────────────────── */}
       <UseCases />
+
+      {/* ─── Stats — trust signals ────────────────────────── */}
+      <PressStats statsOnly />
+
+      {/* ─── Press Marquee — As Seen In ──────────────────── */}
+      <PressMarquee />
 
       {/* ─── Product Demo — existing, dark bg ─────────────── */}
       <ProductDemo />
@@ -904,17 +976,6 @@ export default function Home() {
 
       {/* ─── Tag Us — social feed ─────────────────────────── */}
       <TagUs />
-
-      {/* ─── Comparison — white bg ────────────────────────── */}
-      <ComparisonSection />
-
-      {/* ─── Press + Stats — warm sand ────────────────────── */}
-      <PressStats />
-
-      {/* ─── Get Inspired — existing, white bg ────────────── */}
-      <div className="bg-white dark:bg-[var(--background)]">
-        <GetInspired />
-      </div>
 
       {/* ─── Final CTA — full-bleed dark ──────────────────── */}
       <FinalCTA />
@@ -944,16 +1005,22 @@ export default function Home() {
       />
 
       {/* ─── Auth gate for trip planning ─────────────────────────── */}
-      {showAuthGate && (
+      {showAuthGate && (() => {
+        const authGateId = "auth-gate-heading";
+        return (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
           onClick={() => setShowAuthGate(false)}
+          onKeyDown={(e) => { if (e.key === "Escape") setShowAuthGate(false); }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={authGateId}
         >
           <div
             className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-2xl font-serif text-slate-900 dark:text-white mb-2">Sign in to plan your trip</h2>
+            <h2 id={authGateId} className="text-2xl font-serif text-slate-900 dark:text-white mb-2">Sign in to plan your trip</h2>
             <p className="text-sm text-slate-600 dark:text-slate-300 mb-6">
               We&apos;ll save your itinerary, hotels, and flights to your account so you can come back to it anytime.
             </p>
@@ -979,7 +1046,8 @@ export default function Home() {
             </div>
           </div>
         </div>
-      )}
+      );
+      })()}
     </div>
   );
 }

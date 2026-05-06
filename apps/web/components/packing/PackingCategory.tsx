@@ -49,7 +49,7 @@ export function PackingCategory({
       {/* Header row */}
       <button
         onClick={() => setIsExpanded((v) => !v)}
-        className="w-full flex items-center gap-2 py-2 px-2 -mx-2 rounded-lg hover:bg-[var(--cal-surface)] transition-colors duration-150 group"
+        className="w-full flex items-center gap-2 py-2 px-2 -mx-2 rounded-lg hover:bg-cal-surface transition-colors duration-150 group"
       >
         {isExpanded ? (
           <NavArrowDown

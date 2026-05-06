@@ -49,7 +49,7 @@ export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantit
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -8 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
-      className="group flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-[var(--cal-surface)] transition-colors duration-150"
+      className="group flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-cal-surface transition-colors duration-150"
     >
       {/* Checkbox (quantity=1) or packed-count pill (quantity>1) */}
       {item.quantity === 1 ? (
@@ -106,7 +106,7 @@ export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantit
               <button
                 onClick={() => { if (item.quantity > 1) onUpdateQuantity(item.id, item.quantity - 1) }}
                 disabled={item.quantity <= 1}
-                className="w-4 h-4 flex items-center justify-center rounded text-xs text-[var(--cal-text-muted)] hover:text-[var(--cal-text)] hover:bg-[var(--cal-border)] disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-4 h-4 flex items-center justify-center rounded text-xs text-[var(--cal-text-muted)] hover:text-[var(--cal-text)] hover:bg-cal-border disabled:opacity-30 disabled:cursor-not-allowed"
               >−</button>
               {editing ? (
                 <input
@@ -132,7 +132,7 @@ export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantit
               <button
                 onClick={() => { if (item.quantity < 99) onUpdateQuantity(item.id, item.quantity + 1) }}
                 disabled={item.quantity >= 99}
-                className="w-4 h-4 flex items-center justify-center rounded text-xs text-[var(--cal-text-muted)] hover:text-[var(--cal-text)] hover:bg-[var(--cal-border)] disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-4 h-4 flex items-center justify-center rounded text-xs text-[var(--cal-text-muted)] hover:text-[var(--cal-text)] hover:bg-cal-border disabled:opacity-30 disabled:cursor-not-allowed"
               >+</button>
             </>
           ) : (

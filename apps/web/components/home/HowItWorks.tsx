@@ -10,9 +10,9 @@ import { HOW_IT_WORKS_STEPS, usePlaceImages } from "@travyl/shared";
 const STEP_ICONS = [MessageSquare, Sparkles, CircleCheck];
 const STEP_IMAGES = ["Amalfi Coast Italy", "Rome Colosseum", "Bali beach resort"];
 const FALLBACK_IMAGES = [
-  "https://images.unsplash.com/photo-1533104816931-20fa691ff6ca?w=1200&fit=crop&fm=webp&q=80",
-  "https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=1200&fit=crop&fm=webp&q=80",
-  "https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=1200&fit=crop&fm=webp&q=80",
+  "https://images.pexels.com/photos/29081769/pexels-photo-29081769.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/38841507/pexels-photo-38841507.jpeg?auto=compress&cs=tinysrgb&w=1200",
+  "https://images.pexels.com/photos/24995221/pexels-photo-24995221.jpeg?auto=compress&cs=tinysrgb&w=1200",
 ];
 
 interface HowItWorksProps {

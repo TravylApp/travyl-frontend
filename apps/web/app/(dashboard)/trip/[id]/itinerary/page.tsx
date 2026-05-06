@@ -1480,7 +1480,7 @@ export default function Itinerary({ params }: { params: Promise<{ id: string }> 
                   willChange: 'max-height, opacity',
                 }}
               >
-                <div className="mb-3 mx-0.5 bg-white dark:bg-[var(--muted)] rounded-xl border border-gray-200 dark:border-white/[0.10] shadow-sm overflow-hidden">
+                <div className="mb-3 mx-0.5 bg-white dark:bg-muted rounded-xl border border-gray-200 dark:border-white/[0.10] shadow-sm overflow-hidden">
                   {/* Header */}
                   <div className="flex items-center justify-between px-4 py-2.5" style={{ backgroundColor: 'var(--trip-base)' }}>
                     <div className="flex items-center gap-2">

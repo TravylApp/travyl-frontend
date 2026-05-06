@@ -16,8 +16,11 @@ export interface ContextSearchResult {
   score: number
 }
 
+const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
+
 async function fetchContextSearch(query: string, token: string): Promise<ContextSearchResult[]> {
-  const res = await fetch(`/api/context-search?q=${encodeURIComponent(query)}`, {
+  if (!API_URL) return []
+  const res = await fetch(`${API_URL}/context-search?q=${encodeURIComponent(query)}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
 

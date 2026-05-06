@@ -8,6 +8,7 @@ import { supabase } from '@travyl/shared';
 import { fetchUserPublicTrips, useForkTrip, useAuthStore, canForkTrip, formatDateRange } from '@travyl/shared';
 import type { Trip, Profile } from '@travyl/shared';
 import { MapPin, Calendar, Users, GitFork, Loader2, Map } from 'lucide-react';
+import { PlaceholderAvatar } from '@/components/ui/PlaceholderAvatar';
 
 const BRAND = '#1e3a5f';
 
@@ -182,14 +183,12 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
         <div className="max-w-5xl mx-auto px-4 py-8">
           <div className="flex items-center gap-4">
             {/* Avatar */}
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center overflow-hidden shrink-0">
+            <div className="w-20 h-20 rounded-full overflow-hidden shrink-0">
               {profile.avatar_url ? (
                 /* eslint-disable-next-line @next/next/no-img-element */
                 <img src={profile.avatar_url} alt="" width={80} height={80}  className="object-cover" />
               ) : (
-                <span className="text-2xl font-bold text-white">
-                  {(profile.display_name || 'U')[0].toUpperCase()}
-                </span>
+                <PlaceholderAvatar userId={profile.id} size={80} />
               )}
             </div>
 

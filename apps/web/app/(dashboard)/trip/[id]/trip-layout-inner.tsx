@@ -68,7 +68,8 @@ function ContentHeader({ tripId, trip, mapOpen, onToggleMap }: {
   const Icon = tab.icon;
 
   return (
-    <div className="shrink-0 border-b bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06] px-5 md:pl-[100px] pt-4 pb-3 sticky top-12 z-20">
+    <div className="shrink-0 bg-white dark:bg-background px-5 md:pl-[100px] pt-4 pb-3 sticky top-0 z-20"
+      style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.04)' }}>
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0" style={{ backgroundColor: `${tab.color}18`, color: tab.color }}>
           <Icon size={15} />
@@ -544,7 +545,7 @@ function TripLayoutContent({
         exit={{ opacity: 0 }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className="w-screen overflow-hidden relative"
-        style={{ height: 'calc(100vh - 48px)', marginTop: 48, position: 'fixed', inset: 0, top: 48, zIndex: 40 }}
+        style={{ height: '100vh', position: 'fixed', inset: 0, top: 0, zIndex: 40 }}
       >
         {/* Hover-reveal sidebar — invisible strip on the left, expands on hover */}
         <div className="fixed left-0 top-0 bottom-0 z-50 w-3 hover:w-auto group">
@@ -562,7 +563,7 @@ function TripLayoutContent({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className={`pb-14 md:pb-0 ${isMagazine ? 'relative' : 'bg-white dark:bg-[var(--background)]'}`}
+      className={`pb-14 md:pb-0 ${isMagazine ? 'relative' : 'bg-white dark:bg-background'}`}
     >
       {layoutToggle}
 
@@ -618,7 +619,7 @@ function TripLayoutContent({
                   transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
                   className="hidden md:block shrink-0 border-l border-gray-200 dark:border-white/[0.08] overflow-hidden"
                 >
-                  <div className="sticky top-0 h-[calc(100vh-80px)] flex flex-col bg-white dark:bg-[var(--background)]">
+                  <div className="sticky top-0 h-[calc(100vh-80px)] flex flex-col bg-white dark:bg-background">
                     <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 dark:border-white/[0.06] shrink-0">
                       <div className="flex items-center gap-2">
                         <Map size={13} className="text-[var(--trip-base)]" />
@@ -635,7 +636,7 @@ function TripLayoutContent({
                     </div>
                     <div className="flex-1 relative">
                       <Suspense fallback={
-                        <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-[var(--background)]">
+                        <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-background">
                           <span className="text-sm text-gray-400">Loading map...</span>
                         </div>
                       }>
@@ -686,7 +687,7 @@ function TripLayoutContent({
               <TripExploreSection trip={trip} embedded />
             </div>
           ) : (
-            <div className="bg-white dark:bg-[var(--background)]">
+            <div className="bg-white dark:bg-background">
               <TripExploreSection trip={trip} />
             </div>
           )}

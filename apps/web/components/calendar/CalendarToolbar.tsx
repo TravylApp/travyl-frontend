@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Plus, ShareAndroid, Clock, MagicWand, Calendar } from 'iconoir-react'
 import type { Trip } from '@travyl/shared'
+import { useAuthStore, useProfile } from '@travyl/shared'
 import type { ViewMode, UserAwareness, CalendarActivity } from './types'
 import type { Command } from './types'
 import { useEffectivePermission } from './providers/TripPermissionContext'
@@ -24,6 +25,13 @@ const MENU_LABELS: Record<MenuGroup, string> = {
 
 interface TripMenuBarProps {
   commands: Command[]
+}
+
+function getInitials(name: string | undefined): string {
+  if (!name) return '';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
+  return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
 }
 
 function TripMenuBar({ commands }: TripMenuBarProps) {
@@ -48,7 +56,7 @@ function TripMenuBar({ commands }: TripMenuBarProps) {
     commands.some((c) => c.group === group && c.isEnabled)
 
   return (
-    <div ref={menuRef} className="flex items-center h-full px-1 border-r border-gray-200 dark:border-cal-border">
+    <div ref={menuRef} className="flex items-center h-full px-1">
       {MENU_GROUPS.map((group) => {
         const groupCommands = commands.filter((c) => c.group === group)
         const isOpen = openGroup === group
@@ -182,8 +190,13 @@ export function CalendarToolbar({
   onToggleEvents,
 }: CalendarToolbarProps) {
   const { canEdit } = useEffectivePermission()
+  const user = useAuthStore((s) => s.user)
+  const { data: profile } = useProfile()
   const [rescoperOpen, setRescoperOpen] = useState(false)
   const [unscheduledOpen, setUnscheduledOpen] = useState(false)
+  const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url
+  const displayName = user?.user_metadata?.display_name || user?.user_metadata?.full_name
+  const initials = getInitials(displayName)
 
   return (
     <div className="flex flex-col shrink-0">
@@ -199,13 +212,27 @@ export function CalendarToolbar({
       )}
 
       {/* Main toolbar row */}
-      <div className="flex items-center h-11 border-b border-gray-200/60 dark:border-cal-border bg-white/70 dark:bg-cal-surface-elevated/80 backdrop-blur-xl shrink-0">
+      <div className="flex items-center h-11 bg-white/70 dark:bg-cal-surface-elevated/80 backdrop-blur-xl shrink-0"
+        style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.04)' }}>
+
+        {/* User avatar — visible on trip pages (GlobalNavbar is hidden) */}
+        {!isSharedView && user && (
+          <div className="flex items-center px-3 h-full shrink-0">
+            <div className="h-7 w-7 flex items-center justify-center rounded-full overflow-hidden bg-[#1e3a5f] text-white font-medium text-[11px]">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={displayName || 'User'} className="h-full w-full object-cover" />
+              ) : (
+                initials
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Menu bar */}
         <TripMenuBar commands={commands} />
 
         {/* Trip info */}
-        <div className="relative flex flex-col justify-center px-4 h-full border-r border-gray-200 dark:border-cal-border shrink-0 min-w-0">
+        <div className="relative flex flex-col justify-center px-4 h-full shrink-0 min-w-0">
           <span className="truncate text-[13px] font-serif font-normal tracking-wide text-trip-base dark:text-cal-text leading-tight">
             {tripName}
           </span>
@@ -242,7 +269,7 @@ export function CalendarToolbar({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="flex items-center gap-2 px-3 h-full border-l border-gray-200 dark:border-cal-border shrink-0"
+              className="flex items-center gap-2 px-3 h-full shrink-0"
             >
               <div className="w-2 h-2 rounded-sm bg-blue-500 shrink-0" />
               <span className="text-[12px] text-gray-700 dark:text-cal-text truncate max-w-[140px]">

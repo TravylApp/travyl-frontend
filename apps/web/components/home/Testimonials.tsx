@@ -124,10 +124,11 @@ function TestimonialCard({ t, i, carousel }: { t: Testimonial; i: number; carous
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24, scale: 0.95 }}
+      initial={{ opacity: 0, y: 60, scale: 0.9 }}
       whileInView={{ opacity: 1, y: 0, scale: 1 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.5, delay: i * 0.08, ease: EASE_OUT_EXPO }}
+      viewport={{ once: true, margin: "0px" }}
+      transition={{ duration: 0.7, delay: i * 0.15, ease: EASE_OUT_EXPO }}
+      whileHover={{ y: -4, boxShadow: "0 12px 40px rgba(0,0,0,0.08)" }}
       className="group rounded-2xl bg-white/70 dark:bg-magazine-surface/80 backdrop-blur-sm border border-[#c4a882]/30 dark:border-white/[0.08] p-6 sm:p-8 hover:bg-white/90 dark:hover:bg-magazine-surface hover:shadow-lg hover:shadow-[#c4a882]/10 dark:hover:shadow-black/20 transition-all duration-300"
     >
       {children}
@@ -137,16 +138,19 @@ function TestimonialCard({ t, i, carousel }: { t: Testimonial; i: number; carous
 
 const carouselVariants = {
   enter: (d: number) => ({
-    x: d > 0 ? 60 : -60,
+    x: d > 0 ? 120 : -120,
     opacity: 0,
+    scale: 0.92,
   }),
   center: {
     x: 0,
     opacity: 1,
+    scale: 1,
   },
   exit: (d: number) => ({
-    x: d > 0 ? -60 : 60,
+    x: d > 0 ? -120 : 120,
     opacity: 0,
+    scale: 0.92,
   }),
 };
 
@@ -201,15 +205,33 @@ export function Testimonials() {
     <section className="py-20 sm:py-28 px-6 bg-sand-base">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-14">
-          <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.18em] text-magazine-accent">
+          <motion.span
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, ease: EASE_OUT_EXPO }}
+            className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.18em] text-magazine-accent"
+          >
             Loved by Travelers
-          </span>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-normal mt-2 leading-tight text-magazine-heading tracking-wide">
+          </motion.span>
+          <motion.h2
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.12, ease: EASE_OUT_EXPO }}
+            className="text-2xl sm:text-3xl md:text-4xl font-serif font-normal mt-2 leading-tight text-magazine-heading tracking-wide"
+          >
             Real travelers, <span className="italic">real results</span>
-          </h2>
-          <p className="text-sm text-magazine-text mt-2 max-w-lg mx-auto leading-relaxed">
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.24, ease: EASE_OUT_EXPO }}
+            className="text-sm text-magazine-text mt-2 max-w-lg mx-auto leading-relaxed"
+          >
             Here&apos;s what people are saying about planning with Travyl.
-          </p>
+          </motion.p>
         </div>
 
         {/* Mobile carousel — only below md */}

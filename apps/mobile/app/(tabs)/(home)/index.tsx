@@ -59,20 +59,20 @@ import { TakeoffTransition } from '@/components/home/TakeoffTransition';
 // Includes the same images used on the web app + additional variety
 const STOCK_HERO_SLIDES = [
   // ── All web images included ──
-  'https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=1200&q=80', // tropical beach (web hero fallback)
-  'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200&q=80', // mountain lake (web parallax)
-  'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1200&q=80', // hot air balloons (web parallax)
-  'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=1200&q=80', // misty mountains (web parallax)
-  'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&q=80', // road trip (web parallax)
-  'https://images.unsplash.com/photo-1533104816931-20fa691ff6ca?w=1200&q=80', // travel planning map (web HowItWorks)
-  'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=1200&q=80', // Rome Colosseum (web HowItWorks)
-  'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=1200&q=80', // Bali temple (web HowItWorks)
+  'https://images.pexels.com/photos/30978583/pexels-photo-30978583.jpeg?auto=compress&cs=tinysrgb&w=1200', // tropical beach (web hero fallback)
+  'https://images.pexels.com/photos/29213215/pexels-photo-29213215.jpeg?auto=compress&cs=tinysrgb&w=1200', // mountain lake (web parallax)
+  'https://images.pexels.com/photos/34600662/pexels-photo-34600662.jpeg?auto=compress&cs=tinysrgb&w=1200', // hot air balloons (web parallax)
+  'https://images.pexels.com/photos/35134885/pexels-photo-35134885.jpeg?auto=compress&cs=tinysrgb&w=1200', // misty mountains (web parallax)
+  'https://images.pexels.com/photos/37297741/pexels-photo-37297741.jpeg?auto=compress&cs=tinysrgb&w=1200', // road trip (web parallax)
+  'https://images.pexels.com/photos/29081769/pexels-photo-29081769.jpeg?auto=compress&cs=tinysrgb&w=1200', // travel planning map (web HowItWorks)
+  'https://images.pexels.com/photos/38841507/pexels-photo-38841507.jpeg?auto=compress&cs=tinysrgb&w=1200', // Rome Colosseum (web HowItWorks)
+  'https://images.pexels.com/photos/24995221/pexels-photo-24995221.jpeg?auto=compress&cs=tinysrgb&w=1200', // Bali temple (web HowItWorks)
   // ── Mobile extra variety ──
-  'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1200&q=80', // Paris Eiffel Tower
-  'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=1200&q=80', // Tokyo skyline
-  'https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?w=1200&q=80', // Santorini blue domes
-  'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1200&q=80', // Dubai skyline
-  'https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?w=1200&q=80', // Sydney Opera House
+  'https://images.pexels.com/photos/33800139/pexels-photo-33800139.jpeg?auto=compress&cs=tinysrgb&w=1200', // Paris Eiffel Tower
+  'https://images.pexels.com/photos/427747/pexels-photo-427747.jpeg?auto=compress&cs=tinysrgb&w=1200', // Tokyo skyline
+  'https://images.pexels.com/photos/29081769/pexels-photo-29081769.jpeg?auto=compress&cs=tinysrgb&w=1200', // Santorini blue domes
+  'https://images.pexels.com/photos/373076/pexels-photo-373076.jpeg?auto=compress&cs=tinysrgb&w=1200', // Dubai skyline
+  'https://images.pexels.com/photos/461064/pexels-photo-461064.jpeg?auto=compress&cs=tinysrgb&w=1200', // Sydney Opera House
 ];
 const SHUFFLED_STOCK = shuffle(STOCK_HERO_SLIDES).slice(0, 5);
 

@@ -112,7 +112,7 @@ export function SpotlightSearch({ existingItems, onAddItem }: SpotlightSearchPro
   return (
     <div ref={containerRef} className="relative">
       {/* Input */}
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--cal-border)] bg-[var(--cal-bg)] focus-within:border-[#003594] transition-colors duration-150">
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--cal-border)] bg-cal-bg focus-within:border-[#003594] transition-colors duration-150">
         <Search width={15} height={15} className="text-[var(--cal-text-muted)] shrink-0" />
         <input
           ref={inputRef}
@@ -131,18 +131,18 @@ export function SpotlightSearch({ existingItems, onAddItem }: SpotlightSearchPro
 
       {/* Dropdown */}
       {isOpen && allItems.length > 0 && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-lg border border-[var(--cal-border)] bg-[var(--cal-bg)] shadow-lg overflow-hidden">
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-lg border border-[var(--cal-border)] bg-cal-bg shadow-lg overflow-hidden">
           {allItems.map((item, idx) => (
             <div key={`${item.name}-${item.isCustom ? 'custom' : 'catalog'}`}>
               {/* Separator before custom item */}
               {item.isCustom && results.length > 0 && (
-                <div className="h-px bg-[var(--cal-border)] mx-3" />
+                <div className="h-px bg-cal-border mx-3" />
               )}
               <div
                 className={`flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors duration-100 ${
                   idx === activeIndex
-                    ? 'bg-[var(--cal-surface)]'
-                    : 'hover:bg-[var(--cal-surface)]'
+                    ? 'bg-cal-surface'
+                    : 'hover:bg-cal-surface'
                 } ${item.alreadyAdded ? 'opacity-50 cursor-default' : ''}`}
                 onMouseEnter={() => setActiveIndex(idx)}
                 onClick={() => handleSelect(item)}
@@ -168,7 +168,7 @@ export function SpotlightSearch({ existingItems, onAddItem }: SpotlightSearchPro
                       setCustomCategory(e.target.value)
                     }}
                     onClick={(e) => e.stopPropagation()}
-                    className="text-xs border border-[var(--cal-border)] rounded px-1 py-0.5 bg-[var(--cal-bg)] text-[var(--cal-text)] outline-none"
+                    className="text-xs border border-[var(--cal-border)] rounded px-1 py-0.5 bg-cal-bg text-[var(--cal-text)] outline-none"
                   >
                     {PACKING_CATEGORIES.map((cat) => (
                       <option key={cat} value={cat}>

@@ -20,28 +20,28 @@ export function ComparisonSection() {
   const user = useAuthStore((s) => s.user);
 
   return (
-    <section className="py-20 sm:py-28 px-6 bg-white">
+    <section className="py-20 sm:py-28 px-6 bg-white dark:bg-card">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-14">
-          <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.18em] text-[#b8953e]">
+          <span className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.18em] text-magazine-accent">
             Why Switch?
           </span>
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-normal mt-2 leading-tight text-[#2a1f17] tracking-wide">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-normal mt-2 leading-tight text-magazine-heading tracking-wide">
             Planning on your own vs. <span className="italic">With Travyl</span>
           </h2>
-          <p className="text-sm text-[#5c4a3a] mt-2 max-w-lg mx-auto leading-relaxed">
+          <p className="text-sm text-magazine-text mt-2 max-w-lg mx-auto leading-relaxed">
             Stop juggling tabs and tools. Travyl brings everything into one place.
           </p>
         </div>
 
         <div className="relative grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
           {/* Old way column — warm editorial tones */}
-          <div className="rounded-2xl border border-[#f2e6d8] bg-[#fafaf8] p-6 sm:p-8">
+          <div className="rounded-2xl border border-[#f2e6d8] dark:border-white/[0.08] bg-[#fafaf8] dark:bg-magazine-surface p-6 sm:p-8">
             <div className="flex items-center gap-2.5 mb-7">
-              <div className="w-8 h-8 rounded-full bg-[#f2e6d8] flex items-center justify-center">
-                <X size={15} className="text-[#9a7b5a]" />
+              <div className="w-8 h-8 rounded-full bg-[#f2e6d8] dark:bg-white/10 flex items-center justify-center">
+                <X size={15} className="text-[#9a7b5a] dark:text-magazine-text" />
               </div>
-              <span className="text-xs font-bold text-[#7a6b5a] uppercase tracking-widest">Doing it alone</span>
+              <span className="text-xs font-bold text-[#7a6b5a] dark:text-magazine-text uppercase tracking-widest">Doing it alone</span>
             </div>
             <div className="space-y-5">
               {POINTS.map((p, i) => {
@@ -55,10 +55,10 @@ export function ComparisonSection() {
                     transition={{ duration: 0.4, delay: i * 0.08, ease: EASE_OUT_EXPO }}
                     className="flex items-center gap-3.5"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-[#f2e6d8]/60 flex items-center justify-center shrink-0">
-                      <BadIcon size={15} className="text-[#9a7b5a]" />
+                    <div className="w-9 h-9 rounded-lg bg-[#f2e6d8]/60 dark:bg-white/10 flex items-center justify-center shrink-0">
+                      <BadIcon size={15} className="text-[#9a7b5a] dark:text-magazine-text" />
                     </div>
-                    <span className="text-sm text-[#6a5a4a]">{p.bad.text}</span>
+                    <span className="text-sm text-[#6a5a4a] dark:text-magazine-text">{p.bad.text}</span>
                   </motion.div>
                 );
               })}
@@ -66,17 +66,17 @@ export function ComparisonSection() {
           </div>
 
           {/* VS badge */}
-          <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-white border-2 border-[#1e3a5f] items-center justify-center shadow-md">
-            <span className="text-[11px] font-bold text-[#1e3a5f] tracking-widest">VS</span>
+          <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-white dark:bg-card border-2 border-[#1e3a5f] dark:border-primary items-center justify-center shadow-md">
+            <span className="text-[11px] font-bold text-[#1e3a5f] dark:text-primary tracking-widest">VS</span>
           </div>
 
           {/* Travyl way column — navy brand */}
-          <div className="rounded-2xl border-2 border-[#1e3a5f]/15 bg-white p-6 sm:p-8 shadow-sm">
+          <div className="rounded-2xl border-2 border-[#1e3a5f]/15 dark:border-primary/20 bg-white dark:bg-magazine-surface p-6 sm:p-8 shadow-sm">
             <div className="flex items-center gap-2.5 mb-7">
-              <div className="w-8 h-8 rounded-full bg-[#1e3a5f] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-[#1e3a5f] dark:bg-primary flex items-center justify-center">
                 <Check size={15} className="text-white" />
               </div>
-              <span className="text-xs font-bold text-[#1e3a5f] uppercase tracking-widest">With Travyl</span>
+              <span className="text-xs font-bold text-[#1e3a5f] dark:text-primary uppercase tracking-widest">With Travyl</span>
             </div>
             <div className="space-y-5">
               {POINTS.map((p, i) => {
@@ -90,10 +90,10 @@ export function ComparisonSection() {
                     transition={{ duration: 0.4, delay: i * 0.08, ease: EASE_OUT_EXPO }}
                     className="flex items-center gap-3.5"
                   >
-                    <div className="w-9 h-9 rounded-lg bg-[#003594]/10 flex items-center justify-center shrink-0">
-                      <GoodIcon size={15} className="text-[#1e3a5f]" />
+                    <div className="w-9 h-9 rounded-lg bg-[#003594]/10 dark:bg-primary/20 flex items-center justify-center shrink-0">
+                      <GoodIcon size={15} className="text-[#1e3a5f] dark:text-primary" />
                     </div>
-                    <span className="text-sm text-[#1e3a5f] font-medium">{p.good.text}</span>
+                    <span className="text-sm text-[#1e3a5f] dark:text-primary font-medium">{p.good.text}</span>
                   </motion.div>
                 );
               })}
@@ -111,7 +111,7 @@ export function ComparisonSection() {
         >
           <button
             onClick={() => router.push(user ? "/trips" : "/signup")}
-            className="inline-flex items-center gap-2 px-7 py-3.5 bg-[#1e3a5f] text-white rounded-full font-semibold text-sm hover:bg-[#162d4a] transition-colors shadow-lg shadow-[#1e3a5f]/20"
+            className="inline-flex items-center gap-2 px-7 py-3.5 bg-[#1e3a5f] dark:bg-primary text-white rounded-full font-semibold text-sm hover:bg-[#162d4a] dark:hover:brightness-110 transition-colors shadow-lg shadow-[#1e3a5f]/20 dark:shadow-black/30"
           >
             Try the better way →
           </button>

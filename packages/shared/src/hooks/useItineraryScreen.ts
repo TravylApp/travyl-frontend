@@ -13,7 +13,7 @@
 
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTrip } from './useTrip';
 import { useItineraryDays } from './useItineraryDays';
@@ -339,6 +339,7 @@ function mergeUserActivities(
 export function useItineraryScreen(tripId: string | undefined) {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const queryClient = useQueryClient();
+  const channelRef = useRef<string | null>(null);
   const tripQuery = useTrip(tripId);
   const daysQuery = useItineraryDays(tripId);
   const activitiesQuery = useTripActivities(tripId);
@@ -354,8 +355,14 @@ export function useItineraryScreen(tripId: string | undefined) {
   // before mounting trip screens) so we don't worry about that case.
   useEffect(() => {
     if (!tripId) return;
+    // Use a ref-stabilized unique ID so multiple instances of this hook
+    // don't clash (the component calls useItineraryScreen twice in the
+    // layout tree). The ref persists across StrictMode double-mount too.
+    if (!channelRef.current) {
+      channelRef.current = `${tripId}-${Math.random().toString(36).slice(2, 8)}`;
+    }
     const channel = supabase
-      .channel(`trip:${tripId}`)
+      .channel(`trip:${channelRef.current}`)
       // Trip row itself (title, dates, trip_context, settings, theme).
       .on(
         'postgres_changes' as any,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { PaperPlane } from "./PaperPlane";
 import { Blue, PAPER_PLANE_PATHS, PAPER_PLANE_VIEWBOX } from "@travyl/shared";
 
@@ -28,6 +29,7 @@ interface TakeoffTransitionProps {
 
 export function TakeoffTransition({ visible, buttonRect, onComplete, statusMessage, completed, error, onRetry }: TakeoffTransitionProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const [msgIndex, setMsgIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [showContent, setShowContent] = useState(false);
@@ -70,6 +72,31 @@ export function TakeoffTransition({ visible, buttonRect, onComplete, statusMessa
   useEffect(() => {
     if (completed) setProgress(100);
   }, [completed]);
+
+  // Focus trap: when visible, trap Tab within the overlay
+  useEffect(() => {
+    if (!visible || !overlayRef.current) return;
+    const overlay = overlayRef.current;
+    const focusable = overlay.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (first) first.focus();
+
+    function onTab(e: KeyboardEvent) {
+      if (e.key !== "Tab" || focusable.length < 2) return;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", onTab);
+    return () => document.removeEventListener("keydown", onTab);
+  }, [visible, error, completed]);
 
   // Canvas — single smooth flight arc
   useEffect(() => {
@@ -180,7 +207,7 @@ export function TakeoffTransition({ visible, buttonRect, onComplete, statusMessa
   const displayProgress = progress;
 
   return (
-    <div className="fixed inset-0 z-[100]">
+    <div className="fixed inset-0 z-[100]" ref={overlayRef}>
       <div className="absolute inset-0" style={{ backgroundColor: Blue[600] }} />
 
       {/* Canvas for airplane flight */}
@@ -203,7 +230,7 @@ export function TakeoffTransition({ visible, buttonRect, onComplete, statusMessa
           </div>
 
           {error ? (
-            <>
+            <div role="alert">
               <p className="text-white text-base font-medium text-center">{error}</p>
               <div className="flex gap-3">
                 {onRetry && (
@@ -214,14 +241,14 @@ export function TakeoffTransition({ visible, buttonRect, onComplete, statusMessa
                     Try Again
                   </button>
                 )}
-                <a
+                <Link
                   href="/trips"
                   className="px-5 py-2.5 bg-white/15 text-white rounded-full text-sm font-medium hover:bg-white/25 transition-colors"
                 >
                   Go to Trips
-                </a>
+                </Link>
               </div>
-            </>
+            </div>
           ) : (
             <>
               {/* Progress bar */}
@@ -239,6 +266,7 @@ export function TakeoffTransition({ visible, buttonRect, onComplete, statusMessa
               <p
                 key={displayMessage}
                 className="text-white/80 text-base font-medium text-center animate-[fadeSlideIn_0.4s_ease-out]"
+                aria-live="polite"
               >
                 {displayMessage}
               </p>
