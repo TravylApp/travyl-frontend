@@ -73,7 +73,7 @@ function formatDateRange(start?: string | null, end?: string | null): string {
 }
 
 function travelerCount(t: number | null | undefined): number {
-  if (!t) return 1;
+  if (t == null) return 1;
   return t;
 }
 
@@ -134,11 +134,12 @@ function RailRowButton({
 }
 
 function RailDesktop({
-  basePath, isActive, tabColorFor, dark, trip, onOpenHistory,
+  basePath, isActive, tabColorFor, isTabHidden, dark, trip, onOpenHistory,
 }: {
   basePath: string;
   isActive: (s: string) => boolean;
   tabColorFor: (s: string) => string;
+  isTabHidden: (s: string) => boolean;
   dark: boolean;
   trip: { destination?: string; start_date?: string | null; end_date?: string | null; travelers?: number | null } | null | undefined;
   onOpenHistory: () => void;
@@ -180,10 +181,13 @@ function RailDesktop({
         )}
       </div>
       <nav className="flex-1 overflow-y-auto px-2.5 py-2">
-        {TAB_GROUPS.map((group, idx) => (
+        {TAB_GROUPS.map((group, idx) => {
+          const visibleSegments = group.segments.filter((s) => !isTabHidden(s));
+          if (visibleSegments.length === 0) return null;
+          return (
           <div key={group.id}>
             {idx > 0 && <div role="presentation" className={`h-px my-1.5 mx-3 ${dark ? 'bg-white/[0.06]' : 'bg-[#f0eee9]'}`} />}
-            {group.segments.map((seg) => {
+            {visibleSegments.map((seg) => {
               const tab = getTabMeta(seg);
               if (!tab) return null;
               return (
@@ -199,7 +203,8 @@ function RailDesktop({
               );
             })}
           </div>
-        ))}
+          );
+        })}
       </nav>
       <div className={`px-2.5 pt-1.5 pb-3 border-t ${dark ? 'border-white/10' : 'border-[#f0eee9]'}`}>
         <RailRow
@@ -221,24 +226,27 @@ function RailDesktop({
 const MOBILE_PRIMARY: string[] = ['', 'itinerary', 'hotels', 'flights', 'activities'];
 
 function RailMobile({
-  basePath, isActive, tabColorFor, onOpenHistory,
+  basePath, isActive, tabColorFor, isTabHidden, onOpenHistory,
 }: {
   basePath: string;
   isActive: (s: string) => boolean;
   tabColorFor: (s: string) => string;
+  isTabHidden: (s: string) => boolean;
   onOpenHistory: () => void;
 }) {
   const [moreOpen, setMoreOpen] = useState(false);
 
-  const primaryTabs = MOBILE_PRIMARY.map(seg => getTabMeta(seg)).filter((t): t is TabDef => Boolean(t));
-  const overflowTabs = ALL_TABS.filter(t => !MOBILE_PRIMARY.includes(t.segment) && t.segment !== 'settings');
+  const primaryTabs = MOBILE_PRIMARY
+    .filter((seg) => !isTabHidden(seg))
+    .map(seg => getTabMeta(seg)).filter((t): t is TabDef => Boolean(t));
+  const overflowTabs = ALL_TABS.filter(t => !MOBILE_PRIMARY.includes(t.segment) && t.segment !== 'settings' && !isTabHidden(t.segment));
   const settingsTab = getTabMeta('settings')!;
   const SettingsIcon = settingsTab.icon;
 
   return (
     <>
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/92 dark:bg-black/85 backdrop-blur-xl border-t border-gray-200 dark:border-white/10">
-        <div className="flex items-stretch h-12">
+        <nav aria-label="Trip navigation" className="flex items-stretch h-12">
           {primaryTabs.map((tab) => {
             const active = isActive(tab.segment);
             const color = tabColorFor(tab.segment);
@@ -264,7 +272,7 @@ function RailMobile({
             <MoreHorizontal size={18} strokeWidth={1.8} />
             <span className="text-[10px] font-medium">More</span>
           </button>
-        </div>
+        </nav>
       </div>
 
       <AnimatePresence>
@@ -298,7 +306,7 @@ function RailMobile({
                   <X size={16} className="text-gray-500" />
                 </button>
               </div>
-              <div className="px-2 pb-4">
+              <div className="px-2 pb-4 overflow-y-auto">
                 {overflowTabs.map((tab) => {
                   const active = isActive(tab.segment);
                   const color = tabColorFor(tab.segment);
@@ -346,7 +354,7 @@ function RailMobile({
 export default function TripRail({ tripId, variant = 'light' }: TripRailProps) {
   const pathname = usePathname();
   const basePath = `/trip/${tripId}`;
-  const { theme, tabColorOverrides } = useTripTheme();
+  const { theme, tabColorOverrides, hiddenTabs } = useTripTheme();
   const { trip } = useItineraryScreen(tripId);
   const [historyOpen, setHistoryOpen] = useState(false);
   const dark = variant === 'dark';
@@ -361,17 +369,24 @@ export default function TripRail({ tripId, variant = 'light' }: TripRailProps) {
     return tabColorOverrides[key] ?? theme.tabColors[key] ?? theme.base;
   };
 
+  // Settings page stores hidden tabs under 'overview' for the empty (root) segment.
+  const isTabHidden = (segment: string) => {
+    const key = segment || 'overview';
+    return Boolean(hiddenTabs[key]);
+  };
+
   return (
     <>
       <RailDesktop
         basePath={basePath}
         isActive={isActive}
         tabColorFor={tabColorFor}
+        isTabHidden={isTabHidden}
         dark={dark}
         trip={trip}
         onOpenHistory={() => setHistoryOpen(true)}
       />
-      <RailMobile basePath={basePath} isActive={isActive} tabColorFor={tabColorFor} onOpenHistory={() => setHistoryOpen(true)} />
+      <RailMobile basePath={basePath} isActive={isActive} tabColorFor={tabColorFor} isTabHidden={isTabHidden} onOpenHistory={() => setHistoryOpen(true)} />
       <HistoryPanel tripId={tripId} isOpen={historyOpen} onClose={() => setHistoryOpen(false)} />
     </>
   );
