@@ -239,6 +239,10 @@ export interface FlightViewModel {
   departureDisplay: string | null;
   /** Formatted arrival datetime, or null */
   arrivalDisplay: string | null;
+  /** Raw ISO departure timestamp from the DB record, or null. Used for sorting. */
+  departureAt: string | null;
+  /** Raw ISO arrival timestamp from the DB record, or null. */
+  arrivalAt: string | null;
   /** Formatted price string (e.g. "$450"), or null if no price */
   priceDisplay: string | null;
   /** Raw price number for budget calculations, or null */
@@ -289,6 +293,8 @@ export function buildFlightViewModel(flight: Flight): FlightViewModel {
     destName: d.dest_name,
     departureDisplay: formatDatetime(d.departure_at),
     arrivalDisplay: formatDatetime(d.arrival_at),
+    departureAt: d.departure_at,
+    arrivalAt: d.arrival_at,
     priceDisplay: d.price != null && d.currency ? formatCurrency(d.price, d.currency) : null,
     price: d.price ?? null,
     priceCurrency: d.price != null ? d.currency ?? null : null,
