@@ -3,8 +3,10 @@
 import {
   Home, Calendar, CalendarDays, Plane, Building2, Compass,
   Luggage, PieChart, Heart, Car, Settings, History,
+  MoreHorizontal, X,
   type LucideIcon,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
@@ -79,7 +81,7 @@ function rowClasses(active: boolean, dark: boolean) {
     return `${base} ${text}`;
   }
   const text = dark ? 'text-white/70 font-medium' : 'text-gray-600 font-medium';
-  const hover = dark ? 'hover:bg-white/10' : 'hover:bg-[#f5f3ee]';
+  const hover = dark ? 'hover:bg-white/10' : 'hover:bg-[#f5f3ee] hover:text-[var(--trip-base)]';
   return `${base} ${text} ${hover}`;
 }
 
@@ -213,9 +215,6 @@ function RailDesktop({
 
 // ── Mobile bottom bar ────────────────────────────────────────
 
-import { motion, AnimatePresence } from 'motion/react';
-import { MoreHorizontal, X } from 'lucide-react';
-
 const MOBILE_PRIMARY: string[] = ['', 'itinerary', 'hotels', 'flights', 'activities'];
 
 function RailMobile({
@@ -231,6 +230,7 @@ function RailMobile({
   const primaryTabs = MOBILE_PRIMARY.map(seg => getTabMeta(seg)).filter((t): t is TabDef => Boolean(t));
   const overflowTabs = ALL_TABS.filter(t => !MOBILE_PRIMARY.includes(t.segment) && t.segment !== 'settings');
   const settingsTab = getTabMeta('settings')!;
+  const SettingsIcon = settingsTab.icon;
 
   return (
     <>
@@ -319,7 +319,7 @@ function RailMobile({
                   onClick={() => setMoreOpen(false)}
                   className="flex items-center gap-3 px-3 h-11 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 text-[14px] text-gray-700 dark:text-gray-200"
                 >
-                  <settingsTab.icon size={18} strokeWidth={1.8} />
+                  <SettingsIcon size={18} strokeWidth={1.8} />
                   <span>Settings</span>
                 </Link>
                 <button
