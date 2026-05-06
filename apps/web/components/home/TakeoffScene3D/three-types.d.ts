@@ -1,5 +1,6 @@
 // Declare @react-three/fiber JSX intrinsic types for this directory.
 // Placed alongside the 3D components so the augmentation is scoped.
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ThreeElement, Object3DNode } from "@react-three/fiber";
 import type * as THREE from "three";
 

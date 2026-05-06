@@ -24,7 +24,7 @@ export function Clouds() {
   const meshesRef = useRef<THREE.Group[] | null>(null);
 
   const cloudMeshes = useMemo(() => {
-    const meshes = CLUSTERS.map((cluster) => {
+    const meshes = CLUSTERS.map(() => {
       const group = new THREE.Group();
 
       // Build cloud from overlapping spheres
