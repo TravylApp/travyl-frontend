@@ -11,7 +11,8 @@
     "web": "npm -w @travyl/web run dev",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "vitest run"
+    "test": "vitest run",
+    "postinstall": "patch-package"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -20,6 +21,7 @@
     "@types/aws-lambda": "^8.10.161",
     "aws-cdk-lib": "^2.243.0",
     "constructs": "^10.5.1",
+    "patch-package": "^8.0.1",
     "sst": "^4.3.7",
     "tsx": "^4.21.0"
   },
