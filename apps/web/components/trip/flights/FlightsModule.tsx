@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { Plane, Plus } from 'lucide-react'
@@ -24,6 +24,7 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency }: 
 
   const [adding, setAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const hasExpandedRef = useRef(false)
 
   const sorted = useMemo(
     () => [...flights].sort((a, b) => {
@@ -34,10 +35,14 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency }: 
     [flights],
   )
 
+  // Auto-expand a record if URL ?expand=<id> is present (deep link from itinerary cards).
+  // Only fires once — subsequent realtime data updates don't re-open after the user dismisses.
   useEffect(() => {
+    if (hasExpandedRef.current) return
     const expandId = searchParams.get('expand')
     if (expandId && flights.some((f) => f.id === expandId)) {
       setEditingId(expandId)
+      hasExpandedRef.current = true
     }
   }, [searchParams, flights])
 
@@ -83,6 +88,9 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency }: 
       await deleteFlight(id)
       invalidate()
       setEditingId(null)
+      if (searchParams.get('expand')) {
+        router.replace(`/trip/${tripId}/flights`, { scroll: false })
+      }
     } catch (e) {
       console.error(e)
       toast.error("Couldn't delete — try again")

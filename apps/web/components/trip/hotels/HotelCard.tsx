@@ -7,18 +7,13 @@ export interface HotelCardProps {
   hotel: HotelViewModel
   onEdit: () => void
   onDelete: () => void
-  expanded?: boolean
 }
 
-export function HotelCard({ hotel, onEdit, onDelete, expanded = false }: HotelCardProps) {
+export function HotelCard({ hotel, onEdit, onDelete }: HotelCardProps) {
   return (
     <div
       onClick={onEdit}
-      className={`group rounded-xl border p-4 transition-colors cursor-pointer ${
-        expanded
-          ? 'border-[var(--trip-base)]/40 bg-[rgb(var(--trip-base-rgb)/0.04)]'
-          : 'border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
-      }`}
+      className="group rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4 transition-colors cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.04]"
     >
       <div className="flex gap-4">
         {hotel.imageUrl ? (

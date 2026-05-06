@@ -7,7 +7,6 @@ export interface FlightCardProps {
   flight: FlightViewModel
   onEdit: () => void
   onDelete: () => void
-  expanded?: boolean
 }
 
 function isNextDay(departureAt: string | null, arrivalAt: string | null): boolean {
@@ -15,7 +14,7 @@ function isNextDay(departureAt: string | null, arrivalAt: string | null): boolea
   return new Date(arrivalAt).getDate() !== new Date(departureAt).getDate()
 }
 
-export function FlightCard({ flight, onEdit, onDelete, expanded = false }: FlightCardProps) {
+export function FlightCard({ flight, onEdit, onDelete }: FlightCardProps) {
   const titleParts = [
     flight.airline,
     flight.flightNumber,
@@ -37,11 +36,7 @@ export function FlightCard({ flight, onEdit, onDelete, expanded = false }: Fligh
   return (
     <div
       onClick={onEdit}
-      className={`group rounded-xl border p-4 transition-colors cursor-pointer ${
-        expanded
-          ? 'border-[var(--trip-base)]/40 bg-[rgb(var(--trip-base-rgb)/0.04)]'
-          : 'border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:bg-gray-50 dark:hover:bg-white/[0.04]'
-      }`}
+      className="group rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4 transition-colors cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.04]"
     >
       <div className="flex items-start gap-4">
         <div

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { Building2, Plus } from 'lucide-react'
@@ -24,6 +24,7 @@ export function HotelsModule({ tripId, hotels, rawHotels, defaultCurrency }: Hot
 
   const [adding, setAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const hasExpandedRef = useRef(false)
 
   // Sort hotels by check-in date (ISO date strings sort lexicographically === chronologically)
   // Defensive `?? ''` in case checkIn ever becomes nullable.
@@ -32,11 +33,14 @@ export function HotelsModule({ tripId, hotels, rawHotels, defaultCurrency }: Hot
     [hotels],
   )
 
-  // Auto-expand a record if URL ?expand=<id> is present (deep link from itinerary cards)
+  // Auto-expand a record if URL ?expand=<id> is present (deep link from itinerary cards).
+  // Only fires once — subsequent realtime data updates don't re-open after the user dismisses.
   useEffect(() => {
+    if (hasExpandedRef.current) return
     const expandId = searchParams.get('expand')
     if (expandId && hotels.some((h) => h.id === expandId)) {
       setEditingId(expandId)
+      hasExpandedRef.current = true
     }
   }, [searchParams, hotels])
 
@@ -83,6 +87,9 @@ export function HotelsModule({ tripId, hotels, rawHotels, defaultCurrency }: Hot
       await deleteHotel(id)
       invalidate()
       setEditingId(null)
+      if (searchParams.get('expand')) {
+        router.replace(`/trip/${tripId}/hotels`, { scroll: false })
+      }
     } catch (e) {
       console.error(e)
       toast.error("Couldn't delete — try again")
