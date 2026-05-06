@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { motion } from "motion/react";
-import { Star, ChevronDown, User } from "lucide-react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { Star, ChevronDown, ChevronLeft, ChevronRight, User } from "lucide-react";
 import { EASE_OUT_EXPO } from "@travyl/shared";
 
 interface Testimonial {
@@ -135,7 +135,27 @@ function TestimonialCard({ t, i, carousel }: { t: Testimonial; i: number; carous
   );
 }
 
+const carouselVariants = {
+  enter: (d: number) => ({
+    x: d > 0 ? 60 : -60,
+    opacity: 0,
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+  },
+  exit: (d: number) => ({
+    x: d > 0 ? -60 : 60,
+    opacity: 0,
+  }),
+};
+
 export function Testimonials() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [direction, setDirection] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   return (
     <section className="py-20 sm:py-28 px-6 bg-sand-base">
       <div className="max-w-6xl mx-auto">
