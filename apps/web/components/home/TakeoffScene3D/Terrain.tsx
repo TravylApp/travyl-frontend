@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -12,6 +12,7 @@ const SCROLL_SPEED = 2.0; // units/s
 export function Terrain() {
   const meshRef = useRef<THREE.Mesh>(null);
   const offsetRef = useRef(0);
+  const geometryRef = useRef<THREE.BufferGeometry | null>(null);
 
   const { geometry } = useMemo(() => {
     const geo = new THREE.PlaneGeometry(WIDTH, DEPTH, SEGMENTS, SEGMENTS);
@@ -41,14 +42,24 @@ export function Terrain() {
     geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     geo.computeVertexNormals();
 
+    geometryRef.current = geo;
     return { geometry: geo };
+  }, []);
+
+  // Dispose geometry on unmount to prevent GPU memory leak
+  useEffect(() => {
+    return () => {
+      if (geometryRef.current) {
+        geometryRef.current.dispose();
+      }
+    };
   }, []);
 
   useFrame((_, delta) => {
     if (!meshRef.current) return;
     offsetRef.current += delta * SCROLL_SPEED;
-    // Wrap position to create infinite scroll
-    const zOffset = offsetRef.current % DEPTH;
+    // Scroll in -Z for infinite flight feel, wrap when terrain exits frustum
+    const zOffset = -(offsetRef.current % DEPTH);
     meshRef.current.position.z = zOffset;
   });
 
