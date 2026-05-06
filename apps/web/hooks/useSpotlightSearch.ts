@@ -130,7 +130,7 @@ function buildHref(type: string, entityId: string, tripId: string | null, entity
   if (type === 'activity') return `/activity/${encodeURIComponent(entityId)}`
   if (!tripId) return '/'
   switch (type) {
-    case 'flight': return `/trip/${tripId}/flights/${entityId}`
+    case 'flight': return `/trip/${tripId}/flights?expand=${entityId}`
     default: return '/'
   }
 }
