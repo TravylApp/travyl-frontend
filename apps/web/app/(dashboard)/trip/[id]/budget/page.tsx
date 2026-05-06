@@ -1,38 +1,15 @@
 'use client';
 
-import { use, useState, useEffect, useRef, useCallback } from 'react';
-import {
-  Plane, Building2, UtensilsCrossed, Compass, Car, ShoppingBag,
-  MoreHorizontal, Wallet, Plus, Trash2, Edit2, Check, X, ChevronDown,
-} from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
+import { use, useState, useEffect, useRef } from 'react';
+import { Plus } from 'lucide-react';
 import { useItineraryScreen, useHomeCurrency } from '@travyl/shared';
 import { supabase } from '@travyl/shared';
-import type { LucideIcon } from 'lucide-react';
-import { Skeleton } from '@/components/ui';
-
-/* ------------------------------------------------------------------ */
-/*  Types                                                              */
-/* ------------------------------------------------------------------ */
-
-interface BudgetExpense {
-  id: string;
-  description: string;
-  amount: number;
-}
-
-interface BudgetItem {
-  id: string;
-  category: string;
-  budgeted: number;
-  actual: number;
-  fixed: boolean;
-  expenses?: BudgetExpense[];
-}
-
-/* ------------------------------------------------------------------ */
-/*  Default empty budget categories                                    */
-/* ------------------------------------------------------------------ */
+import { Module } from '@/components/trip/Module';
+import { BudgetMetricStrip } from '@/components/trip/budget/BudgetMetricStrip';
+import { BudgetTable } from '@/components/trip/budget/BudgetTable';
+import { BudgetMobileList } from '@/components/trip/budget/BudgetMobileList';
+import { computeTotals, scaleBudgetsProportionally } from '@/components/trip/budget/budgetMath';
+import type { BudgetItem, BudgetExpense } from '@/components/trip/budget/types';
 
 const EMPTY_BUDGET: BudgetItem[] = [
   { id: 'flights', category: 'Flights', budgeted: 0, actual: 0, fixed: true, expenses: [] },
@@ -44,107 +21,13 @@ const EMPTY_BUDGET: BudgetItem[] = [
   { id: 'other', category: 'Other', budgeted: 0, actual: 0, fixed: false, expenses: [] },
 ];
 
-/* ------------------------------------------------------------------ */
-/*  Category icon / colour maps                                        */
-/* ------------------------------------------------------------------ */
-
-const CATEGORY_ICONS: Record<string, LucideIcon> = {
-  Flights: Plane,
-  Hotels: Building2,
-  'Food & Dining': UtensilsCrossed,
-  Activities: Compass,
-  Transportation: Car,
-  Shopping: ShoppingBag,
-  Other: MoreHorizontal,
-};
-
-const CATEGORY_COLORS: Record<string, { bg: string; text: string; bar: string; bgStyle?: React.CSSProperties; textStyle?: React.CSSProperties; barStyle?: React.CSSProperties }> = {
-  Flights:         { bg: 'bg-blue-100 dark:bg-blue-500/15',       text: 'text-blue-600 dark:text-blue-400',     bar: 'bg-blue-500' },
-  Hotels:          { bg: 'bg-orange-100 dark:bg-orange-500/15',   text: 'text-orange-600 dark:text-orange-400',  bar: 'bg-orange-500' },
-  'Food & Dining': { bg: '',                   text: '',                  bar: '',
-                     bgStyle: { backgroundColor: 'rgb(var(--trip-base-rgb) / 0.1)' },
-                     textStyle: { color: 'var(--trip-base)' },
-                     barStyle: { backgroundColor: 'var(--trip-base)' } },
-  Activities:      { bg: 'bg-teal-100 dark:bg-teal-500/15',      text: 'text-teal-600 dark:text-teal-400',     bar: 'bg-teal-500' },
-  Transportation:  { bg: 'bg-purple-100 dark:bg-purple-500/15',   text: 'text-purple-600 dark:text-purple-400',  bar: 'bg-purple-500' },
-  Shopping:        { bg: 'bg-green-100 dark:bg-green-500/15',     text: 'text-green-600 dark:text-green-400',    bar: 'bg-green-500' },
-  Other:           { bg: 'bg-gray-100 dark:bg-gray-500/15',      text: 'text-gray-600 dark:text-gray-400',     bar: 'bg-gray-500' },
-};
-
-const DEFAULT_COLORS: typeof CATEGORY_COLORS[string] = { bg: 'bg-gray-100 dark:bg-gray-500/15', text: 'text-gray-600 dark:text-gray-400', bar: 'bg-gray-500' };
-
-/* ------------------------------------------------------------------ */
-/*  Skeleton                                                           */
-/* ------------------------------------------------------------------ */
-
-function BudgetSkeleton() {
-  return (
-    <div>
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        {['Total Budget', 'Total Spent', 'Remaining'].map((label) => (
-          <div key={label} className="rounded-xl p-3 border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03]">
-            <p className="text-[10px] text-gray-600 dark:text-gray-400 uppercase tracking-wide">{label}</p>
-            <Skeleton className="h-6 w-16 mt-1.5" />
-          </div>
-        ))}
-      </div>
-      <div className="bg-gray-200 dark:bg-white/[0.08] rounded-full h-2.5 mb-6 overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: '65%', backgroundColor: 'var(--trip-base)' }} />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="rounded-xl p-3.5 border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03]">
-            <div className="flex items-center justify-between mb-2.5">
-              <div className="flex items-center gap-2.5">
-                <Skeleton className="w-9 h-9 rounded-[10px]" />
-                <div>
-                  <Skeleton className="h-3.5 w-20" />
-                  <Skeleton className="h-2.5 w-16 mt-1" />
-                </div>
-              </div>
-              <Skeleton className="h-4 w-14" />
-            </div>
-            <Skeleton className="h-1.5 rounded" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
-/* ------------------------------------------------------------------ */
-
-/** Dynamic background class based on budget health percentage. */
-function healthBg(pct: number) {
-  if (pct >= 100) return 'bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20';
-  if (pct >= 90)  return 'bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20';
-  if (pct >= 75)  return 'bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20';
-  return 'bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08]';
-}
-
-/** Per-category card background (green when healthy). */
-function categoryHealthBg(pct: number): { className: string; style?: React.CSSProperties } {
-  if (pct >= 100) return { className: 'bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20' };
-  if (pct >= 90)  return { className: 'bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20' };
-  if (pct >= 75)  return { className: 'bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20' };
-  return {
-    className: 'border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03]',
-    style: {},
-  };
-}
-
-/* ------------------------------------------------------------------ */
-/*  Component                                                          */
-/* ------------------------------------------------------------------ */
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function generateBudgetFromTrip(trip: any, formatAmount: (n: number, cur?: string) => string = (n) => `$${n}`): BudgetItem[] {
   if (!trip) return EMPTY_BUDGET;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ctx = trip.trip_context as any;
   const cost = ctx?.cost_of_living;
   const hotel = ctx?.hotels?.[0] || ctx?.all_hotels?.[0];
-  // Extract ISO code — handles old "EUR (€)" format and clean "EUR" format
   const rawCur: string = trip.currency ?? ctx?.quick_facts?.currency ?? 'USD';
   const tripCurrency = rawCur.match(/^[A-Z]{3}/)?.[0] ?? 'USD';
   const duration = trip.start_date && trip.end_date
@@ -152,7 +35,6 @@ function generateBudgetFromTrip(trip: any, formatAmount: (n: number, cur?: strin
     : ctx?.weather?.forecast?.length ?? 5;
   const travelers = trip.travelers ?? 1;
 
-  // Use real prices from enrichment where available
   const hotelPrice = (hotel?.price ?? hotel?.price_per_night ?? 0) * duration;
   const mealBudget = cost?.budget_meal ? parseFloat(String(cost.budget_meal).replace(/[^0-9.]/g, '')) : 0;
   const midMeal = cost?.mid_range_meal ? parseFloat(String(cost.mid_range_meal).replace(/[^0-9.]/g, '')) : 0;
@@ -177,666 +59,151 @@ function generateBudgetFromTrip(trip: any, formatAmount: (n: number, cur?: strin
   ];
 }
 
+function recomputeActuals(items: BudgetItem[]): BudgetItem[] {
+  return items.map((i) => ({
+    ...i,
+    actual: (i.expenses ?? []).reduce((sum, e) => sum + (e.amount ?? 0), 0),
+  }));
+}
+
 export default function Budget({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { isLoading, trip } = useItineraryScreen(id);
   const { format: formatHome } = useHomeCurrency();
-  const rawCur2: string = (trip as any)?.currency ?? (trip as any)?.trip_context?.quick_facts?.currency ?? 'USD';
-  const tripCurrency = rawCur2.match(/^[A-Z]{3}/)?.[0] ?? 'USD';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawCur: string = (trip as any)?.currency ?? (trip as any)?.trip_context?.quick_facts?.currency ?? 'USD';
+  const tripCurrency = rawCur.match(/^[A-Z]{3}/)?.[0] ?? 'USD';
+  const formatAmount = (n: number) => formatHome(n, tripCurrency);
 
-  /* ---- state + persistence ---- */
-  const [budgetData, setBudgetData] = useState<BudgetItem[]>(() => generateBudgetFromTrip(null));
+  const [budgetData, setBudgetData] = useState<BudgetItem[]>(EMPTY_BUDGET);
   const seeded = useRef(false);
-  const flushTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const flushTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // Load: prefer saved budget_data from trip_context, fall back to generated
   useEffect(() => {
     if (trip && !seeded.current) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const saved = (trip.trip_context as any)?.budget_data as BudgetItem[] | undefined;
-      if (saved?.length) {
-        setBudgetData(saved);
-      } else {
-        setBudgetData(generateBudgetFromTrip(trip, formatHome));
-      }
+      const next = saved?.length ? saved : generateBudgetFromTrip(trip, formatHome);
+      setBudgetData(recomputeActuals(next));
       seeded.current = true;
     }
   }, [trip, formatHome]);
 
-  // Persist: debounce-save budget to trip_context on every change
-  const persistBudget = useCallback((data: BudgetItem[]) => {
-    if (!trip || !seeded.current) return;
+  const persist = (next: BudgetItem[]) => {
     if (flushTimer.current) clearTimeout(flushTimer.current);
     flushTimer.current = setTimeout(async () => {
-      const ctx = { ...(trip.trip_context ?? {}), budget_data: data };
-      await supabase.from('trips').update({ trip_context: ctx }).eq('id', id);
+      try {
+        const { data: current } = await supabase
+          .from('trips')
+          .select('trip_context')
+          .eq('id', id)
+          .single();
+        const existingContext = (current?.trip_context as Record<string, unknown>) ?? {};
+        await supabase
+          .from('trips')
+          .update({ trip_context: { ...existingContext, budget_data: next } })
+          .eq('id', id);
+      } catch (err) {
+        console.error('Failed to flush budget to Supabase', err);
+      }
     }, 1500);
-  }, [trip, id]);
-
-  // Wrap setBudgetData to also trigger persistence
-  const updateBudget = useCallback((updater: BudgetItem[] | ((prev: BudgetItem[]) => BudgetItem[])) => {
-    setBudgetData((prev) => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      persistBudget(next);
-      return next;
-    });
-  }, [persistBudget]);
-  const [isEditingTotal, setIsEditingTotal] = useState(false);
-  const [tempTotal, setTempTotal] = useState('');
-  const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [tempBudgeted, setTempBudgeted] = useState('');
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  const [expandedExpenses, setExpandedExpenses] = useState<Set<string>>(new Set());
-  const [addingExpenseFor, setAddingExpenseFor] = useState<string | null>(null);
-  const [newExpenseDesc, setNewExpenseDesc] = useState('');
-  const [newExpenseAmount, setNewExpenseAmount] = useState('');
-  const [showAddCategory, setShowAddCategory] = useState(false);
-  const [newCategory, setNewCategory] = useState('');
-  const [newBudgeted, setNewBudgeted] = useState('');
-  const [newActual, setNewActual] = useState('');
-
-  /* ---- derived ---- */
-  const totalBudgeted = budgetData.reduce((s, i) => s + i.budgeted, 0);
-  const totalActual   = budgetData.reduce((s, i) => s + i.actual, 0);
-  const remaining     = totalBudgeted - totalActual;
-  const pctUsed       = totalBudgeted > 0 ? (totalActual / totalBudgeted) * 100 : 0;
-  const overallBg     = healthBg(pctUsed);
-
-  /* ---- handlers ---- */
-
-  const toggle = (set: Set<string>, id: string) => {
-    const next = new Set(set);
-    next.has(id) ? next.delete(id) : next.add(id);
-    return next;
   };
 
-  const toggleCategory = (cid: string) =>
-    setExpandedCategories((prev) => toggle(prev, cid));
+  useEffect(() => {
+    return () => { if (flushTimer.current) clearTimeout(flushTimer.current); };
+  }, []);
 
-  const toggleExpenses = (cid: string) =>
-    setExpandedExpenses((prev) => toggle(prev, cid));
+  const daysInTrip = trip?.start_date && trip?.end_date
+    ? Math.max(1, Math.ceil((new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000))
+    : 1;
+  const today = new Date();
+  const start = trip?.start_date ? new Date(trip.start_date) : today;
+  const daysElapsed = Math.max(0, Math.min(
+    daysInTrip,
+    Math.ceil((today.getTime() - start.getTime()) / 86400000),
+  ));
 
-  const handleSaveTotalBudget = () => {
-    const newTotal = parseFloat(tempTotal) || 0;
-    if (newTotal > 0 && totalBudgeted > 0) {
-      const ratio = newTotal / totalBudgeted;
-      updateBudget((prev) =>
-        prev.map((item) => ({
-          ...item,
-          budgeted: Math.round(item.budgeted * ratio * 100) / 100,
-        })),
-      );
-    }
-    setIsEditingTotal(false);
+  const handleChangeBudgeted = (itemId: string, next: number) => {
+    const updated = budgetData.map((i) => i.id === itemId ? { ...i, budgeted: next } : i);
+    setBudgetData(updated);
+    persist(updated);
   };
 
-  const handleStartEdit = (item: BudgetItem) => {
-    setEditingItemId(item.id);
-    setTempBudgeted(item.budgeted.toString());
-    setExpandedCategories((prev) => new Set(prev).add(item.id));
+  const handleChangeTotalBudget = (next: number) => {
+    const updated = recomputeActuals(scaleBudgetsProportionally(budgetData, next));
+    setBudgetData(updated);
+    persist(updated);
   };
 
-  const handleSaveEdit = () => {
-    if (editingItemId) {
-      updateBudget((prev) =>
-        prev.map((item) =>
-          item.id === editingItemId
-            ? { ...item, budgeted: parseFloat(tempBudgeted) || 0 }
-            : item,
-        ),
-      );
-      setEditingItemId(null);
-    }
+  const handleAddExpense = (itemId: string, description: string, amount: number, date?: string) => {
+    const expense: BudgetExpense = { id: `exp-${Date.now()}`, description, amount, date };
+    const updated = recomputeActuals(budgetData.map((i) =>
+      i.id === itemId ? { ...i, expenses: [...(i.expenses ?? []), expense] } : i
+    ));
+    setBudgetData(updated);
+    persist(updated);
   };
 
-  const handleCancelEdit = () => {
-    setEditingItemId(null);
-    setTempBudgeted('');
+  const handleDeleteExpense = (itemId: string, expenseId: string) => {
+    const updated = recomputeActuals(budgetData.map((i) =>
+      i.id === itemId ? { ...i, expenses: (i.expenses ?? []).filter((e) => e.id !== expenseId) } : i
+    ));
+    setBudgetData(updated);
+    persist(updated);
   };
 
-  const handleDeleteCategory = (cid: string) => {
-    updateBudget((prev) => prev.filter((item) => item.id !== cid));
-  };
-
-  const handleAddExpense = (categoryId: string) => {
-    if (newExpenseDesc.trim() && newExpenseAmount) {
-      const expense: BudgetExpense = {
-        id: `expense-${Date.now()}`,
-        description: newExpenseDesc,
-        amount: parseFloat(newExpenseAmount) || 0,
-      };
-      updateBudget((prev) =>
-        prev.map((item) => {
-          if (item.id === categoryId) {
-            const expenses = [...(item.expenses || []), expense];
-            const actual = expenses.reduce((s, e) => s + e.amount, 0);
-            return { ...item, expenses, actual, budgeted: Math.max(item.budgeted, actual) };
-          }
-          return item;
-        }),
-      );
-      setNewExpenseDesc('');
-      setNewExpenseAmount('');
-      setAddingExpenseFor(null);
-    }
-  };
-
-  const handleDeleteExpense = (categoryId: string, expenseId: string) => {
-    updateBudget((prev) =>
-      prev.map((item) => {
-        if (item.id === categoryId) {
-          const expenses = (item.expenses || []).filter((e) => e.id !== expenseId);
-          const actual = expenses.reduce((s, e) => s + e.amount, 0);
-          return { ...item, expenses, actual };
-        }
-        return item;
-      }),
+  if (isLoading) {
+    return (
+      <div className="px-4 sm:px-6 lg:px-10 py-8">
+        <Module title="Budget" description="Loading…">
+          <div className="h-40 animate-pulse bg-gray-100 dark:bg-white/[0.04] rounded-xl" />
+        </Module>
+      </div>
     );
-  };
+  }
 
-  const handleAddCategory = () => {
-    if (newCategory.trim()) {
-      updateBudget((prev) => [
-        ...prev,
-        {
-          id: `custom-${Date.now()}`,
-          category: newCategory,
-          budgeted: parseFloat(newBudgeted) || 0,
-          actual: parseFloat(newActual) || 0,
-          fixed: false,
-        },
-      ]);
-      setNewCategory('');
-      setNewBudgeted('');
-      setNewActual('');
-      setShowAddCategory(false);
-    }
-  };
+  const { totalBudgeted, totalActual } = computeTotals(budgetData);
 
-  /* ---- loading ---- */
-  if (isLoading) return <BudgetSkeleton />;
-
-  /* ---- render ---- */
   return (
-    <div className="space-y-4">
-      {/* ===== Summary Cards (3-column) ===== */}
-      <div className="grid grid-cols-3 gap-2">
-        {/* Total Budget — editable */}
-        <div className={`${overallBg} rounded-xl p-2 transition-colors`}>
-          <div className="flex items-center justify-between mb-0.5">
-            <span className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">Total Budget</span>
-            {!isEditingTotal ? (
-              <button
-                onClick={() => {
-                  setIsEditingTotal(true);
-                  setTempTotal(totalBudgeted.toString());
-                }}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-              >
-                <Edit2 size={12} />
-              </button>
-            ) : (
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={handleSaveTotalBudget}
-                  className="text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
-                >
-                  <Check size={12} />
-                </button>
-                <button
-                  onClick={() => setIsEditingTotal(false)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            )}
-          </div>
-          {!isEditingTotal ? (
-            <div className="text-base sm:text-xl font-bold text-gray-900 dark:text-white">
-              {formatHome(totalBudgeted, tripCurrency)}
-            </div>
-          ) : (
-            <input
-              type="number"
-              value={tempTotal}
-              onChange={(e) => setTempTotal(e.target.value)}
-              className="w-full px-2 py-1 border border-gray-300 dark:border-white/[0.12] rounded text-sm font-bold bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white"
-              autoFocus
-            />
-          )}
-        </div>
-
-        {/* Total Spent */}
-        <div className={`${overallBg} rounded-xl p-2 transition-colors`}>
-          <span className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 block mb-0.5">Total Spent</span>
-          <div className="text-base sm:text-xl font-bold text-gray-900 dark:text-white">
-            {formatHome(totalActual, tripCurrency)}
-          </div>
-        </div>
-
-        {/* Remaining */}
-        <div className={`${overallBg} rounded-xl p-2 transition-colors`}>
-          <span className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 block mb-0.5">Remaining</span>
-          <div
-            className={`text-base sm:text-xl font-bold ${
-              remaining >= 0 ? 'text-emerald-600' : 'text-red-600'
-            }`}
-          >
-            {formatHome(Math.abs(remaining), tripCurrency)}
-          </div>
-        </div>
-      </div>
-
-      {/* ===== Overall Progress Bar ===== */}
-      <div className={`${overallBg} rounded-xl p-3 transition-colors`}>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Budget Progress</span>
-          <span className="text-sm font-semibold text-gray-900 dark:text-white">{pctUsed.toFixed(1)}%</span>
-        </div>
-        <div className="w-full bg-gray-200 dark:bg-white/[0.08] rounded-full h-2.5 overflow-hidden">
-          <div
-            className={`h-full transition-all duration-300 ${
-              pctUsed > 100
-                ? 'bg-red-500'
-                : pctUsed > 80
-                  ? 'bg-amber-500'
-                  : ''
-            }`}
-            style={{
-              width: `${Math.min(pctUsed, 100)}%`,
-              ...(pctUsed <= 80 ? { backgroundColor: 'var(--trip-base)' } : {}),
-            }}
-          />
-        </div>
-      </div>
-
-      {/* ===== Category Grid (sm:2 columns) ===== */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 items-start">
-        {budgetData.map((item) => {
-          const isEditing    = editingItemId === item.id;
-          const isExpanded   = expandedCategories.has(item.id);
-          const itemDiff     = item.budgeted - item.actual;
-          const itemPct      = item.budgeted > 0 ? (item.actual / item.budgeted) * 100 : 0;
-          const colors       = CATEGORY_COLORS[item.category] || DEFAULT_COLORS;
-          const Icon         = CATEGORY_ICONS[item.category] || Wallet;
-          const healthResult = categoryHealthBg(itemPct);
-
-          // Progress bar colour — override with amber/red at thresholds
-          const progressBar =
-            itemPct > 100
-              ? 'bg-red-500'
-              : itemPct > 80
-                ? 'bg-amber-500'
-                : colors.bar;
-          const progressBarStyle = (itemPct <= 80 && colors.barStyle) ? colors.barStyle : undefined;
-
-          return (
-            <div
-              key={item.id}
-              className={`${healthResult.className} rounded-xl hover:shadow-md dark:hover:shadow-none transition-shadow ${
-                isExpanded ? 'p-4' : 'p-3'
-              }`}
-              style={healthResult.style}
-            >
-              {/* --- Collapsed header --- */}
-              <div
-                onClick={() => !isEditing && toggleCategory(item.id)}
-                className="w-full flex items-center justify-between cursor-pointer"
-              >
-                <div className="flex items-center gap-2">
-                  <div className={`p-2 ${colors.bg} ${colors.text} rounded-lg`} style={{ ...colors.bgStyle, ...colors.textStyle }}>
-                    <Icon size={18} />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-gray-900 dark:text-white text-left">{item.category}</div>
-                    {!isExpanded && (
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
-                        {formatHome(item.budgeted, tripCurrency)}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  {!isExpanded && !isEditing && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStartEdit(item);
-                      }}
-                      className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                    >
-                      <Edit2 size={14} />
-                    </button>
-                  )}
-                  {!isEditing && (
-                    <ChevronDown
-                      className={`w-5 h-5 text-gray-400 dark:text-gray-500 transition-transform ${
-                        isExpanded ? 'rotate-180' : ''
-                      }`}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* --- Expanded content (animated) --- */}
-              <AnimatePresence initial={false}>
-                {isExpanded && (
-                  <motion.div
-                    key="expanded"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25, ease: 'easeInOut' }}
-                    className="overflow-hidden"
-                  >
-                    <div className="mt-3">
-                      {!isEditing ? (
-                        <>
-                          {/* Budgeted / Actual */}
-                          <div className="grid grid-cols-2 gap-3 mb-3">
-                            <div>
-                              <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">Budgeted</div>
-                              <div className="text-lg font-bold text-gray-900 dark:text-white">
-                                {formatHome(item.budgeted, tripCurrency)}
-                              </div>
-                            </div>
-                            <div>
-                              <div className="flex items-center justify-between mb-1">
-                                <div className="text-xs text-gray-600 dark:text-gray-400">Actual</div>
-                                <div className="flex items-center gap-1">
-                                  <button
-                                    onClick={() => handleStartEdit(item)}
-                                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                                  >
-                                    <Edit2 size={14} />
-                                  </button>
-                                  {!item.fixed && (
-                                    <button
-                                      onClick={() => handleDeleteCategory(item.id)}
-                                      className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-                                    >
-                                      <Trash2 size={14} />
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="text-lg font-bold text-gray-900 dark:text-white">
-                                {formatHome(item.actual, tripCurrency)}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Category progress bar */}
-                          <div className="mb-2">
-                            <div className="w-full bg-gray-200 dark:bg-white/[0.08] rounded-full h-2 overflow-hidden">
-                              <div
-                                className={`h-full transition-all ${progressBar}`}
-                                style={{ width: `${Math.min(itemPct, 100)}%`, ...progressBarStyle }}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Under / over indicator */}
-                          <div className="flex items-center justify-between text-xs mb-3">
-                            <span className="text-gray-600 dark:text-gray-400">{itemPct.toFixed(0)}% used</span>
-                            {itemDiff > 0 ? (
-                              <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                                {formatHome(itemDiff, tripCurrency)} under
-                              </span>
-                            ) : itemDiff < 0 ? (
-                              <span className="text-red-600 dark:text-red-400 font-medium">
-                                {formatHome(Math.abs(itemDiff), tripCurrency)} over
-                              </span>
-                            ) : (
-                              <span className="text-gray-600 dark:text-gray-400">On track</span>
-                            )}
-                          </div>
-
-                          {/* Expenses section */}
-                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-white/[0.08]">
-                            {item.expenses && item.expenses.length > 0 && (
-                              <div className="mb-3">
-                                {/* Collapsible expenses header */}
-                                <button
-                                  onClick={() => toggleExpenses(item.id)}
-                                  className="w-full flex items-center justify-between mb-2 hover:bg-white/50 dark:hover:bg-white/[0.04] rounded px-2 py-1 transition-colors"
-                                >
-                                  <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-                                    {item.expenses.length}{' '}
-                                    {item.expenses.length === 1 ? 'Expense' : 'Expenses'}
-                                  </div>
-                                  <ChevronDown
-                                    className={`w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform ${
-                                      expandedExpenses.has(item.id) ? 'rotate-180' : ''
-                                    }`}
-                                  />
-                                </button>
-
-                                {/* Expenses list (animated) */}
-                                <AnimatePresence initial={false}>
-                                  {expandedExpenses.has(item.id) && (
-                                    <motion.div
-                                      key="expenses"
-                                      initial={{ height: 0, opacity: 0 }}
-                                      animate={{ height: 'auto', opacity: 1 }}
-                                      exit={{ height: 0, opacity: 0 }}
-                                      transition={{ duration: 0.2, ease: 'easeInOut' }}
-                                      className="overflow-hidden"
-                                    >
-                                      <div className="space-y-2 mb-3">
-                                        {item.expenses.map((expense) => (
-                                          <div
-                                            key={expense.id}
-                                            className="group flex items-start justify-between bg-white dark:bg-white/[0.04] px-3 py-2 rounded-lg border border-gray-200 dark:border-white/[0.08] hover:border-gray-300 dark:hover:border-white/[0.15] transition-colors"
-                                          >
-                                            <div className="flex-1 min-w-0 mr-3">
-                                              <p className="text-xs text-gray-800 dark:text-gray-300 leading-relaxed">
-                                                {expense.description}
-                                              </p>
-                                            </div>
-                                            <div className="flex items-center gap-2 flex-shrink-0">
-                                              <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                                                {formatHome(expense.amount, tripCurrency)}
-                                              </span>
-                                              <button
-                                                onClick={() =>
-                                                  handleDeleteExpense(item.id, expense.id)
-                                                }
-                                                className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 rounded transition-all"
-                                                title="Delete expense"
-                                              >
-                                                <Trash2 size={12} />
-                                              </button>
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            )}
-
-                            {/* Add expense form / button */}
-                            {addingExpenseFor === item.id ? (
-                              <div className="space-y-2.5 bg-white dark:bg-white/[0.04] p-3 rounded-lg border border-gray-200 dark:border-white/[0.08] shadow-sm">
-                                <div>
-                                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-                                    Description
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={newExpenseDesc}
-                                    onChange={(e) => setNewExpenseDesc(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/[0.12] rounded-lg text-sm bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trip-base focus:border-transparent"
-                                    placeholder="e.g., Round trip to Paris"
-                                    autoFocus
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">
-                                    Amount
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={newExpenseAmount}
-                                    onChange={(e) => setNewExpenseAmount(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 dark:border-white/[0.12] rounded-lg text-sm bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-trip-base focus:border-transparent"
-                                    placeholder="0.00"
-                                  />
-                                </div>
-                                <div className="flex gap-2 pt-1">
-                                  <button
-                                    onClick={() => handleAddExpense(item.id)}
-                                    className="flex-1 px-3 py-2 text-white rounded-lg hover:bg-trip-base-light text-sm font-medium transition-colors"
-                                    style={{ backgroundColor: 'var(--trip-base)' }}
-                                  >
-                                    Add Expense
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setAddingExpenseFor(null);
-                                      setNewExpenseDesc('');
-                                      setNewExpenseAmount('');
-                                    }}
-                                    className="flex-1 px-3 py-2 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-white/[0.10] text-sm font-medium transition-colors"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <button
-                                onClick={() => setAddingExpenseFor(item.id)}
-                                className="w-full px-3 py-2 bg-white dark:bg-white/[0.04] text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-white/[0.12] rounded-lg hover:bg-gray-50 dark:hover:bg-white/[0.08] hover:border-gray-400 dark:hover:border-white/[0.20] text-sm font-medium flex items-center justify-center gap-2 transition-colors"
-                              >
-                                <Plus size={14} />
-                                Add Expense
-                              </button>
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        /* Editing budgeted amount */
-                        <div className="space-y-2">
-                          <div>
-                            <label className="text-xs text-gray-600 dark:text-gray-400 mb-1 block">Budgeted</label>
-                            <input
-                              type="number"
-                              value={tempBudgeted}
-                              onChange={(e) => setTempBudgeted(e.target.value)}
-                              className="w-full px-3 py-1.5 border border-gray-300 dark:border-white/[0.12] rounded text-sm bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                              placeholder="0.00"
-                            />
-                          </div>
-                          <div className="flex gap-2 pt-2">
-                            <button
-                              onClick={handleSaveEdit}
-                              className="flex-1 px-3 py-2 text-white rounded-lg hover:bg-trip-base-light text-sm font-medium transition-colors"
-                              style={{ backgroundColor: 'var(--trip-base)' }}
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={handleCancelEdit}
-                              className="flex-1 px-3 py-2 bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-white/[0.10] text-sm font-medium transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          );
-        })}
-
-        {/* ===== Add Category Card ===== */}
-        {!showAddCategory ? (
+    <div className="w-full px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
+      <Module
+        title="Budget"
+        description="Edit any cell · click a category to expand expenses"
+        action={
           <button
-            onClick={() => setShowAddCategory(true)}
-            className="border-2 border-dashed border-gray-300 dark:border-white/[0.12] rounded-xl p-4 hover:border-trip-base dark:hover:border-trip-base hover:bg-trip-base/5 transition-colors flex flex-col items-center justify-center gap-2 min-h-[200px]"
-          >
-            <Plus size={24} className="text-gray-400 dark:text-gray-500" />
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Add Category</span>
-          </button>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.2 }}
-            className="rounded-xl border-2 p-4"
-            style={{
-              backgroundColor: 'rgb(var(--trip-base-rgb) / 0.05)',
-              borderColor: 'rgb(var(--trip-base-rgb) / 0.3)',
+            className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-[12px] font-semibold text-white shadow-sm hover:shadow-md transition-shadow"
+            style={{ backgroundColor: 'var(--trip-base)' }}
+            onClick={() => {
+              // Defer category picker to follow-up; for now, no-op so the affordance is still visible.
             }}
           >
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs text-gray-700 dark:text-gray-300 mb-1 block font-medium">
-                  Category Name
-                </label>
-                <input
-                  type="text"
-                  value={newCategory}
-                  onChange={(e) => setNewCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-white/[0.12] rounded text-sm bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                  placeholder="e.g., Insurance"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-700 dark:text-gray-300 mb-1 block font-medium">
-                  Budgeted Amount
-                </label>
-                <input
-                  type="number"
-                  value={newBudgeted}
-                  onChange={(e) => setNewBudgeted(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-white/[0.12] rounded text-sm bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                  placeholder="0.00"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-700 dark:text-gray-300 mb-1 block font-medium">
-                  Actual Spent
-                </label>
-                <input
-                  type="number"
-                  value={newActual}
-                  onChange={(e) => setNewActual(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-white/[0.12] rounded text-sm bg-white dark:bg-white/[0.06] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  onClick={handleAddCategory}
-                  className="flex-1 px-3 py-2 text-white rounded hover:bg-trip-base-light text-sm font-medium"
-                  style={{ backgroundColor: 'var(--trip-base)' }}
-                >
-                  Add
-                </button>
-                <button
-                  onClick={() => {
-                    setShowAddCategory(false);
-                    setNewCategory('');
-                    setNewBudgeted('');
-                    setNewActual('');
-                  }}
-                  className="flex-1 px-3 py-2 bg-white dark:bg-white/[0.06] text-gray-700 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-white/[0.10] text-sm font-medium border border-gray-300 dark:border-white/[0.12]"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </div>
+            <Plus size={13} /> Expense
+          </button>
+        }
+      >
+        <BudgetMetricStrip
+          totalBudgeted={totalBudgeted}
+          totalActual={totalActual}
+          daysInTrip={daysInTrip}
+          daysElapsed={daysElapsed}
+          formatAmount={formatAmount}
+          onChangeTotalBudget={handleChangeTotalBudget}
+        />
+        <BudgetTable
+          items={budgetData}
+          formatAmount={formatAmount}
+          onChangeBudgeted={handleChangeBudgeted}
+          onAddExpense={handleAddExpense}
+          onDeleteExpense={handleDeleteExpense}
+        />
+        <BudgetMobileList
+          items={budgetData}
+          formatAmount={formatAmount}
+          onChangeBudgeted={handleChangeBudgeted}
+          onAddExpense={handleAddExpense}
+          onDeleteExpense={handleDeleteExpense}
+        />
+      </Module>
     </div>
   );
 }
