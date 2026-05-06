@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -21,9 +21,10 @@ const CLUSTERS: CloudCluster[] = [
 export function Clouds() {
   const groupRef = useRef<THREE.Group>(null);
   const offsetsRef = useRef(CLUSTERS.map(() => Math.random() * 100));
+  const meshesRef = useRef<THREE.Group[] | null>(null);
 
   const cloudMeshes = useMemo(() => {
-    return CLUSTERS.map((cluster) => {
+    const meshes = CLUSTERS.map((cluster) => {
       const group = new THREE.Group();
 
       // Build cloud from overlapping spheres
@@ -52,6 +53,26 @@ export function Clouds() {
 
       return group;
     });
+    meshesRef.current = meshes;
+    return meshes;
+  }, []);
+
+  // Dispose cloud geometries and materials on unmount
+  useEffect(() => {
+    return () => {
+      meshesRef.current?.forEach((group) => {
+        group.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.geometry.dispose();
+            if (Array.isArray(child.material)) {
+              child.material.forEach((m) => m.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        });
+      });
+    };
   }, []);
 
   useFrame((_, delta) => {
