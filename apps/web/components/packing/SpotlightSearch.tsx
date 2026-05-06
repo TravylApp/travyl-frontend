@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
 import { Search } from 'iconoir-react'
 import type { DbPackingItem } from '@travyl/shared'
 import { PACKING_CATALOG, PACKING_CATEGORIES } from '@travyl/shared'
@@ -11,6 +11,10 @@ interface SpotlightSearchProps {
   onAddItem: (name: string, category: string) => void
 }
 
+export interface SpotlightSearchHandle {
+  focus: () => void
+}
+
 interface ResultItem {
   name: string
   category: string
@@ -18,13 +22,20 @@ interface ResultItem {
   isCustom?: boolean
 }
 
-export function SpotlightSearch({ existingItems, onAddItem }: SpotlightSearchProps) {
+export const SpotlightSearch = forwardRef<SpotlightSearchHandle, SpotlightSearchProps>(function SpotlightSearch(
+  { existingItems, onAddItem }: SpotlightSearchProps,
+  ref,
+) {
   const [query, setQuery] = useState('')
   const [isOpen, setIsOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
   const [customCategory, setCustomCategory] = useState<string>('essentials')
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  useImperativeHandle(ref, () => ({
+    focus: () => inputRef.current?.focus(),
+  }), [])
 
   const existingNames = new Set(existingItems.map((i) => i.name.toLowerCase()))
 
@@ -47,7 +58,6 @@ export function SpotlightSearch({ existingItems, onAddItem }: SpotlightSearchPro
 
   const results = filteredCatalog()
 
-  // Whether to show the "Add [query]" custom option
   const showCustom =
     query.trim().length > 0 &&
     !results.some((r) => r.name.toLowerCase() === query.trim().toLowerCase())
@@ -66,12 +76,10 @@ export function SpotlightSearch({ existingItems, onAddItem }: SpotlightSearchPro
       : []),
   ]
 
-  // Reset active index when results change
   useEffect(() => {
     setActiveIndex(0)
   }, [query])
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -111,9 +119,8 @@ export function SpotlightSearch({ existingItems, onAddItem }: SpotlightSearchPro
 
   return (
     <div ref={containerRef} className="relative">
-      {/* Input */}
-      <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--cal-border)] bg-cal-bg focus-within:border-[#003594] transition-colors duration-150">
-        <Search width={15} height={15} className="text-[var(--cal-text-muted)] shrink-0" />
+      <div className="flex items-center gap-2 h-11 rounded-xl border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.04] px-4 focus-within:border-[var(--trip-base)]/50 focus-within:ring-2 focus-within:ring-[var(--trip-base)]/20 transition">
+        <Search width={15} height={15} className="text-gray-400 shrink-0" />
         <input
           ref={inputRef}
           type="text"
@@ -124,42 +131,39 @@ export function SpotlightSearch({ existingItems, onAddItem }: SpotlightSearchPro
           }}
           onFocus={() => { if (query.trim()) setIsOpen(true) }}
           onKeyDown={handleKeyDown}
-          placeholder="Search or add item…"
-          className="flex-1 text-sm bg-transparent outline-none text-[var(--cal-text)] placeholder:text-[var(--cal-text-muted)]"
+          placeholder="Search or add an item…"
+          className="flex-1 text-[14px] bg-transparent outline-none text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
         />
       </div>
 
-      {/* Dropdown */}
       {isOpen && allItems.length > 0 && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-lg border border-[var(--cal-border)] bg-cal-bg shadow-lg overflow-hidden">
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a2230] shadow-xl overflow-hidden">
           {allItems.map((item, idx) => (
             <div key={`${item.name}-${item.isCustom ? 'custom' : 'catalog'}`}>
-              {/* Separator before custom item */}
               {item.isCustom && results.length > 0 && (
-                <div className="h-px bg-cal-border mx-3" />
+                <div className="h-px bg-gray-100 dark:bg-white/[0.06] mx-3" />
               )}
               <div
                 className={`flex items-center gap-2 px-3 py-2 cursor-pointer transition-colors duration-100 ${
                   idx === activeIndex
-                    ? 'bg-cal-surface'
-                    : 'hover:bg-cal-surface'
+                    ? 'bg-[rgb(var(--trip-base-rgb)/0.08)] dark:bg-white/[0.06]'
+                    : 'hover:bg-gray-50 dark:hover:bg-white/[0.03]'
                 } ${item.alreadyAdded ? 'opacity-50 cursor-default' : ''}`}
                 onMouseEnter={() => setActiveIndex(idx)}
                 onClick={() => handleSelect(item)}
               >
-                <span className={`flex-1 text-sm ${item.isCustom ? 'font-medium text-[#003594]' : 'text-[var(--cal-text)]'}`}>
+                <span className={`flex-1 text-sm ${item.isCustom ? 'font-medium text-[var(--trip-base)]' : 'text-gray-900 dark:text-white'}`}>
                   {item.isCustom ? `Add "${item.name}"` : item.name}
                 </span>
 
                 {item.alreadyAdded ? (
-                  <span className="text-xs text-[var(--cal-text-muted)]">already added</span>
+                  <span className="text-xs text-gray-400">already added</span>
                 ) : (
-                  <span className="text-xs text-[var(--cal-text-muted)]">
+                  <span className="text-xs text-gray-400">
                     {getCategoryLabel(item.category)}
                   </span>
                 )}
 
-                {/* Category picker for custom item */}
                 {item.isCustom && !item.alreadyAdded && (
                   <select
                     value={customCategory}
@@ -168,7 +172,7 @@ export function SpotlightSearch({ existingItems, onAddItem }: SpotlightSearchPro
                       setCustomCategory(e.target.value)
                     }}
                     onClick={(e) => e.stopPropagation()}
-                    className="text-xs border border-[var(--cal-border)] rounded px-1 py-0.5 bg-cal-bg text-[var(--cal-text)] outline-none"
+                    className="text-xs border border-gray-200 dark:border-white/10 rounded px-1 py-0.5 bg-white dark:bg-white/[0.04] text-gray-700 dark:text-gray-300 outline-none"
                   >
                     {PACKING_CATEGORIES.map((cat) => (
                       <option key={cat} value={cat}>
@@ -184,4 +188,4 @@ export function SpotlightSearch({ existingItems, onAddItem }: SpotlightSearchPro
       )}
     </div>
   )
-}
+})
