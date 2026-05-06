@@ -44,13 +44,9 @@ export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantit
 
   // Ownership pill: theme tint for current user's items, neutral gray for everything else.
   const isMine = item.owner_id === currentUserId
-  const pillClass = item.group_tag
-    ? 'bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300'
-    : isMine
-      ? 'text-[var(--trip-base)]'
-      : item.owner_id
-        ? 'bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300'
-        : 'bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300'
+  const pillClass = isMine && !item.group_tag
+    ? 'text-[var(--trip-base)]'
+    : 'bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300'
   const pillStyle = isMine ? { backgroundColor: 'rgb(var(--trip-base-rgb) / 0.10)' } : undefined
   const pillLabel = item.group_tag
     ? (item.group_tag === 'kids' ? 'Kids' : 'Adults')

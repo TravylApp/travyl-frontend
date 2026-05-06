@@ -131,7 +131,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
         <div className="lg:col-span-7">
           <Module
             title="Packing list"
-            description={`${progress.packed} of ${progress.total} items packed`}
+            description={progress.total > 0 ? `${progress.packed} of ${progress.total} items packed` : 'No items yet'}
             action={
               <button
                 onClick={() => searchRef.current?.focus()}
@@ -174,7 +174,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
         </div>
 
         {/* Right column — sticky stack */}
-        <div className="lg:col-span-5 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto space-y-6 lg:space-y-6">
+        <div className="lg:col-span-5 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto space-y-6 lg:space-y-8">
           <Module title="At a glance" titleSize="sm">
             <PackingGlance
               trip={trip}

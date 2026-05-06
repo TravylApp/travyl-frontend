@@ -9,13 +9,19 @@ interface PackingGlanceProps {
   percent: number
 }
 
-function daysUntil(dateStr?: string | null): { value: number; label: string } | null {
-  if (!dateStr) return null
-  const start = new Date(dateStr)
+function daysUntil(
+  startDateStr?: string | null,
+  endDateStr?: string | null,
+): { value: number; label: string } | null {
+  if (!startDateStr) return null
+  const start = new Date(startDateStr)
   const today = new Date()
   const diffMs = start.getTime() - today.getTime()
   const days = Math.ceil(diffMs / 86400000)
   if (days > 0) return { value: days, label: 'until trip' }
+  if (endDateStr && today.getTime() > new Date(endDateStr).getTime()) {
+    return { value: 0, label: 'trip ended' }
+  }
   return { value: 0, label: 'trip in progress' }
 }
 
@@ -55,7 +61,7 @@ function Stat({ label, value, sub }: StatProps) {
 export function PackingGlance({ trip, packed, total, percent }: PackingGlanceProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ctx = (trip?.trip_context as any) ?? {}
-  const days = daysUntil(trip?.start_date)
+  const days = daysUntil(trip?.start_date, trip?.end_date)
   const temp = avgTemp(ctx.weather?.forecast)
   const travelersMeta = ctx.travelers as TravelerMetadata | undefined
 

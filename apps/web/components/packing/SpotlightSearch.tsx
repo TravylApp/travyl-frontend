@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react'
+import { useState, useRef, useEffect, useMemo, forwardRef, useImperativeHandle } from 'react'
 import { Search } from 'iconoir-react'
 import type { DbPackingItem } from '@travyl/shared'
 import { PACKING_CATALOG, PACKING_CATEGORIES } from '@travyl/shared'
@@ -37,26 +37,27 @@ export const SpotlightSearch = forwardRef<SpotlightSearchHandle, SpotlightSearch
     focus: () => inputRef.current?.focus(),
   }), [])
 
-  const existingNames = new Set(existingItems.map((i) => i.name.toLowerCase()))
+  const existingNames = useMemo(
+    () => new Set(existingItems.map((i) => i.name.toLowerCase())),
+    [existingItems],
+  )
 
-  const filteredCatalog = useCallback((): ResultItem[] => {
+  const results = useMemo<ResultItem[]>(() => {
     if (!query.trim()) return []
-
     const q = query.toLowerCase()
-    const matched = PACKING_CATALOG.filter(
-      (item) =>
-        item.name.toLowerCase().includes(q) ||
-        item.tags.some((tag) => tag.toLowerCase().includes(q))
-    ).slice(0, 8)
-
-    return matched.map((item) => ({
-      name: item.name,
-      category: item.category,
-      alreadyAdded: existingNames.has(item.name.toLowerCase()),
-    }))
+    return PACKING_CATALOG
+      .filter(
+        (item) =>
+          item.name.toLowerCase().includes(q) ||
+          item.tags.some((tag) => tag.toLowerCase().includes(q))
+      )
+      .slice(0, 8)
+      .map((item) => ({
+        name: item.name,
+        category: item.category,
+        alreadyAdded: existingNames.has(item.name.toLowerCase()),
+      }))
   }, [query, existingNames])
-
-  const results = filteredCatalog()
 
   const showCustom =
     query.trim().length > 0 &&
@@ -152,7 +153,13 @@ export const SpotlightSearch = forwardRef<SpotlightSearchHandle, SpotlightSearch
                 onMouseEnter={() => setActiveIndex(idx)}
                 onClick={() => handleSelect(item)}
               >
-                <span className={`flex-1 text-sm ${item.isCustom ? 'font-medium text-[var(--trip-base)]' : 'text-gray-900 dark:text-white'}`}>
+                <span className={`flex-1 text-sm ${
+                  item.isCustom
+                    ? 'font-medium text-[var(--trip-base)]'
+                    : idx === activeIndex
+                      ? 'text-[var(--trip-base)]'
+                      : 'text-gray-900 dark:text-white'
+                }`}>
                   {item.isCustom ? `Add "${item.name}"` : item.name}
                 </span>
 
