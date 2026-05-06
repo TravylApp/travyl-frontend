@@ -98,8 +98,8 @@ When the user clicks **+ Hotel** / **+ Flight** in the Module header, OR clicks 
 | Address         | text input       | No       | Street address                                            |
 | Check-in        | date input       | Yes      | ISO date                                                  |
 | Check-out       | date input       | Yes      | ISO date, must be ≥ check-in                              |
-| Price per night | number input     | No       | Optional                                                  |
-| Total price     | number input     | No       | Optional. If both per-night and total are set, total wins. |
+| Price per night | number input     | No       | Optional. Stored as `price_per_night` exactly as entered.  |
+| Total price     | number input     | No       | Optional. Stored as `total_price` exactly as entered. If both are set, the view model's `priceDisplay` shows the total — both fields persist. The form does not clear one when the other is entered. |
 | Currency        | select           | No       | Common ISO codes; defaults to trip's currency             |
 | Booking ref     | text input       | No       | Confirmation number                                       |
 | Image URL       | text input       | No       | Manual paste                                              |
@@ -212,7 +212,7 @@ Per Noah's "auto-fill" directive: there's no external API for auto-filling fligh
 | `apps/web/components/trip/flights/FlightCard.tsx`                 | Single flight card (read-only display).                                     |
 | `apps/web/components/trip/flights/FlightForm.tsx`                 | Inline form for add/edit, hitting the `flights` table.                      |
 | `apps/web/components/trip/flights/flightMutations.ts`             | `addFlight`, `updateFlight`, `deleteFlight` helpers.                        |
-| `apps/web/components/trip/BookingFormPrimitives.tsx`              | Shared form primitives (`FieldLabel`, `Input`, `Select`, `DateInput`, `DateTimeInput`, `PrimaryButton`, `SecondaryButton`) lifted out of the patterns Settings already uses, so Hotels and Flights forms can compose them. |
+| `apps/web/components/trip/BookingFormPrimitives.tsx`              | Shared form primitives (`FieldLabel`, `Input`, `Select`, `DateInput`, `DateTimeInput`, `PrimaryButton`, `SecondaryButton`) for the booking forms. **Implementation note:** Settings has equivalents inline (private to its file), but Settings is uncommitted WIP. **Do NOT lift from Settings** — copy the styling tokens into this new file fresh. A future cleanup PR can converge Settings onto these. This avoids touching Noah's WIP. |
 
 ### Files deleted
 
@@ -221,13 +221,20 @@ Per Noah's "auto-fill" directive: there's no external API for auto-filling fligh
 | `apps/web/app/(dashboard)/trip/[id]/hotels/[hotelId]/page.tsx`         | Inline-expanded card is the detail view. No external links in the codebase point at this route (verify in pre-flight). |
 | `apps/web/app/(dashboard)/trip/[id]/flights/[flightId]/page.tsx`       | Same reason.                                                            |
 
+### Files modified — minor
+
+| File                                                              | Change                                                                  |
+| ----------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `packages/shared/src/viewmodels/itineraryViewModel.ts`            | Add `departureAt: string \| null` and `arrivalAt: string \| null` raw-ISO fields to `FlightViewModel`, populated by `buildFlightViewModel` from `d.departure_at` / `d.arrival_at`. Backwards-compatible — adds optional fields, no consumer breakage. |
+
 ### Files NOT touched
 
 - `packages/shared/src/hooks/useFlights.ts`, `useHotels.ts`, `useItineraryScreen.ts` — view models stay as-is.
-- `packages/shared/src/viewmodels/itineraryViewModel.ts` — `buildFlightViewModel` and `buildHotelViewModel` stay as-is.
+- `packages/shared/src/viewmodels/itineraryViewModel.ts`'s `buildHotelViewModel` and `HotelViewModel` shape — unchanged.
 - `packages/shared/src/types/index.ts` — `Flight`, `Hotel`, `FlightData`, `HotelData` stay as-is.
 - `apps/web/components/trip/Module.tsx` — already supports the `'sm'` titleSize variant from the packing work; this redesign uses the default `'lg'`.
 - The Budget page's `buildAutoExpenses` — keeps reading from the same view models; the redesign doesn't touch it.
+- `apps/web/app/(dashboard)/trip/[id]/settings/page.tsx` — Noah's WIP, hands-off.
 
 ## 4. Behavior details
 
@@ -243,13 +250,14 @@ When the user types in the Origin/Dest IATA field, auto-uppercase via a controll
 
 - Hotel `check_in` / `check_out`: `<input type="date">`. Native picker, ISO date string in state.
 - Flight `departure_at` / `arrival_at`: `<input type="datetime-local">`. Native picker. Convert to ISO via `new Date(localStr).toISOString()` before insert.
+- **Timezone caveat:** `datetime-local` interprets the input string in the user's browser timezone, then `.toISOString()` converts to UTC. This is fine for the current model — the user types "8:30 PM JFK" and we store the UTC equivalent for their local clock. A future timezone-aware iteration (showing arrival times in the destination's timezone) would need the airport's tz to convert correctly; that's out of scope here.
 
 If the user enters check_out < check_in: red ring on check_out, can't save.
 
 ### 4.4 Card sort order
 
-- **Hotels:** sorted by `checkIn` ascending. Trips with multiple hotels (e.g. multi-city) read top-to-bottom in chronological order.
-- **Flights:** sorted by `departureDisplay` ascending. Outbound first, return last.
+- **Hotels:** sorted by `checkIn` (ISO date string from the view model) ascending. Lexicographic comparison on ISO dates is equivalent to chronological — safe.
+- **Flights:** sorted by the underlying `departure_at` ISO timestamp ascending. The current `FlightViewModel` exposes only `departureDisplay` (a formatted string like `"Jun 12 · 8:30 PM"`), which would sort lexicographically — not what we want. **As part of this work, add two raw fields to `FlightViewModel`:** `departureAt: string | null` and `arrivalAt: string | null`, both passing through the underlying ISO `data.departure_at` / `data.arrival_at`. The orchestrator sorts on these. The display string stays available for rendering.
 
 The view models don't sort by default; sort happens in the orchestrator.
 
