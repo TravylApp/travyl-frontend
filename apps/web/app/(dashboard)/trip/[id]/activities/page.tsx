@@ -408,8 +408,9 @@ export default function ExplorePage({ params, searchParams }: { params: Promise<
 
   return (
     <div className="flex flex-col min-h-[60vh]" style={{ overflowAnchor: 'auto' }}>
-      {/* Sticky header */}
-      <div className="sticky top-0 z-30 bg-white/95 dark:bg-[color-mix(in_srgb,var(--background)_95%,transparent)] backdrop-blur-md border-b border-gray-100 dark:border-white/[0.08]">
+      {/* Header */}
+      <div className="bg-white/95 dark:bg-[color-mix(in_srgb,var(--background)_95%,transparent)]"
+        style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.04)' }}>
         {/* Row 1: Tabs */}
         <div className="px-4 pt-2 pb-0 overflow-x-auto scrollbar-hide">
           <div className="flex gap-0 -mb-px">

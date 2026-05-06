@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Map, Share2, X } from 'lucide-react';
 import type { Trip } from '@travyl/shared';
 import { usePathname, useRouter } from 'next/navigation';
-import TripTabs, { getTabMeta } from '@/components/trip-tabs';
+import TripRail, { getTabMeta, useRailCollapsed } from '@/components/trip-rail';
 import { useItineraryScreen, useAuthStore, canViewTrip, useDestinationImage, upscaleGoogleImage, ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
@@ -33,6 +33,7 @@ function ContentHeader({ tripId, trip, mapOpen, onToggleMap }: {
   const segment = pathname.replace(basePath, '').replace(/^\//, '') || '';
   const tab = getTabMeta(segment);
   const [shareBusy, setShareBusy] = useState(false);
+  const [railCollapsed] = useRailCollapsed();
 
   // Share the trip from any subpage. Generates the same `/trip/<id>/share/<token>`
   // URL the Settings → Sharing tab and the Trips list card both produce, so a
@@ -68,7 +69,8 @@ function ContentHeader({ tripId, trip, mapOpen, onToggleMap }: {
   const Icon = tab.icon;
 
   return (
-    <div className="shrink-0 border-b bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06] px-5 md:pl-[100px] pt-4 pb-3 sticky top-12 z-20">
+    <div className={`shrink-0 bg-white dark:bg-background px-5 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} pt-4 pb-3 sticky top-0 z-20 transition-[padding] duration-200 ease-out`}
+      style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.04)' }}>
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0" style={{ backgroundColor: `${tab.color}18`, color: tab.color }}>
           <Icon size={15} />
@@ -110,6 +112,7 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
   const loadingRef = useRef<Record<string, boolean>>({});
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
   const exploreRef = useRef<HTMLDivElement>(null);
+  const [railCollapsed] = useRailCollapsed();
 
   // Scan page for place names rendered above the explore section
   const getAboveNames = useCallback(() => {
@@ -287,7 +290,7 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
   if (categories.length === 0 && !liveFetching) return null;
 
   return (
-    <div ref={exploreRef} className={embedded ? 'py-2' : 'max-w-7xl mx-auto px-4 sm:px-6 md:pl-[100px] py-8'}>
+    <div ref={exploreRef} className={embedded ? 'py-2' : `max-w-7xl mx-auto px-4 sm:px-6 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} py-8 transition-[padding] duration-200 ease-out`}>
       <h2 className={`text-xl font-normal tracking-wide mb-6 font-serif ${embedded ? 'text-white' : 'text-gray-900 dark:text-white'}`}
         style={embedded ? { textShadow: '0 2px 10px rgba(0,0,0,0.5)' } : undefined}>
         Explore {city || 'Destination'}
@@ -431,6 +434,7 @@ function TripLayoutContent({
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
   useTripSettingsRegistration(tripId);
+  const [railCollapsed] = useRailCollapsed();
 
   // Layout mode toggle — persisted in localStorage
   const [layoutMode, setLayoutMode] = useState<'magazine' | 'compact'>('compact');
@@ -544,13 +548,13 @@ function TripLayoutContent({
         exit={{ opacity: 0 }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className="w-screen overflow-hidden relative"
-        style={{ height: 'calc(100vh - 48px)', marginTop: 48, position: 'fixed', inset: 0, top: 48, zIndex: 40 }}
+        style={{ height: '100vh', position: 'fixed', inset: 0, top: 0, zIndex: 40 }}
       >
         {/* Hover-reveal sidebar — invisible strip on the left, expands on hover */}
         <div className="fixed left-0 top-0 bottom-0 z-50 w-3 hover:w-auto group">
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-16 rounded-r-full bg-white/10 group-hover:opacity-0 transition-opacity" />
           <div className="h-full opacity-0 -translate-x-full group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 ease-out pointer-events-none group-hover:pointer-events-auto">
-            <TripTabs tripId={tripId} position="left" dark />
+            <TripRail tripId={tripId} variant="dark" />
           </div>
         </div>
         {children}
@@ -562,12 +566,12 @@ function TripLayoutContent({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className={`pb-14 md:pb-0 ${isMagazine ? 'relative' : 'bg-white dark:bg-[var(--background)]'}`}
+      className={`pb-14 md:pb-0 ${isMagazine ? 'relative' : 'bg-white dark:bg-background'}`}
     >
       {layoutToggle}
 
       {/* Sidebar */}
-      <TripTabs tripId={tripId} position="left" dark={isMagazine} />
+      <TripRail tripId={tripId} variant={isMagazine ? 'dark' : 'light'} />
 
       {/* Header — magazine hero or compact */}
       {isMagazine ? (
@@ -593,7 +597,7 @@ function TripLayoutContent({
 
           <div className="flex">
             {/* Main content */}
-            <div className={`flex-1 min-w-0 relative overflow-hidden ${isMagazine ? 'px-6 sm:px-10 md:pl-[120px] md:pr-10' : 'px-5 md:pl-[100px] pt-4 pb-5'}`}>
+            <div className={`flex-1 min-w-0 relative overflow-hidden transition-[padding] duration-200 ease-out ${isMagazine ? `px-6 sm:px-10 ${railCollapsed ? 'md:pl-[96px]' : 'md:pl-[260px]'} md:pr-10` : `px-5 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} pt-4 pb-5`}`}>
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.div
                   key={`tab-${currentSegment}`}
@@ -618,7 +622,7 @@ function TripLayoutContent({
                   transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
                   className="hidden md:block shrink-0 border-l border-gray-200 dark:border-white/[0.08] overflow-hidden"
                 >
-                  <div className="sticky top-0 h-[calc(100vh-80px)] flex flex-col bg-white dark:bg-[var(--background)]">
+                  <div className="sticky top-0 h-[calc(100vh-80px)] flex flex-col bg-white dark:bg-background">
                     <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 dark:border-white/[0.06] shrink-0">
                       <div className="flex items-center gap-2">
                         <Map size={13} className="text-[var(--trip-base)]" />
@@ -635,7 +639,7 @@ function TripLayoutContent({
                     </div>
                     <div className="flex-1 relative">
                       <Suspense fallback={
-                        <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-[var(--background)]">
+                        <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-background">
                           <span className="text-sm text-gray-400">Loading map...</span>
                         </div>
                       }>
@@ -682,11 +686,11 @@ function TripLayoutContent({
             <TripPhotoMosaic photos={destImageData!.images} destination={trip?.destination} />
           )}
           {isMagazine ? (
-            <div className="px-6 sm:px-10 md:pl-[120px] md:pr-10 mt-4 pb-8">
+            <div className={`px-6 sm:px-10 ${railCollapsed ? 'md:pl-[96px]' : 'md:pl-[260px]'} md:pr-10 mt-4 pb-8 transition-[padding] duration-200 ease-out`}>
               <TripExploreSection trip={trip} embedded />
             </div>
           ) : (
-            <div className="bg-white dark:bg-[var(--background)]">
+            <div className="bg-white dark:bg-background">
               <TripExploreSection trip={trip} />
             </div>
           )}

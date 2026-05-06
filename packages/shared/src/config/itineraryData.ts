@@ -152,9 +152,9 @@ export function pickRandomActivity(
 
 // ─── Glance Hero Images ────────────────────────────────────
 export const GLANCE_HERO_IMAGES = [
-  'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1400&q=85',
-  'https://images.unsplash.com/photo-1550340499-a6c60fc8287c?w=1400&q=85',
-  'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=1400&q=85',
-  'https://images.unsplash.com/photo-1534156355180-a1b40e8282eb?w=1400&q=85',
-  'https://images.unsplash.com/photo-1478391679764-b2d8b3cd1e94?w=1400&q=85',
+  'https://images.pexels.com/photos/29213215/pexels-photo-29213215.jpeg?auto=compress&cs=tinysrgb&w=1400',
+  'https://images.pexels.com/photos/35134885/pexels-photo-35134885.jpeg?auto=compress&cs=tinysrgb&w=1400',
+  'https://images.pexels.com/photos/30978583/pexels-photo-30978583.jpeg?auto=compress&cs=tinysrgb&w=1400',
+  'https://images.pexels.com/photos/37297743/pexels-photo-37297743.jpeg?auto=compress&cs=tinysrgb&w=1400',
+  'https://images.pexels.com/photos/427747/pexels-photo-427747.jpeg?auto=compress&cs=tinysrgb&w=1400',
 ];

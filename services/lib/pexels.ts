@@ -2,7 +2,7 @@
 import { Resource } from 'sst'
 
 interface PexelsPhoto {
-  src: { large: string }
+  src: { large: string; large2x: string }
 }
 
 interface PexelsSearchResponse {
@@ -42,7 +42,7 @@ export async function fetchPexelsImages(
     }
     const data = await res.json() as PexelsSearchResponse
     const images = data.photos
-      .map((p) => p.src?.large)
+      .map((p) => p.src?.large2x)
       .filter((u): u is string => !!u)
       .map((u) => ({ url: u }))
     if (images.length === 0) return null

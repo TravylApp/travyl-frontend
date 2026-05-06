@@ -1,9 +1,9 @@
 // Activity detail data for Rome itinerary
 // Images are Unsplash URLs (no figma:asset imports needed in Next.js)
 
-const phoneBookingApp = 'https://images.unsplash.com/photo-1730818029039-662126e61821?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400';
-const phoneMapApp = 'https://images.unsplash.com/photo-1507617819282-1c1d659895e3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400';
-const phoneTicketApp = 'https://images.unsplash.com/photo-1565268878573-5f968e45c9fe?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400';
+const phoneBookingApp = 'https://images.pexels.com/photos/67112/pexels-photo-67112.jpeg?auto=compress&cs=tinysrgb&w=400';
+const phoneMapApp = 'https://images.pexels.com/photos/373076/pexels-photo-373076.jpeg?auto=compress&cs=tinysrgb&w=400';
+const phoneTicketApp = 'https://images.pexels.com/photos/461064/pexels-photo-461064.jpeg?auto=compress&cs=tinysrgb&w=400';
 
 export interface ActivityDetailData {
   title: string;
@@ -30,7 +30,7 @@ export interface ActivityDetailData {
 export const ACTIVITY_DETAILS: Record<string, ActivityDetailData> = {
   colosseum: {
     title: 'Colosseum',
-    image: 'https://images.unsplash.com/photo-1707414580289-f8919dbdafcc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
+    image: 'https://images.pexels.com/photos/38841507/pexels-photo-38841507.jpeg?auto=compress&cs=tinysrgb&w=1080',
     type: 'Sightseeing',
     time: '8:30 AM',
     duration: '2 hours',
@@ -55,7 +55,7 @@ export const ACTIVITY_DETAILS: Record<string, ActivityDetailData> = {
   },
   foodTour: {
     title: 'Eating Europe Food Tours',
-    image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
+    image: 'https://images.pexels.com/photos/1653877/pexels-photo-1653877.jpeg?auto=compress&cs=tinysrgb&w=1080',
     type: 'Food & Wine',
     time: '2:00 PM',
     duration: '3.5 hours',
@@ -74,7 +74,7 @@ export const ACTIVITY_DETAILS: Record<string, ActivityDetailData> = {
   },
   capitoline: {
     title: 'Capitoline Museums',
-    image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
+    image: 'https://images.pexels.com/photos/38841507/pexels-photo-38841507.jpeg?auto=compress&cs=tinysrgb&w=1080',
     type: 'Museum',
     time: '9:00 AM',
     duration: '2.5 hours',
@@ -87,7 +87,7 @@ export const ACTIVITY_DETAILS: Record<string, ActivityDetailData> = {
   },
   romanForum: {
     title: 'Roman Forum',
-    image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
+    image: 'https://images.pexels.com/photos/38841507/pexels-photo-38841507.jpeg?auto=compress&cs=tinysrgb&w=1080',
     type: 'Historic Site',
     time: '2:00 PM',
     duration: '2 hours',
@@ -100,7 +100,7 @@ export const ACTIVITY_DETAILS: Record<string, ActivityDetailData> = {
   },
   vatican: {
     title: 'Vatican Museums & Sistine Chapel',
-    image: 'https://images.unsplash.com/photo-1531572753322-ad063cecc140?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
+    image: 'https://images.pexels.com/photos/236111/pexels-photo-236111.jpeg?auto=compress&cs=tinysrgb&w=1080',
     type: 'Museum',
     time: '8:00 AM',
     duration: '3.5 hours',
@@ -125,7 +125,7 @@ export const ACTIVITY_DETAILS: Record<string, ActivityDetailData> = {
   },
   trastevere: {
     title: 'Trastevere Food & Wine Walk',
-    image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
+    image: 'https://images.pexels.com/photos/1653877/pexels-photo-1653877.jpeg?auto=compress&cs=tinysrgb&w=1080',
     type: 'Food Tour',
     time: '6:00 PM',
     duration: '3 hours',
@@ -142,7 +142,7 @@ export const ACTIVITY_DETAILS: Record<string, ActivityDetailData> = {
   },
   borghese: {
     title: 'Galleria Borghese',
-    image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
+    image: 'https://images.pexels.com/photos/38841507/pexels-photo-38841507.jpeg?auto=compress&cs=tinysrgb&w=1080',
     type: 'Museum',
     time: '9:00 AM',
     duration: '2 hours',
@@ -155,7 +155,7 @@ export const ACTIVITY_DETAILS: Record<string, ActivityDetailData> = {
   },
   colosseumEvening: {
     title: 'Colosseum Night Tour',
-    image: 'https://images.unsplash.com/photo-1762352522316-1c82454bdbef?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
+    image: 'https://images.pexels.com/photos/38841507/pexels-photo-38841507.jpeg?auto=compress&cs=tinysrgb&w=1080',
     type: 'Sightseeing',
     time: '6:00 PM',
     duration: '2 hours',
@@ -168,7 +168,7 @@ export const ACTIVITY_DETAILS: Record<string, ActivityDetailData> = {
   },
   appianWay: {
     title: 'Appian Way & Catacombs',
-    image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
+    image: 'https://images.pexels.com/photos/38841507/pexels-photo-38841507.jpeg?auto=compress&cs=tinysrgb&w=1080',
     type: 'Historic Tour',
     time: '9:00 AM',
     duration: '3 hours',
@@ -186,7 +186,7 @@ export const ACTIVITY_DETAILS: Record<string, ActivityDetailData> = {
   },
   pantheon: {
     title: 'Pantheon & Piazza Navona',
-    image: 'https://images.unsplash.com/photo-1531572753322-ad063cecc140?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080',
+    image: 'https://images.pexels.com/photos/236111/pexels-photo-236111.jpeg?auto=compress&cs=tinysrgb&w=1080',
     type: 'Sightseeing',
     time: '2:00 PM',
     duration: '2 hours',

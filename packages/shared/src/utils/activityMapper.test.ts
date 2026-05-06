@@ -44,12 +44,20 @@ describe('hoursBetween', () => {
 describe('daysBetween', () => {
   it('computes day offset between two ISO date strings', () => { expect(daysBetween('2026-03-10', '2026-03-13')).toBe(3) })
   it('returns 0 for same date', () => { expect(daysBetween('2026-03-10', '2026-03-10')).toBe(0) })
+  it('returns 0 for empty or invalid date strings', () => {
+    expect(daysBetween('', '2026-03-10')).toBe(0)
+    expect(daysBetween('2026-03-10', 'invalid')).toBe(0)
+  })
 })
 
 describe('addDays', () => {
   it('adds days to an ISO date string', () => { expect(addDays('2026-03-10', 3)).toBe('2026-03-13') })
   it('handles month boundaries', () => { expect(addDays('2026-03-30', 3)).toBe('2026-04-02') })
   it('adds 0 days returns same date', () => { expect(addDays('2026-03-10', 0)).toBe('2026-03-10') })
+  it('returns 1970-01-01 for empty or invalid date strings', () => {
+    expect(addDays('', 3)).toBe('1970-01-01')
+    expect(addDays('invalid', 3)).toBe('invalid')
+  })
 })
 
 describe('mapToDbType', () => {

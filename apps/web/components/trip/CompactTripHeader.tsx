@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Pencil, X, Check, Calendar, Users, ChevronDown } from 'lucide-react';
 import { formatDateRange, updateTripDetails, useWeather } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
+import { useRailCollapsed } from '@/components/trip-rail';
 
 export function CompactTripHeader({
   tripId,
@@ -24,6 +25,7 @@ export function CompactTripHeader({
   const [editTravelers, setEditTravelers] = useState(1);
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [railCollapsed] = useRailCollapsed();
 
   // Best available image — Unsplash override first, then hero_images, then hero_image_url
   const heroImages = trip?.trip_context?.hero_images as string[] | undefined;
@@ -122,7 +124,7 @@ export function CompactTripHeader({
         }} />
 
         {/* Content — all on the hero image */}
-        <div className="relative z-10 flex flex-col justify-end max-w-7xl mx-auto px-6 sm:px-10 md:pl-[100px] pb-5" style={{ minHeight: 300 }}>
+        <div className={`relative z-10 flex flex-col justify-end max-w-7xl mx-auto px-6 sm:px-10 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} pb-5 transition-[padding] duration-200 ease-out`} style={{ minHeight: 300 }}>
           {/* Country tag */}
           <p className="flex items-center gap-2 text-[10px] tracking-[0.3em] uppercase font-semibold mb-1.5 text-white/70">
             {/* eslint-disable-next-line @next/next/no-img-element */}

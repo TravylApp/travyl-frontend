@@ -74,7 +74,7 @@ export function ItineraryPinCard({ item, index, accentColor, isFavorited, onFavo
       className="break-inside-avoid mb-2"
     >
       <div
-        className={`group relative bg-white dark:bg-[var(--muted)] cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 ${fc.container}`}
+        className={`group relative bg-white dark:bg-muted cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-0.5 ${fc.container}`}
         style={{
           border: item.isBooked ? `2px solid ${accentColor}` : undefined,
           borderWidth: item.isBooked ? undefined : 1,

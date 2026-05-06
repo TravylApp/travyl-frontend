@@ -1,15 +1,12 @@
 'use client'
 
-import { useState } from 'react'
-import { AnimatePresence, motion } from 'motion/react'
-import { NavArrowDown, NavArrowRight } from 'iconoir-react'
 import type { PackingAuditEntry } from '@travyl/shared'
 import { stringToColor } from './utils'
 
 interface PackingActivityFeedProps {
   entries: PackingAuditEntry[]
-  defaultCollapsed?: boolean
   currentUserId?: string
+  maxVisible?: number
 }
 
 function formatRelativeTime(isoString: string): string {
@@ -21,14 +18,14 @@ function formatRelativeTime(isoString: string): string {
   if (seconds < 60) return 'just now'
 
   const minutes = Math.floor(seconds / 60)
-  if (minutes < 60) return `${minutes} min ago`
+  if (minutes < 60) return `${minutes}m ago`
 
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} hr ago`
+  if (hours < 24) return `${hours}h ago`
 
   const days = Math.floor(hours / 24)
   if (days === 1) return 'yesterday'
-  if (days < 7) return `${days} days ago`
+  if (days < 7) return `${days}d ago`
 
   return new Date(isoString).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
@@ -46,121 +43,48 @@ function actionLabel(action: PackingAuditEntry['action']): string {
   }
 }
 
-export function PackingActivityFeed({ entries, defaultCollapsed = false, currentUserId }: PackingActivityFeedProps) {
-  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed)
-  const [filterMine, setFilterMine] = useState(false)
-
-  const displayEntries = filterMine && currentUserId
-    ? entries.filter((e) => e.user_id === currentUserId)
-    : entries
-
-  const content = (
-    <div className="flex flex-col gap-2">
-      {displayEntries.length === 0 ? (
-        <p className="text-xs text-[var(--cal-text-muted)] py-1">No activity yet.</p>
-      ) : (
-        displayEntries.map((entry) => {
-          const displayName = entry.user_display_name ?? 'Someone'
-          const avatarColor = stringToColor(displayName)
-
-          return (
-            <div key={entry.id} className="flex items-start gap-2">
-              {/* Avatar */}
-              <span
-                className="shrink-0 mt-0.5 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white"
-                style={{ backgroundColor: avatarColor }}
-                title={displayName}
-              >
-                {displayName[0].toUpperCase()}
-              </span>
-
-              {/* Text */}
-              <div className="flex-1 min-w-0">
-                <p className="text-xs text-[var(--cal-text)] leading-snug">
-                  <span className="font-medium">{displayName}</span>{' '}
-                  <span className="text-[var(--cal-text-muted)]">{actionLabel(entry.action)}</span>{' '}
-                  <span className="font-medium">{entry.item_name}</span>
-                  {entry.action === 'transferred' && entry.target_display_name && (
-                    <> → <span className="font-medium">{entry.target_display_name}</span></>
-                  )}
-                </p>
-                <p className="text-[10px] text-[var(--cal-text-muted)] mt-0.5">
-                  {formatRelativeTime(entry.created_at)}
-                </p>
-              </div>
-            </div>
-          )
-        })
-      )}
-    </div>
-  )
-
-  if (!defaultCollapsed) {
+export function PackingActivityFeed({ entries, currentUserId, maxVisible = 6 }: PackingActivityFeedProps) {
+  if (entries.length === 0) {
     return (
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-            Activity
-          </h3>
-          <div className="flex gap-1">
-            <button onClick={() => setFilterMine(false)}
-              className={`text-[10px] px-2 py-0.5 rounded-full ${!filterMine ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-500 dark:text-gray-400'}`}>
-              All
-            </button>
-            <button onClick={() => setFilterMine(true)}
-              className={`text-[10px] px-2 py-0.5 rounded-full ${filterMine ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-500 dark:text-gray-400'}`}>
-              Mine
-            </button>
-          </div>
-        </div>
-        {content}
-      </div>
+      <p className="text-[12px] text-gray-400 py-2">
+        No activity yet — start packing to see updates here.
+      </p>
     )
   }
 
-  return (
-    <div>
-      {/* Collapsible toggle */}
-      <div className="flex items-center justify-between mb-2">
-        <button
-          onClick={() => setIsCollapsed((v) => !v)}
-          className="flex items-center gap-1.5 text-left"
-        >
-          {isCollapsed ? (
-            <NavArrowRight width={13} height={13} className="text-[var(--cal-text-muted)] shrink-0" />
-          ) : (
-            <NavArrowDown width={13} height={13} className="text-[var(--cal-text-muted)] shrink-0" />
-          )}
-          <span className="text-xs font-semibold uppercase tracking-wide text-[var(--cal-text-muted)]">
-            Activity Feed
-          </span>
-        </button>
-        <div className="flex gap-1">
-          <button onClick={() => setFilterMine(false)}
-            className={`text-[10px] px-2 py-0.5 rounded-full ${!filterMine ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-500 dark:text-gray-400'}`}>
-            All
-          </button>
-          <button onClick={() => setFilterMine(true)}
-            className={`text-[10px] px-2 py-0.5 rounded-full ${filterMine ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-500 dark:text-gray-400'}`}>
-            Mine
-          </button>
-        </div>
-      </div>
+  const visible = entries.slice(0, maxVisible)
 
-      <AnimatePresence initial={false}>
-        {!isCollapsed && (
-          <motion.div
-            key="feed"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: 'easeInOut' }}
-            className="overflow-hidden"
+  return (
+    <div className="flex flex-col">
+      {visible.map((entry, idx) => {
+        const displayName = entry.user_display_name ?? 'User'
+        const avatarColor = stringToColor(displayName)
+        const isMe = entry.user_id === currentUserId
+        return (
+          <div
+            key={`${entry.created_at}-${idx}`}
+            className="flex items-center gap-2.5 py-2 text-[12px] text-gray-600 dark:text-gray-300"
           >
-            {content}
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <span
+              className="shrink-0 w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-semibold text-white"
+              style={{ backgroundColor: avatarColor }}
+              title={displayName}
+            >
+              {displayName[0].toUpperCase()}
+            </span>
+            <span className="flex-1 min-w-0 truncate">
+              <span className="font-semibold text-[var(--trip-base)]">
+                {isMe ? 'You' : displayName}
+              </span>{' '}
+              {actionLabel(entry.action)}{' '}
+              <span className="text-gray-900 dark:text-gray-100">{entry.item_name}</span>
+            </span>
+            <span className="text-[10px] text-gray-300 shrink-0 tabular-nums">
+              {formatRelativeTime(entry.created_at)}
+            </span>
+          </div>
+        )
+      })}
     </div>
   )
 }

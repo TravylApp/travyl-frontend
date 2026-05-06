@@ -11,15 +11,18 @@
     "web": "npm -w @travyl/web run dev",
     "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "vitest run"
+    "test": "vitest run",
+    "postinstall": "patch-package"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/aws-lambda": "^8.10.161",
     "aws-cdk-lib": "^2.243.0",
     "constructs": "^10.5.1",
+    "patch-package": "^8.0.1",
     "sst": "^4.3.7",
     "tsx": "^4.21.0"
   },
@@ -30,8 +33,12 @@
     "@aws-sdk/client-location": "^3.1011.0",
     "@aws-sdk/client-sesv2": "^3.1014.0",
     "@aws-sdk/lib-dynamodb": "^3.1011.0",
+    "@tailwindcss/node": "^4.2.4",
+    "@tailwindcss/oxide": "^4.2.4",
+    "@tailwindcss/postcss": "^4.2.4",
     "framer-motion": "^12.34.3",
     "lucide-react": "^0.575.0",
-    "motion": "^12.34.3"
+    "motion": "^12.34.3",
+    "react-dom": "19.2.3"
   }
 }

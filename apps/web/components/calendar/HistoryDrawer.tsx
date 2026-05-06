@@ -21,15 +21,21 @@ interface Props {
 
 function describeEntry(entry: AuditEntry): string {
   const name = entry.activityName
+  const isTrip = !entry.activity_id
+
   switch (entry.edit_type) {
     case 'create': return `added "${name}"`
     case 'delete': return `removed "${name}"`
     case 'move': {
       const orig = entry.original_data as any
       const next = entry.new_data as any
-      return `moved "${name}" · day ${orig?.day} → ${next?.day}`
+      const dayChanged = orig?.day !== undefined && next?.day !== undefined && orig.day !== next.day
+      if (dayChanged) {
+        return `moved "${name}" · day ${orig.day} → ${next.day}`
+      }
+      return `rescheduled "${name}"`
     }
-    case 'edit': return `edited "${name}"`
+    case 'edit': return isTrip ? `updated trip details` : `edited "${name}"`
     case 'revert': return `reverted a change to "${name}"`
     default: return `changed "${name}"`
   }
@@ -48,17 +54,18 @@ export function HistoryDrawer({
 
   useEffect(() => {
     if (isOpen) {
+      queryClient.invalidateQueries({ queryKey: ['activity-history', tripId] })
       const raf = requestAnimationFrame(() => setIsVisible(true))
       return () => cancelAnimationFrame(raf)
     } else {
       setIsVisible(false)
     }
-  }, [isOpen])
+  }, [isOpen, queryClient, tripId])
 
   if (!isOpen) return null
 
   async function handleRevert(entry: AuditEntry) {
-    if (entry.edit_type === 'revert') return
+    if (entry.edit_type === 'revert' || !entry.activity_id) return
     const activityId = entry.activity_id
 
     switch (entry.edit_type) {

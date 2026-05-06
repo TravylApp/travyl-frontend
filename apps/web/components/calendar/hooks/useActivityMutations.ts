@@ -43,6 +43,10 @@ export function useActivityMutations(
 
   const addActivity = useCallback(
     async (activity: CalendarActivity): Promise<void> => {
+      if (!tripStartDate || isNaN(new Date(tripStartDate + 'T00:00:00Z').getTime())) {
+        console.error('[useActivityMutations] Cannot add activity: tripStartDate is missing or invalid')
+        return
+      }
       // Immediate Supabase insert
       const row = toActivityRow(activity, tripId, userId, tripStartDate)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

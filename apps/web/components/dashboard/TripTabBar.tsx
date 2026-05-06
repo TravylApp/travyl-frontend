@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useTripTheme } from '@/components/trip/TripThemeContext'
-import { getTabMeta } from '@/components/trip-tabs'
+import { getTabMeta } from '@/components/trip-rail'
 
 interface TripTabBarProps {
   tripId: string

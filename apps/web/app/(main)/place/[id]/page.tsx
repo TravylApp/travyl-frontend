@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
-import type { PlaceItem } from '@travyl/shared'
+import type { PlaceItem, BackendPlace } from '@travyl/shared'
+import { mapBackendToPlaceItem } from '@travyl/shared'
 import { PlaceDetailClient } from './PlaceDetailClient'
 
 interface Props {
@@ -7,13 +8,15 @@ interface Props {
 }
 
 async function fetchPlace(id: string): Promise<PlaceItem | null> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const apiUrl = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
+  if (!apiUrl) return null
   try {
-    const res = await fetch(`${baseUrl}/api/places/${encodeURIComponent(id)}`, {
+    const res = await fetch(`${apiUrl}/api/places/${encodeURIComponent(id)}`, {
       next: { revalidate: 3600 },
     })
     if (!res.ok) return null
-    return res.json() as Promise<PlaceItem>
+    const p: BackendPlace = await res.json()
+    return mapBackendToPlaceItem(p, 0)
   } catch {
     return null
   }

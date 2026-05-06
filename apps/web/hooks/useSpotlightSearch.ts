@@ -85,14 +85,17 @@ interface DeepSearchResponse {
 
 // --- Fetch functions ---
 
+const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
+
 async function fetchSearchQuick(
   query: string,
   token: string,
   tripId: string | null,
 ): Promise<QuickSearchResponse> {
+  if (!API_URL) return { intent: { intent: 'unknown', rawQuery: query }, results: {} }
   const params = new URLSearchParams({ q: query })
   if (tripId) params.set('tripId', tripId)
-  const res = await fetch(`/api/search/quick?${params}`, {
+  const res = await fetch(`${API_URL}/search/quick?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) return { intent: { intent: 'unknown', rawQuery: query }, results: {} }
@@ -104,13 +107,14 @@ async function fetchSearchDeep(
   intent: { intent: string; location?: string; entityType?: string; rawQuery: string },
   token: string,
 ): Promise<DeepSearchResponse> {
+  if (!API_URL) return { results: {} }
   const params = new URLSearchParams({
     q: query,
     intent: intent.intent,
   })
   if (intent.location) params.set('location', intent.location)
   if (intent.entityType) params.set('entityType', intent.entityType)
-  const res = await fetch(`/api/search/deep?${params}`, {
+  const res = await fetch(`${API_URL}/search/deep?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   if (!res.ok) return { results: {} }
@@ -126,7 +130,7 @@ function buildHref(type: string, entityId: string, tripId: string | null, entity
   if (type === 'activity') return `/activity/${encodeURIComponent(entityId)}`
   if (!tripId) return '/'
   switch (type) {
-    case 'flight': return `/trip/${tripId}/flights/${entityId}`
+    case 'flight': return `/trip/${tripId}/flights?expand=${entityId}`
     default: return '/'
   }
 }

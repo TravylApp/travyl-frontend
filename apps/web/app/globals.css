@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@variant dark (&:where(.dark *));
 
 /* Shimmer skeleton for loading states */
 @keyframes shimmer {
@@ -36,7 +35,7 @@
   --magazine-border: rgba(184,149,62,0.15);
   --magazine-success: #34d399;
   --sand-wash: #d4c4a8;
-  --sand-base: #e8d5c0;
+  --sand-base: #f2e6d8;
   --ocean-primary: var(--primary);
 }
 
@@ -130,6 +129,9 @@
   --color-magazine-accent: var(--magazine-accent);
   --color-magazine-border: var(--magazine-border);
   --color-magazine-success: var(--magazine-success);
+  --color-sand-wash: var(--sand-wash);
+  --color-sand-base: var(--sand-base);
+  --color-ocean-primary: var(--ocean-primary);
   --font-sans: 'Satoshi', system-ui, sans-serif;
   --font-serif: var(--font-lustria), Georgia, "Times New Roman", serif;
   --font-mono: var(--font-geist-mono);
@@ -206,6 +208,16 @@ body::-webkit-scrollbar {
 }
 .scrollbar-thin:hover::-webkit-scrollbar-thumb {
   background: var(--cal-text-tertiary, #9ca3af);
+}
+
+/* Reduced motion — respect user's OS setting */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @keyframes float {
