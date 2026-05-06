@@ -177,7 +177,7 @@ function RailDesktop({
       <nav className="flex-1 overflow-y-auto px-2.5 py-2">
         {TAB_GROUPS.map((group, idx) => (
           <div key={group.id}>
-            {idx > 0 && <div className={`h-px my-1.5 mx-3 ${dark ? 'bg-white/[0.06]' : 'bg-[#f0eee9]'}`} />}
+            {idx > 0 && <div role="presentation" className={`h-px my-1.5 mx-3 ${dark ? 'bg-white/[0.06]' : 'bg-[#f0eee9]'}`} />}
             {group.segments.map((seg) => {
               const tab = getTabMeta(seg);
               if (!tab) return null;
@@ -277,10 +277,19 @@ function RailMobile({
               key="more-sheet"
               initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+              drag="y"
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={{ top: 0, bottom: 0.6 }}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 80 || info.velocity.y > 500) setMoreOpen(false);
+              }}
               onClick={(e) => e.stopPropagation()}
               className="absolute bottom-0 left-0 right-0 max-h-[60vh] bg-white dark:bg-[var(--background)] rounded-t-2xl shadow-2xl"
             >
-              <div className="flex items-center justify-between px-4 pt-3 pb-2">
+              <div role="presentation" className="flex justify-center pt-2 pb-1">
+                <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-white/20" />
+              </div>
+              <div className="flex items-center justify-between px-4 pt-1 pb-2">
                 <span className="text-[14px] font-semibold text-gray-900 dark:text-white">More</span>
                 <button onClick={() => setMoreOpen(false)} aria-label="Close" className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 flex items-center justify-center">
                   <X size={16} className="text-gray-500" />
@@ -304,7 +313,7 @@ function RailMobile({
                     </Link>
                   );
                 })}
-                <div className="h-px bg-gray-100 dark:bg-white/10 my-1.5 mx-3" />
+                <div role="presentation" className="h-px bg-gray-100 dark:bg-white/10 my-1.5 mx-3" />
                 <Link
                   href={`${basePath}/settings`}
                   onClick={() => setMoreOpen(false)}
