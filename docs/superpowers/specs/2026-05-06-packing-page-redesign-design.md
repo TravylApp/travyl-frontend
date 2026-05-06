@@ -174,7 +174,7 @@ When `userId` is not set, the `My items` and `Shared` filters are hidden — onl
 ### 4.2 SpotlightSearch contract
 
 - Trigger: `apps/web/components/packing/SpotlightSearch.tsx` accepts `existingItems` and `onAddItem(name, category)`.
-- The new "+ Item" button in the Module header calls a ref method on `SpotlightSearch` to focus the trigger input. Add a `forwardRef` wrapper if needed.
+- Wrap the component in `React.forwardRef` and expose an imperative handle via `useImperativeHandle`: `{ focus: () => void }`. The new "+ Item" button in the Module header calls `searchRef.current?.focus()` to focus the trigger input.
 - All other behavior preserved.
 
 ### 4.3 At-a-glance computations
@@ -233,12 +233,7 @@ The `lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto` lets the right column scrol
 | Ownership pill — Adults / Kids         | `bg-gray-100 text-gray-700 dark:bg-white/[0.06] dark:text-gray-400` (group label is enough; no special color) |
 | Suggestion AI icon                     | `bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-400` |
 
-**Implementation note re: side-Module title size.** The page-level Module title is hard-coded at 26px in `Module.tsx`. The right-column Modules want 17px to read as subordinate. Two options for the planner:
-
-1. Add an optional `titleSize?: 'lg' | 'sm'` prop to `Module` (default `'lg'` = 26px; `'sm'` = 17px). Smallest change, cleanest API.
-2. Render the right-column Modules with `<Module>` and override the heading via custom `title` content (pass a `<h2>` JSX element) — requires `Module` to accept `title: React.ReactNode`.
-
-Option 1 is preferred. Add the prop; default keeps Settings/Budget unchanged.
+**Side-Module title size.** The page-level Module title is hard-coded at 26px in `Module.tsx`. Right-column Modules want 17px to read as subordinate. Add an optional `titleSize?: 'lg' | 'sm'` prop to `Module` — default `'lg'` (= 26px, keeps Settings/Budget unchanged); `'sm'` = 17px and is used for the three right-column Modules in this redesign.
 
 ## 6. Non-goals
 
