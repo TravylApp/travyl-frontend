@@ -260,10 +260,8 @@ export default function Home() {
   } = useHomeScreen();
   const { data: heroConfig } = useHeroConfig();
 
-  const sendButtonRef = useRef<HTMLButtonElement>(null);
   const heroSectionRef = useRef<HTMLElement>(null);
   const [showTakeoff, setShowTakeoff] = useState(false);
-  const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
   const [heroSlide, setHeroSlide] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -289,7 +287,6 @@ export default function Home() {
     if (isClarifying && skipQuestionsRef.current) {
       if (skipRetryCountRef.current < 1) {
         skipRetryCountRef.current += 1;
-        setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
         setShowTakeoff(true);
         planner.submitAnswers({});
       } else {
@@ -405,7 +402,6 @@ export default function Home() {
         if (currentQIdx < questions.length - 1) {
           setCurrentQIdx((i) => i + 1);
         } else {
-          setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
           setShowTakeoff(true);
           planner.submitAnswers(flattenAnswers(newAnswers));
         }
@@ -419,7 +415,6 @@ export default function Home() {
       setCurrentQIdx((i) => i + 1);
     } else {
       // All questions done — submit
-      setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
       setShowTakeoff(true);
       planner.submitAnswers(flattenAnswers(selectedAnswers));
     }
@@ -430,7 +425,6 @@ export default function Home() {
     if (currentQIdx < questions.length - 1) {
       setCurrentQIdx((i) => i + 1);
     } else {
-      setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
       setShowTakeoff(true);
       planner.submitAnswers(flattenAnswers(selectedAnswers));
     }
@@ -511,7 +505,6 @@ export default function Home() {
   // Show takeoff when planning starts
   useEffect(() => {
     if ((planner.state.phase === 'extracting' || planner.state.phase === 'planning') && !showTakeoff) {
-      setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
       setShowTakeoff(true);
       setLoadingError(null);
       setTakeoffCompleted(false);
@@ -714,7 +707,6 @@ export default function Home() {
                     inputRef={inputRef}
                   />
                   <button
-                    ref={sendButtonRef}
                     onClick={onSearch}
                     disabled={isExtracting || isPlanning}
                     aria-label="Generate trip"
@@ -771,7 +763,6 @@ export default function Home() {
                   {/* Plan it now — escape hatch */}
                   <button
                     onClick={() => {
-                      setButtonRect(sendButtonRef.current?.getBoundingClientRect() ?? null);
                       setShowTakeoff(true);
                       planner.submitAnswers(flattenAnswers(selectedAnswers));
                     }}
@@ -830,7 +821,6 @@ export default function Home() {
       {/* ─── Takeoff Animation Overlay ─────────────────────────── */}
       <TakeoffTransition
         visible={showTakeoff}
-        buttonRect={buttonRect}
         statusMessage={plannerStatusMessage}
         completed={takeoffCompleted}
         error={loadingError}
