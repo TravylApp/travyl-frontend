@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
 import { useRouter } from "next/navigation";
 import { motion, useScroll, useTransform } from "motion/react";
 import { Search, Sparkles, MapPin } from "lucide-react";
@@ -9,15 +9,10 @@ import type { FollowUpQuestion } from "@travyl/shared";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { savePlanToSupabase } from "@travyl/shared/src/services/api";
 import { PaperPlane } from "@/components/icons/PaperPlane";
-import { AnimatedCounter } from "@/components/AnimatedCounter";
 import { TypeWriter } from "@/components/TypeWriter";
 import { useCyclingPlaceholder, useCyclingPlaceholderRef } from "@/hooks/useCyclingPlaceholder";
 import dynamic from "next/dynamic";
 
-const HowItWorks = dynamic(
-  () => import("@/components/home/HowItWorks").then((m) => ({ default: m.HowItWorks })),
-  { ssr: false }
-);
 const GetInspired = dynamic(
   () => import("@/components/home/GetInspired").then((m) => ({ default: m.GetInspired })),
   { ssr: false }
@@ -34,11 +29,34 @@ const ProductDemo = dynamic(
   () => import("@/components/home/ProductDemo").then((m) => ({ default: m.ProductDemo })),
   { ssr: false }
 );
-const ParallaxQuoteDivider = dynamic(
-  () => import("@/components/home/ParallaxQuoteDivider").then((m) => ({ default: m.ParallaxQuoteDivider })),
+const UseCases = dynamic(
+  () => import("@/components/home/UseCases").then((m) => ({ default: m.UseCases })),
   { ssr: false }
 );
-import { memo } from "react";
+const Testimonials = dynamic(
+  () => import("@/components/home/Testimonials").then((m) => ({ default: m.Testimonials })),
+  { ssr: false }
+);
+const ComparisonSection = dynamic(
+  () => import("@/components/home/ComparisonSection").then((m) => ({ default: m.ComparisonSection })),
+  { ssr: false }
+);
+const PressStats = dynamic(
+  () => import("@/components/home/PressStats").then((m) => ({ default: m.PressStats })),
+  { ssr: false }
+);
+const FinalCTA = dynamic(
+  () => import("@/components/home/FinalCTA").then((m) => ({ default: m.FinalCTA })),
+  { ssr: false }
+);
+const TagUs = dynamic(
+  () => import("@/components/home/TagUs").then((m) => ({ default: m.TagUs })),
+  { ssr: false }
+);
+const MobileShowcase = dynamic(
+  () => import("@/components/home/MobileShowcase").then((m) => ({ default: m.MobileShowcase })),
+  { ssr: false }
+);
 
 const PLACEHOLDER_PHRASES = [
   "7 days in Paris with my partner...",
@@ -46,6 +64,13 @@ const PLACEHOLDER_PHRASES = [
   "Family beach vacation in Bali...",
   "Weekend getaway to the Swiss Alps...",
   "Solo backpacking through Southeast Asia...",
+  "Honeymoon in Santorini...",
+  "Road trip along the Amalfi Coast...",
+  "Surf trip to Costa Rica...",
+  "Wine tour through Tuscany...",
+  "Digital nomad trip to Lisbon...",
+  "Wellness retreat in Bali...",
+  "Ski holiday in the French Alps...",
 ];
 
 const SUBTITLE_PHRASES = [
@@ -179,54 +204,6 @@ const HeroSearchInput = memo(function HeroSearchInput({
   );
 });
 
-// ─── Live stats from /api/stats ──────────────────────────────
-function LiveStats() {
-  const { data: stats, isLoading } = useQuery({
-    queryKey: ['live-stats'],
-    queryFn: async () => {
-      const res = await fetch('/api/stats');
-      if (!res.ok) return { destinations: 0, travelers: 0, trips: 0 };
-      return res.json() as Promise<{ destinations: number; travelers: number; trips: number }>;
-    },
-    staleTime: 60 * 1000,
-    refetchOnMount: 'always',
-  });
-
-  const items = [
-    { value: stats?.destinations ?? 0, suffix: "+", label: "Destinations", desc: "Real places our community has explored." },
-    { value: stats?.travelers ?? 0, suffix: "", label: "Travelers", desc: "People planning their next adventure." },
-    { value: stats?.trips ?? 0, suffix: "+", label: "Trips Planned", desc: "AI-powered itineraries created and counting." },
-  ];
-
-  return (
-    <section className="py-8 sm:py-14 px-4 sm:px-6 border-y bg-[#e8d5c0] border-[#5c4a3a]">
-      <div className="max-w-5xl mx-auto grid grid-cols-3 gap-3 sm:gap-8 text-center">
-        {isLoading ? (
-          <>
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="flex flex-col items-center gap-2">
-                <div className="h-8 sm:h-12 w-20 sm:w-28 bg-[#2a1f17]/10 rounded-lg animate-pulse" />
-                <div className="h-3 w-16 sm:w-24 bg-[#2a1f17]/10 rounded animate-pulse" />
-                <div className="h-3 w-28 sm:w-40 bg-[#2a1f17]/8 rounded animate-pulse" />
-              </div>
-            ))}
-          </>
-        ) : (
-          items.map((item) => (
-            <div key={item.label}>
-              <p className="text-2xl sm:text-4xl md:text-5xl font-[550] tracking-tight mb-1 text-[#2a1f17]">
-                <AnimatedCounter value={item.value} suffix={item.suffix} decimals={0} />
-              </p>
-              <p className="text-[8px] sm:text-xs font-bold uppercase tracking-widest mb-1 sm:mb-2 text-[#1e3a5f]">{item.label}</p>
-              <p className="text-[11px] sm:text-sm max-w-[220px] mx-auto leading-snug sm:leading-relaxed text-[#2a1f17]">{item.desc}</p>
-            </div>
-          ))
-        )}
-      </div>
-    </section>
-  );
-}
-
 // ─── Follow-up question option card ─────────────────────────
 function OptionCard({ label, index, selected, onSelect }: {
   label: string; index: number; selected: boolean; onSelect: () => void;
@@ -344,13 +321,27 @@ export default function Home() {
   const heroBgY = useTransform(heroScroll, [0, 1], [0, -120]);
   const heroBgScale = useTransform(heroScroll, [0, 1], [1, 1.15]);
 
-  // Parallax divider — uses document scroll (fires only in divider viewport range)
-  const { scrollYProgress: pageScroll } = useScroll();
-  const dividerBgY = useTransform(pageScroll, [0.3, 0.7], [-80, 80]);
-
-  // Hero slideshow — fetch from backend API, no hardcoded fallbacks
-  const HERO_DESTINATIONS = ["Maldives Beach", "Paris Eiffel Tower", "Grand Canyon", "Tokyo Skyline"];
-  const heroImageQueries = usePlaceImages(HERO_DESTINATIONS);
+  // Hero slideshow — large pool, random subset each page load
+  const HERO_DESTINATION_POOL = [
+    "Maldives Beach", "Paris Eiffel Tower", "Grand Canyon", "Tokyo Skyline",
+    "Santorini Greece", "Bali Indonesia", "New York City", "Dubai Marina",
+    "Amsterdam Canals", "Cape Town South Africa", "Bora Bora", "Swiss Alps",
+    "Hong Kong Skyline", "Sydney Opera House", "Rio de Janeiro Brazil",
+    "Prague Castle", "Machu Picchu", "Banff Canada Lake",
+    "Maui Hawaii Beach", "Kyoto Japan Temple", "Iceland Northern Lights",
+    "Tulum Mexico Beach", "Rome Colosseum", "Barcelona Spain",
+    "Phuket Thailand", "Safari Serengeti Tanzania",
+  ];
+  const [heroDestinations] = useState(() => {
+    const pool = [...HERO_DESTINATION_POOL];
+    const count = heroConfig?.background_image_url ? 3 : 4;
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.slice(0, count);
+  });
+  const heroImageQueries = usePlaceImages(heroDestinations);
 
   // Only include slides that have actually loaded
   const heroSlides = useMemo(() => {
@@ -359,10 +350,19 @@ export default function Home() {
       .map((q) => q.data?.url)
       .filter((url): url is string => !!url)
       .map((url) => {
-        // Bump Unsplash images to high resolution for retina hero display
+        // Bump to high resolution for retina hero display
         if (url.includes('images.unsplash.com')) {
           const separator = url.includes('?') ? '&' : '?';
           return `${url}${separator}w=2880&q=80`;
+        }
+        // Pexels — 4K width via CDN params (works with or without existing params)
+        if (url.includes('images.pexels.com')) {
+          if (url.includes('?')) {
+            // Already has CDN params (large/large2x variant) — replace width & dpr
+            return url.replace(/w=\d+/, 'w=3840').replace(/dpr=\d+/, 'dpr=2');
+          }
+          // Bare URL (original variant) — add params from scratch
+          return `${url}?auto=compress&cs=tinysrgb&w=3840&dpr=2`;
         }
         return url;
       });
@@ -587,7 +587,7 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)] -mt-16">
       {/* ─── Hero Section ─────────────────────────────────────── */}
-      <section ref={heroSectionRef} className="relative flex items-center justify-center px-6 pt-36 pb-0 md:pt-44 md:pb-0 overflow-hidden min-h-screen bg-[#e8d5c0]">
+      <section ref={heroSectionRef} className="relative flex items-center justify-center px-6 pt-36 pb-0 md:pt-44 md:pb-0 overflow-hidden min-h-screen bg-[#f2e6d8]">
         {/* Slideshow background */}
         <motion.div className="absolute top-0 left-0 right-0 -bottom-[150px] z-0 will-change-transform" style={{ scale: heroBgScale, y: heroBgY }}>
           {heroSlides.map((src, i) => (
@@ -811,19 +811,54 @@ export default function Home() {
           </motion.div>
         </motion.div>
 
+        {/* Trust bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 1.0, ease: EASE_OUT_EXPO }}
+          className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10"
+        >
+          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/30 backdrop-blur-md border border-white/15 text-[11px] text-white/70">
+            <span className="font-semibold text-white/90">5,000+</span>
+            <span className="text-white/50">trips planned</span>
+            <span className="text-white/20">·</span>
+            <span className="font-semibold text-white/90">50+</span>
+            <span className="text-white/50">countries</span>
+          </div>
+        </motion.div>
+
       </section>
 
-      {/* ─── Static Content Sections ──────────────────────────── */}
-      <HowItWorks onCtaPress={() => router.push("/trips")} />
+      {/* ─── Use Cases — warm sand ────────────────────────── */}
+      <UseCases />
+
+      {/* ─── Product Demo — existing, dark bg ─────────────── */}
       <ProductDemo />
-      {/* ─── Trip Statistics — Live from Supabase ────────────── */}
-      <LiveStats />
 
-      <GetInspired />
-      {/* ─── Parallax Divider — cycling quotes + images ─────── */}
-      <ParallaxQuoteDivider bgY={dividerBgY} trendingDestinations={trendingDestinations} />
+      {/* ─── Testimonials — warm sand ─────────────────────── */}
+      <Testimonials />
 
-      {/* ─── Footer ─────────────────────────────────────────── */}
+      {/* ─── Tag Us — social feed ─────────────────────────── */}
+      <TagUs />
+
+      {/* ─── Comparison — white bg ────────────────────────── */}
+      <ComparisonSection />
+
+      {/* ─── Press + Stats — warm sand ────────────────────── */}
+      <PressStats />
+
+      {/* ─── Get Inspired — existing, white bg ────────────── */}
+      <div className="bg-white dark:bg-[var(--background)]">
+        <GetInspired />
+      </div>
+
+      {/* ─── Final CTA — full-bleed dark ──────────────────── */}
+      <FinalCTA />
+
+      {/* ─── Mobile Showcase — iOS device mockup ───────────── */}
+      <MobileShowcase />
+
+      {/* ─── Footer ────────────────────────────────────────── */}
       <Footer />
 
 
