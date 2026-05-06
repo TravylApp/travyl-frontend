@@ -42,6 +42,24 @@ export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantit
     setEditing(false)
   }
 
+  // Ownership pill: theme tint for current user's items, neutral gray for everything else.
+  const isMine = item.owner_id === currentUserId
+  const pillClass = item.group_tag
+    ? 'bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300'
+    : isMine
+      ? 'text-[var(--trip-base)]'
+      : item.owner_id
+        ? 'bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300'
+        : 'bg-gray-100 dark:bg-white/[0.06] text-gray-700 dark:text-gray-300'
+  const pillStyle = isMine ? { backgroundColor: 'rgb(var(--trip-base-rgb) / 0.10)' } : undefined
+  const pillLabel = item.group_tag
+    ? (item.group_tag === 'kids' ? 'Kids' : 'Adults')
+    : isMine
+      ? 'Mine'
+      : item.owner_id
+        ? (item.owner_display_name || 'Claimed')
+        : 'Shared'
+
   return (
     <motion.div
       layout
@@ -49,18 +67,18 @@ export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantit
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -8 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
-      className="group flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-cal-surface transition-colors duration-150"
+      className="group flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors duration-150"
     >
-      {/* Checkbox (quantity=1) or packed-count pill (quantity>1) */}
+      {/* Checkbox (qty=1) or packed-count pill (qty>1) */}
       {item.quantity === 1 ? (
         <button
           onClick={() => onToggle(item.id)}
+          aria-label={item.is_packed ? 'Unpack item' : 'Pack item'}
           className="shrink-0 w-5 h-5 rounded-[4px] border transition-all duration-150 flex items-center justify-center"
           style={{
-            backgroundColor: item.is_packed ? '#003594' : 'transparent',
-            borderColor: item.is_packed ? '#003594' : 'var(--cal-border)',
+            backgroundColor: item.is_packed ? 'var(--trip-base)' : 'transparent',
+            borderColor: item.is_packed ? 'var(--trip-base)' : 'rgb(209 213 219)',
           }}
-          aria-label={item.is_packed ? 'Unpack item' : 'Pack item'}
         >
           {item.is_packed && (
             <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
@@ -71,13 +89,13 @@ export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantit
       ) : (
         <button
           onClick={() => onIncrementPacked(item.id)}
+          aria-label={`Packed ${item.packed_count} of ${item.quantity}`}
           className="shrink-0 px-1.5 h-5 rounded-full border text-[10px] font-semibold tabular-nums transition-all duration-150 flex items-center"
           style={{
-            backgroundColor: item.packed_count > 0 ? '#003594' : 'transparent',
-            borderColor: item.packed_count > 0 ? '#003594' : 'var(--cal-border)',
-            color: item.packed_count > 0 ? 'white' : 'var(--cal-text-muted)',
+            backgroundColor: item.packed_count > 0 ? 'var(--trip-base)' : 'transparent',
+            borderColor: item.packed_count > 0 ? 'var(--trip-base)' : 'rgb(209 213 219)',
+            color: item.packed_count > 0 ? 'white' : 'rgb(107 114 128)',
           }}
-          aria-label={`Packed ${item.packed_count} of ${item.quantity}`}
         >
           {item.packed_count}/{item.quantity}
         </button>
@@ -85,11 +103,7 @@ export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantit
 
       {/* Item name */}
       <span
-        className="flex-1 text-sm transition-colors duration-150"
-        style={{
-          color: item.is_packed ? 'var(--cal-text-muted)' : 'var(--cal-text)',
-          textDecoration: item.is_packed ? 'line-through' : 'none',
-        }}
+        className={`flex-1 text-sm transition-colors duration-150 ${item.is_packed ? 'text-gray-400 line-through' : 'text-gray-900 dark:text-white'}`}
       >
         {item.name}
       </span>
@@ -106,7 +120,7 @@ export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantit
               <button
                 onClick={() => { if (item.quantity > 1) onUpdateQuantity(item.id, item.quantity - 1) }}
                 disabled={item.quantity <= 1}
-                className="w-4 h-4 flex items-center justify-center rounded text-xs text-[var(--cal-text-muted)] hover:text-[var(--cal-text)] hover:bg-cal-border disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-4 h-4 flex items-center justify-center rounded text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
               >−</button>
               {editing ? (
                 <input
@@ -121,42 +135,32 @@ export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantit
                     if (e.key === 'Enter') e.currentTarget.blur()
                     else if (e.key === 'Escape') cancelEdit()
                   }}
-                  className="w-8 text-center text-xs bg-transparent border-b border-[var(--cal-border)] text-[var(--cal-text)] outline-none"
+                  className="w-8 text-center text-xs bg-transparent border-b border-gray-300 text-gray-900 dark:text-white outline-none"
                 />
               ) : (
                 <button
                   onClick={startEditing}
-                  className="w-5 text-center text-xs text-[var(--cal-text)] hover:text-[var(--cal-text)]"
+                  className="w-5 text-center text-xs text-gray-700 dark:text-gray-200"
                 >{item.quantity}</button>
               )}
               <button
                 onClick={() => { if (item.quantity < 99) onUpdateQuantity(item.id, item.quantity + 1) }}
                 disabled={item.quantity >= 99}
-                className="w-4 h-4 flex items-center justify-center rounded text-xs text-[var(--cal-text-muted)] hover:text-[var(--cal-text)] hover:bg-cal-border disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-4 h-4 flex items-center justify-center rounded text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
               >+</button>
             </>
           ) : (
-            <span className="text-xs text-[var(--cal-text-muted)]">× {item.quantity}</span>
+            <span className="text-xs text-gray-400">× {item.quantity}</span>
           )}
         </div>
       )}
 
       {/* Ownership pill */}
-      {item.group_tag ? (
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-pink-100 text-pink-700 dark:bg-pink-900/20 dark:text-pink-400 shrink-0">
-          {item.group_tag === 'kids' ? 'Kids' : 'Adults'}
-        </span>
-      ) : item.owner_id ? (
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400 shrink-0">
-          {item.owner_display_name || 'Claimed'}
-        </span>
-      ) : (
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400 shrink-0">
-          Shared
-        </span>
-      )}
+      <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${pillClass}`} style={pillStyle}>
+        {pillLabel}
+      </span>
 
-      {/* User avatar */}
+      {/* User avatar — preserved per-user color via stringToColor */}
       <span
         className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white"
         style={{ backgroundColor: avatarColor }}
@@ -168,13 +172,13 @@ export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantit
       {/* Claim/Release buttons — appear on hover */}
       {!item.owner_id && !item.group_tag && onClaim && (
         <button onClick={() => onClaim(item.id)}
-          className="opacity-0 group-hover:opacity-100 text-[10px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-opacity">
+          className="opacity-0 group-hover:opacity-100 text-[10px] text-[var(--trip-base)] hover:underline transition-opacity">
           Claim
         </button>
       )}
       {item.owner_id === currentUserId && onRelease && (
         <button onClick={() => onRelease(item.id)}
-          className="opacity-0 group-hover:opacity-100 text-[10px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-opacity">
+          className="opacity-0 group-hover:opacity-100 text-[10px] text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-opacity">
           Release
         </button>
       )}
@@ -182,8 +186,8 @@ export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantit
       {/* Remove button — appears on hover */}
       <button
         onClick={() => onRemove(item.id)}
-        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-[var(--cal-text-muted)] hover:text-red-500"
         aria-label="Remove item"
+        className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 text-gray-400 hover:text-red-500"
       >
         <Xmark width={14} height={14} />
       </button>
