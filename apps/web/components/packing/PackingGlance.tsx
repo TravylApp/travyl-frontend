@@ -59,12 +59,20 @@ export function PackingGlance({ trip, packed, total, percent }: PackingGlancePro
   const temp = avgTemp(ctx.weather?.forecast)
   const travelersMeta = ctx.travelers as TravelerMetadata | undefined
 
+  const packedValue = total > 0 ? `${packed}/${total}` : '—'
+  const packedSub = total > 0 ? `${percent}%` : 'no items yet'
+  const travelerCount = trip?.travelers
+  const travelersValue = typeof travelerCount === 'number' && travelerCount > 0 ? travelerCount : '—'
+  const travelersSubText = typeof travelerCount === 'number' && travelerCount > 0
+    ? travelerSub(travelersMeta)
+    : 'no travelers set'
+
   return (
     <div className="grid grid-cols-2 gap-2.5">
       <Stat label="Days left" value={days?.value ?? '—'} sub={days?.label ?? 'no dates'} />
       <Stat label="Avg temp" value={temp.value} sub={temp.label} />
-      <Stat label="Packed" value={`${packed}/${total}`} sub={`${percent}%`} />
-      <Stat label="Travelers" value={trip?.travelers ?? 1} sub={travelerSub(travelersMeta)} />
+      <Stat label="Packed" value={packedValue} sub={packedSub} />
+      <Stat label="Travelers" value={travelersValue} sub={travelersSubText} />
     </div>
   )
 }
