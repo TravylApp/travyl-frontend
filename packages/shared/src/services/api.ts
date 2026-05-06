@@ -1123,10 +1123,10 @@ export async function fetchDocumentUploadUrl(
     body: JSON.stringify({ contentType, fileSize }),
   })
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Upload URL request failed' }))
+    const err = await res.json().catch(() => ({})) as { error?: string }
     throw new Error(err.error ?? `Upload URL error: ${res.status}`)
   }
-  return res.json()
+  return res.json() as Promise<{ uploadUrl: string; objectKey: string }>
 }
 
 /**
@@ -1162,8 +1162,8 @@ export async function fetchDocumentParse(
     body: JSON.stringify(body),
   })
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: 'Parse request failed' }))
-    throw new Error(err.error ?? `Parse error: ${res.status}`)
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { error?: string }).error ?? `Parse error: ${res.status}`)
   }
-  return res.json()
+  return res.json() as Promise<DocumentParseResult>
 }

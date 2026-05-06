@@ -38,7 +38,7 @@ export function useDocumentUpload(tripId?: string) {
     setState({ phase: 'uploading', error: null, result: null, pendingPasteFile: null, lastObjectKey: null, unreadable: false })
 
     // Convert PDF to PNG if needed
-    let uploadFile = file
+    let uploadFile: Blob = file
     if (file.type === 'application/pdf') {
       const { convertPdfToImage } = await import('@/components/documents/pdfUtils')
       uploadFile = await convertPdfToImage(file)
