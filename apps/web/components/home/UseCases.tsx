@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "motion/react";
-import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
-import { EASE_OUT_EXPO, useTripPlanner } from "@travyl/shared";
+import { EASE_OUT_EXPO } from "@travyl/shared";
+import { PlanTripModal } from "./PlanTripModal";
 
 const TRIP_CASES = [
   {
@@ -35,16 +36,19 @@ const TRIP_CASES = [
   },
 ];
 
-export function UseCases() {
-  const router = useRouter();
-  const planner = useTripPlanner();
+interface UseCasesProps {
+  onPlanTrip: (prompt: string, context: { city?: string; country?: string }) => void;
+}
 
-  const handleCase = (prompt: string) => {
-    planner.submitPrompt(prompt);
-    router.push("/");
+export function UseCases({ onPlanTrip }: UseCasesProps) {
+  const [selectedCase, setSelectedCase] = useState<(typeof TRIP_CASES)[number] | null>(null);
+
+  const handleOpenModal = (tripCase: (typeof TRIP_CASES)[number]) => {
+    setSelectedCase(tripCase);
   };
 
   return (
+    <>
     <section className="py-20 sm:py-28 px-6 bg-sand-base">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-14">
@@ -68,8 +72,8 @@ export function UseCases() {
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.5, delay: i * 0.1, ease: EASE_OUT_EXPO }}
               className="group relative aspect-[3/2] md:aspect-[4/5] rounded-2xl overflow-hidden cursor-pointer"
-              onClick={() => handleCase(c.prompt)}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleCase(c.prompt); } }}
+              onClick={() => handleOpenModal(c)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleOpenModal(c); } }}
               role="button"
               tabIndex={0}
               aria-label={`Plan a ${c.title.toLowerCase()} trip`}
@@ -107,5 +111,14 @@ export function UseCases() {
         </div>
       </div>
     </section>
+      {selectedCase && (
+        <PlanTripModal
+          open={!!selectedCase}
+          onClose={() => setSelectedCase(null)}
+          tripCase={selectedCase}
+          onPlan={onPlanTrip}
+        />
+      )}
+    </>
   );
 }
