@@ -2,7 +2,7 @@
 
 import {
   Home, Calendar, CalendarDays, Plane, Building2, Compass,
-  Luggage, PieChart, Heart, Car, Settings, History,
+  Luggage, PieChart, Car, Settings, History,
   MoreHorizontal, X, ChevronLeft, ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
@@ -64,7 +64,6 @@ export const ALL_TABS: TabDef[] = [
   { segment: 'activities', label: 'Explore',    subtitle: 'Restaurants, activities & more', icon: Compass,   color: DEFAULT_COLOR },
   { segment: 'packing',    label: 'Packing',    subtitle: 'What to bring',                  icon: Luggage,   color: DEFAULT_COLOR },
   { segment: 'budget',     label: 'Budget',     subtitle: 'Trip expenses & spending',       icon: PieChart,  color: DEFAULT_COLOR },
-  { segment: 'favorites',  label: 'Favorites',  subtitle: 'Saved places & activities',      icon: Heart,     color: DEFAULT_COLOR },
   { segment: 'settings',   label: 'Settings',   subtitle: 'Trip preferences & theme',       icon: Settings,  color: DEFAULT_COLOR },
 ];
 
@@ -76,7 +75,7 @@ export interface TabGroup {
 export const TAB_GROUPS: TabGroup[] = [
   { id: 'plan',    segments: ['', 'itinerary', 'calendar'] },
   { id: 'book',    segments: ['hotels', 'flights', 'cars'] },
-  { id: 'explore', segments: ['activities', 'packing', 'budget', 'favorites'] },
+  { id: 'explore', segments: ['activities', 'packing', 'budget'] },
 ];
 
 export function getTabMeta(segment: string): TabDef | undefined {

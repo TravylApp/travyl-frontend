@@ -4,7 +4,7 @@ import { use, useState, useEffect, useCallback, useRef } from 'react';
 import {
   Trash2, Share2, Globe, GitFork, Copy, Lock, Link as LinkIcon,
   Home, Calendar, CalendarDays, Plane, Building2, Compass,
-  Luggage, PieChart, Heart, Car, LogOut, Minus, Plus, Users,
+  Luggage, PieChart, Car, LogOut, Minus, Plus, Users,
   Loader2, Check,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -31,7 +31,6 @@ const CONFIGURABLE_TABS: { segment: string; label: string; icon: LucideIcon }[] 
   { segment: 'activities', label: 'Explore',    icon: Compass },
   { segment: 'packing',    label: 'Packing',    icon: Luggage },
   { segment: 'budget',     label: 'Budget',     icon: PieChart },
-  { segment: 'favorites',  label: 'Favorites',  icon: Heart },
 ];
 
 const DEFAULT_TRAVELERS: TravelerMetadata = { adults: 1, children: 0, infants: 0, child_ages: [] };

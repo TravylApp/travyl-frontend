@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import {
   Home, Calendar, Building2, Plane, UtensilsCrossed, Compass,
-  Luggage, PieChart, Car, Heart, Settings2, Check, RotateCcw,
+  Luggage, PieChart, Car, Settings2, Check, RotateCcw,
   Sun, Moon, Sparkles, Sunset,
   type LucideIcon,
 } from 'lucide-react';
@@ -22,7 +22,6 @@ const TAB_LIST: { name: string; title: string; icon: LucideIcon }[] = [
   { name: 'packing', title: 'Packing', icon: Luggage },
   { name: 'budget', title: 'Budget', icon: PieChart },
   { name: 'cars', title: 'Car Rental', icon: Car },
-  { name: 'favorites', title: 'Favorites', icon: Heart },
   { name: 'settings', title: 'Settings', icon: Settings2 },
 ];
 

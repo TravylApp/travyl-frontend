@@ -16,7 +16,7 @@ export function TripTabBar({ tripId }: TripTabBarProps) {
 
   const tabSegments = [
     '', 'itinerary', 'calendar', 'hotels', 'flights',
-    'activities', 'packing', 'budget', 'cars', 'favorites', 'settings',
+    'activities', 'packing', 'budget', 'cars', 'settings',
   ]
 
   return (
