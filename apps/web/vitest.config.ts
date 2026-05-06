@@ -9,6 +9,7 @@ export default defineConfig({
       'lib/**/__tests__/**/*.test.ts',
       'hooks/**/__tests__/**/*.test.ts',
       'app/**/__tests__/**/*.test.ts',
+      'components/**/__tests__/**/*.test.{ts,tsx}',
     ],
     environment: 'node',
   },

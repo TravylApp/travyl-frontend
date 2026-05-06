@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Cloud, Droplets, Sun, ChevronDown, Shield, Pencil, Share2, X, Check } from 'lucide-react';
 import { formatDateRange, useExchangeRates, updateTripDetails, useSettingsStore, useWeather, ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
+import { useRailCollapsed } from '@/components/trip-rail';
 
 function QuickFactRow({ facts, className }: { facts: (string | undefined)[]; className?: string }) {
   const valid = facts.filter(Boolean) as string[];
@@ -61,6 +62,7 @@ function useQuote() {
 export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripUpdate, suppressFallback }: { tripId?: string; trip?: Trip | null; overrideImage?: string; compact?: boolean; onTripUpdate?: () => void; suppressFallback?: boolean }) {
   const bgRef = useRef<HTMLDivElement>(null);
   const [scrollY, setScrollY] = useState(0);
+  const [railCollapsed] = useRailCollapsed();
 
   useEffect(() => {
     const el = bgRef.current;
@@ -253,7 +255,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
 
       {/* Hero text — unified for all tabs, just different height */}
       <div className="relative z-10 flex flex-col justify-end" style={{ height: compact ? '35vh' : '70vh' }}>
-        <div className="w-full px-6 sm:px-10 md:pl-[120px] pb-2"
+        <div className={`w-full px-6 sm:px-10 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} pb-2 transition-[padding] duration-200 ease-out`}
           style={!compact ? { opacity: Math.max(0, 1 - scrollY / 800) } : undefined}>
           <p className="flex items-center gap-2 text-[11px] tracking-[0.4em] uppercase font-semibold mb-1" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -283,7 +285,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
       </div>
 
       {/* Trip meta + collapsible details */}
-      <div className={`relative z-10 px-6 sm:px-10 md:pl-[120px] transition-all duration-300 ${essentialsOpen ? 'mb-6' : 'mb-3'}`}
+      <div className={`relative z-10 px-6 sm:px-10 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} transition-all duration-300 ${essentialsOpen ? 'mb-6' : 'mb-3'}`}
         style={{ textShadow: '0 2px 10px rgba(0,0,0,0.6), 0 0 20px rgba(0,0,0,0.3)' }}>
 
         {/* Dates + travelers — always visible */}
