@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
 import { AnimatePresence, motion, LayoutGroup } from 'motion/react'
 import type { SpotlightResult } from '@travyl/shared'
 import { useSpotlightSearch } from '@/hooks/useSpotlightSearch'
