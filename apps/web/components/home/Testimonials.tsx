@@ -156,6 +156,33 @@ export function Testimonials() {
   const [isPaused, setIsPaused] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const goNext = useCallback(() => {
+    setDirection(1);
+    setCurrentIndex((i) => (i + 1) % TESTIMONIALS.length);
+  }, []);
+
+  const goPrev = useCallback(() => {
+    setDirection(-1);
+    setCurrentIndex((i) => (i === 0 ? TESTIMONIALS.length - 1 : i - 1));
+  }, []);
+
+  // Auto-advance on mobile
+  useEffect(() => {
+    if (isPaused || TESTIMONIALS.length <= 1) return;
+
+    intervalRef.current = setInterval(() => {
+      setDirection(1);
+      setCurrentIndex((i) => (i + 1) % TESTIMONIALS.length);
+    }, 5000);
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [isPaused, currentIndex]);
+
   return (
     <section className="py-20 sm:py-28 px-6 bg-sand-base">
       <div className="max-w-6xl mx-auto">
