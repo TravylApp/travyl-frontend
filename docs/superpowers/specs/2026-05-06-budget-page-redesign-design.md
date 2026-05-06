@@ -44,7 +44,7 @@ A 4-column grid above the table, separated from the table by a 1px divider:
 - **Value:** 26px serif, font-weight 400, gray-900 (or green-700 / amber-700 / red-700 for Remaining).
 - **Sub:** 10px, gray-400.
 - **Total budget editing:** click anywhere in the metric box → it becomes an input (inherits styling, focus ring uses `var(--trip-base)/20`). Enter commits, Esc cancels. Pencil icon appears on hover at top-right of the box to advertise the affordance.
-- Editing the Total budget triggers a confirm: "This will scale each category's budget proportionally" — same behavior as today's `handleSaveTotalBudget`. (If user has manually adjusted a category, they get the chance to either scale all or only update the total without touching categories.)
+- Editing the Total budget scales each category's `budgeted` proportionally — same behavior as today's `handleSaveTotalBudget`. No confirm prompt, no two-path branching: this is the existing behavior preserved verbatim.
 
 ### 2.3 The table
 
@@ -94,7 +94,7 @@ Click anywhere on the **Category column** (chevron or name) to expand the row. T
 - Background `#fafaf7`, 1px border `#f0eee9`, rounded-lg, 8px margin.
 - **Drawer header:** `<count> Expenses` (9px uppercase, font-weight 700, gray-400) on the left, `+ Add expense` link on the right (12px, theme color).
 - **Each expense row** (4-column grid): `description | date | amount | × delete`. White bg, hairline border, 7px radius, 5px gap between rows.
-- **Bottom dashed "add-expense" row:** triggers an inline form (description input + date input + amount input + commit/cancel buttons). Same primitives as Settings' `Input` component (h-11, rounded-xl, theme focus ring), shrunk to fit the drawer.
+- **Bottom dashed "add-expense" row:** triggers an inline form (description input + date input + amount input + commit/cancel buttons). Reuse Settings' `Input` primitive (h-11, rounded-xl, theme focus ring); if the default 11-tall feels heavy in the drawer, add a `compact` prop to `Input` that drops it to h-9 and tightens horizontal padding — flag during implementation, not blocking.
 
 Multiple categories can be expanded simultaneously. Expansion state is local React state (not persisted) — collapses on page reload.
 
@@ -146,6 +146,8 @@ The expense list per category lives inside `BudgetItem.expenses[]` — same shap
 | `apps/web/app/(dashboard)/trip/[id]/budget/page.tsx`                   | Rewrite top-to-bottom around the new structure. Keep `generateBudgetFromTrip`, persistence, and types intact.  |
 | `apps/web/components/trip/Module.tsx` (NEW)                            | Lift the `Module` component out of Settings so Budget can use the same shell. Pure presentational, no state.   |
 | `apps/web/app/(dashboard)/trip/[id]/settings/page.tsx`                 | Replace its inline `Module` with the import from the shared file. No visual change — pure refactor.            |
+
+> **Note for the implementation plan:** `settings/page.tsx` is currently uncommitted WIP in the user's working tree (the redesign that defines `Module`). Read it from working-tree state — do NOT assume it matches `origin/develop`. The planner / implementer should `git status` first, then read the file as it sits, and lift `Module` from there.
 | `apps/web/components/trip/budget/BudgetTable.tsx` (NEW)                | The desktop spreadsheet table. Rows + header + totals.                                                         |
 | `apps/web/components/trip/budget/BudgetTableRow.tsx` (NEW)             | A single row with its expenses drawer. Owns the inline-edit + expansion state.                                 |
 | `apps/web/components/trip/budget/BudgetMobileList.tsx` (NEW)           | The mobile stacked-card list (rendered in place of the table at `< md`).                                       |
@@ -192,7 +194,7 @@ The new files live under `apps/web/components/trip/budget/` so they're co-locate
 
 ### 4.5 a11y
 
-- Table uses `<table>` semantics — header row is `<thead>`, body is `<tbody>`, totals as `<tfoot>`. Numeric cells get `role="cell"` (implicit). Editable cells use a focusable element (button when collapsed, input when editing) with appropriate `aria-label` ("Budget for Hotels").
+- The table is a real `<table>` element (not a CSS-grid emulation). Header in `<thead>`, body in `<tbody>`, totals in `<tfoot>`. Column widths come from `<colgroup>` so cells line up across rows. Editable cells use a focusable element (button when at rest, input when editing) with appropriate `aria-label` ("Budget for Hotels").
 - Progress bars use `<div role="progressbar" aria-valuenow={spent} aria-valuemin={0} aria-valuemax={budgeted}>`.
 - The drawer's expand/collapse uses `aria-expanded` on the row's chevron button and `aria-hidden` on the drawer when collapsed.
 - Mobile cards use `<button>` for the whole card with `aria-expanded`.
