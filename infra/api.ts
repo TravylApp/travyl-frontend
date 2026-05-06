@@ -1,4 +1,4 @@
-import { activityCdn, cacheTable, placeIndex, userInteractions } from './storage'
+import { activityCdn, cacheTable, placeIndex, userInteractions, documentUploads } from './storage'
 import { bus } from './events'
 import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey, ticketmasterApiKey, openTableAffiliateKey, duffelApiToken, graphhopperApiKey, openchargeApiKey, openExchangeRatesAppId, predicthqApiKey } from './secrets'
 
@@ -240,6 +240,35 @@ api.route('POST /trips/{id}/duplicate', {
   handler: 'services/trips.duplicateHandler',
   link: [supabaseSecretKey, supabaseUrl],
   timeout: '15 seconds',
+})
+
+// Document OCR — upload presigned URL + parse via Claude Vision
+api.route('POST /documents/upload-url', {
+  handler: 'services/documents.handler',
+  link: [supabaseSecretKey, supabaseUrl, documentUploads],
+  permissions: [
+    {
+      actions: ['s3:PutObject'],
+      resources: [$interpolate`${documentUploads.arn}/*`],
+    },
+  ],
+  timeout: '10 seconds',
+})
+
+api.route('POST /documents/parse', {
+  handler: 'services/documents.handler',
+  link: [supabaseSecretKey, supabaseUrl, documentUploads],
+  permissions: [
+    {
+      actions: ['s3:GetObject', 's3:DeleteObject'],
+      resources: [$interpolate`${documentUploads.arn}/*`],
+    },
+    {
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-haiku-20241022-v1:0'],
+    },
+  ],
+  timeout: '60 seconds',
 })
 
 // Deprecated: use /restaurants/search instead
