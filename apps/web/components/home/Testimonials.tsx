@@ -224,7 +224,7 @@ export function Testimonials() {
               onTouchStart={() => setIsPaused(true)}
               onTouchEnd={() => setIsPaused(false)}
             >
-              <AnimatePresence mode="popLayout" custom={direction}>
+              <AnimatePresence mode="popLayout" custom={direction} initial={false}>
                 <motion.div
                   key={currentIndex}
                   custom={direction}
