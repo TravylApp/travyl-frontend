@@ -19,20 +19,23 @@ export interface TabDef {
   label: string;
   subtitle: string;
   icon: LucideIcon;
+  color: string;
 }
 
+const DEFAULT_COLOR = '#1e3a5f';
+
 export const ALL_TABS: TabDef[] = [
-  { segment: '',           label: 'Overview',   subtitle: 'Trip overview & info',           icon: Home },
-  { segment: 'itinerary',  label: 'Itinerary',  subtitle: 'Your day-by-day travel plan',    icon: Calendar },
-  { segment: 'calendar',   label: 'Calendar',   subtitle: 'Visual calendar & For You',      icon: CalendarDays },
-  { segment: 'hotels',     label: 'Hotels',     subtitle: 'Accommodation & stays',          icon: Building2 },
-  { segment: 'flights',    label: 'Flights',    subtitle: 'Flight bookings & details',      icon: Plane },
-  { segment: 'cars',       label: 'Cars',       subtitle: 'Vehicle rentals & transport',    icon: Car },
-  { segment: 'activities', label: 'Explore',    subtitle: 'Restaurants, activities & more', icon: Compass },
-  { segment: 'packing',    label: 'Packing',    subtitle: 'What to bring',                  icon: Luggage },
-  { segment: 'budget',     label: 'Budget',     subtitle: 'Trip expenses & spending',       icon: PieChart },
-  { segment: 'favorites',  label: 'Favorites',  subtitle: 'Saved places & activities',      icon: Heart },
-  { segment: 'settings',   label: 'Settings',   subtitle: 'Trip preferences & theme',       icon: Settings },
+  { segment: '',           label: 'Overview',   subtitle: 'Trip overview & info',           icon: Home,      color: DEFAULT_COLOR },
+  { segment: 'itinerary',  label: 'Itinerary',  subtitle: 'Your day-by-day travel plan',    icon: Calendar,  color: DEFAULT_COLOR },
+  { segment: 'calendar',   label: 'Calendar',   subtitle: 'Visual calendar & For You',      icon: CalendarDays, color: DEFAULT_COLOR },
+  { segment: 'hotels',     label: 'Hotels',     subtitle: 'Accommodation & stays',          icon: Building2, color: DEFAULT_COLOR },
+  { segment: 'flights',    label: 'Flights',    subtitle: 'Flight bookings & details',      icon: Plane,     color: DEFAULT_COLOR },
+  { segment: 'cars',       label: 'Cars',       subtitle: 'Vehicle rentals & transport',    icon: Car,       color: DEFAULT_COLOR },
+  { segment: 'activities', label: 'Explore',    subtitle: 'Restaurants, activities & more', icon: Compass,   color: DEFAULT_COLOR },
+  { segment: 'packing',    label: 'Packing',    subtitle: 'What to bring',                  icon: Luggage,   color: DEFAULT_COLOR },
+  { segment: 'budget',     label: 'Budget',     subtitle: 'Trip expenses & spending',       icon: PieChart,  color: DEFAULT_COLOR },
+  { segment: 'favorites',  label: 'Favorites',  subtitle: 'Saved places & activities',      icon: Heart,     color: DEFAULT_COLOR },
+  { segment: 'settings',   label: 'Settings',   subtitle: 'Trip preferences & theme',       icon: Settings,  color: DEFAULT_COLOR },
 ];
 
 export interface TabGroup {
