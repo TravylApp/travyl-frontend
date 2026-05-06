@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback, useState } from "react";
+import { useRef, useEffect, useCallback, useState, useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 
@@ -67,7 +67,8 @@ export function PaperPlane({ planeGroupRef, completed, onEnteringDone }: PaperPl
   const stateRef = useRef<"entering" | "flying" | "completed" | "exiting">("entering");
   const enterTimeRef = useRef(0);
   const completedTimeRef = useRef(0);
-  const { camera } = useThree();
+  const { camera, gl } = useThree();
+  const cameraTargetRef = useRef(new THREE.Vector3());
 
   // Load GLB model via GLTFLoader (non-Suspense approach)
   useEffect(() => {
@@ -97,11 +98,10 @@ export function PaperPlane({ planeGroupRef, completed, onEnteringDone }: PaperPl
 
   // Attach click handler to the R3F canvas
   useEffect(() => {
-    const canvas = document.querySelector("canvas");
-    if (!canvas) return;
+    const canvas = gl.domElement;
     canvas.addEventListener("click", handleClick);
     return () => canvas.removeEventListener("click", handleClick);
-  }, [handleClick]);
+  }, [handleClick, gl]);
 
   // Transition to completed state when prop flips
   useEffect(() => {
@@ -122,7 +122,6 @@ export function PaperPlane({ planeGroupRef, completed, onEnteringDone }: PaperPl
 
     switch (stateRef.current) {
       case "entering": {
-        if (enterTimeRef.current === 0) enterTimeRef.current = performance.now();
         const elapsed = (performance.now() - enterTimeRef.current) / 1000;
         const p = Math.min(elapsed / 1.0, 1);
         const ease = 1 - Math.pow(1 - p, 3);
@@ -188,20 +187,25 @@ export function PaperPlane({ planeGroupRef, completed, onEnteringDone }: PaperPl
     }
 
     // Camera follow with smooth lerp
-    camera.position.lerp(
-      new THREE.Vector3(group.position.x, group.position.y + 3, group.position.z + 8),
-      LERP_FACTOR * delta
+    cameraTargetRef.current.set(
+      group.position.x,
+      group.position.y + 3,
+      group.position.z + 8
     );
+    camera.position.lerp(cameraTargetRef.current, LERP_FACTOR * delta);
     camera.lookAt(group.position.x, group.position.y, group.position.z);
   });
 
-  // Use GLB if loaded, otherwise fallback mesh
-  const displayScene = glbScene || fallbackScene.current;
+  // Use GLB if loaded, otherwise fallback mesh — clone once to avoid per-render allocations
+  const displayObject = useMemo(
+    () => (glbScene || fallbackScene.current).clone(),
+    [glbScene]
+  );
 
   return (
     <primitive
       ref={planeGroupRef}
-      object={displayScene.clone()}
+      object={displayObject}
       scale={glbFailed ? 0.8 : 0.5}
     />
   );
