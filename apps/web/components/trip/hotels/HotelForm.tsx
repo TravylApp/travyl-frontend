@@ -32,7 +32,6 @@ export function HotelForm({ initial, defaultCurrency = 'USD', onSubmit, onCancel
   const [currency, setCurrency] = useState(initial?.currency ?? defaultCurrency)
   const [bookingRef, setBookingRef] = useState(initial?.booking_ref ?? '')
   const [imageUrl, setImageUrl] = useState(initial?.image_url ?? '')
-  const [offerId, setOfferId] = useState(initial?.offer_id ?? '')
   const [busy, setBusy] = useState(false)
   const [errors, setErrors] = useState<{ name?: boolean; checkIn?: boolean; checkOut?: boolean }>({})
 
@@ -64,7 +63,7 @@ export function HotelForm({ initial, defaultCurrency = 'USD', onSubmit, onCancel
         star_rating: initial?.star_rating ?? null,
         image_url: imageUrl.trim() || null,
         booking_ref: bookingRef.trim() || null,
-        offer_id: offerId.trim() || null,
+        offer_id: initial?.offer_id ?? null,
       }
       await onSubmit(data)
     } finally {
@@ -113,15 +112,11 @@ export function HotelForm({ initial, defaultCurrency = 'USD', onSubmit, onCancel
           <FieldLabel>Currency</FieldLabel>
           <Select value={currency} onChange={setCurrency} options={CURRENCY_OPTIONS} />
         </div>
-        <div className="md:col-span-2">
+        <div className="md:col-span-3">
           <FieldLabel>Booking ref</FieldLabel>
           <Input value={bookingRef} onChange={setBookingRef} placeholder="Optional" />
         </div>
-        <div className="md:col-span-2">
-          <FieldLabel>Offer ID</FieldLabel>
-          <Input value={offerId} onChange={setOfferId} placeholder="Optional" />
-        </div>
-        <div className="md:col-span-2">
+        <div className="md:col-span-3">
           <FieldLabel>Image URL</FieldLabel>
           <Input value={imageUrl} onChange={setImageUrl} placeholder="Optional" />
         </div>
