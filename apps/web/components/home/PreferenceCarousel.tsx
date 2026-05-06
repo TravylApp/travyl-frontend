@@ -239,7 +239,7 @@ export function PreferenceCarousel({
             onClick={handleNext}
             className="w-full py-3 rounded-xl bg-[#1e3a5f] text-white text-sm font-semibold hover:brightness-125 transition-all"
           >
-            Let's plan this
+            Let&apos;s plan this
           </button>
         ) : isLastStep ? (
           <button

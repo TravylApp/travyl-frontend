@@ -41,7 +41,13 @@ export function PlanTripModal({
     return parts.join(", ");
   };
 
-  const handleSubmit = (prefs: Record<string, any>) => {
+  const handleSubmit = (prefs: {
+    duration?: string;
+    travelers?: string;
+    interests?: string[];
+    budget?: string;
+    pace?: string;
+  }) => {
     const prompt = buildPrompt(prefs);
     onPlan(prompt, tripCase.context);
     onClose();
