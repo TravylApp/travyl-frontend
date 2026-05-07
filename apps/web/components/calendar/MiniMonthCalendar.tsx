@@ -149,8 +149,8 @@ export function MiniMonthCalendar({
 
       {/* Weekday headers */}
       <div className="grid grid-cols-7 px-2 gap-0">
-        {WEEKDAY_LABELS.map((l) => (
-          <div key={l} className="text-center text-[10px] font-medium text-cal-text-tertiary py-1">
+        {WEEKDAY_LABELS.map((l, i) => (
+          <div key={i} className="text-center text-[10px] font-medium text-cal-text-tertiary py-1">
             {l}
           </div>
         ))}
