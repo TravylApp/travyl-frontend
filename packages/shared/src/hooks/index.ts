@@ -72,3 +72,4 @@ export { useCarSearch } from './useCarSearch';
 export type { CarSearchParams } from './useCarSearch';
 export { useTransit } from './useTransit';
 export { useDayStory } from './useDayStory';
+export { useDayImages } from './useDayImages';

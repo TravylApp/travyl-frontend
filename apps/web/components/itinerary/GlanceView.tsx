@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useDayStory, useDestinationImage } from '@travyl/shared';
+import { useDayStory, useDayImages, useDestinationImage } from '@travyl/shared';
 import type { ItineraryDayViewModel } from '@travyl/shared';
 import { DaySlide } from './glance/DaySlide';
 import { DayPipPager } from './glance/DayPipPager';
@@ -64,15 +64,16 @@ export function GlanceView({
 
   // Image fallback chain — varied per day so each slide feels distinct:
   //   1. Story-featured image (a specific activity's photo)
-  //   2. Destination image bank, indexed by day so each day gets a different shot
-  //   3. Trip hero images, also indexed by day
+  //   2. Day-images bank from /api/images search (returns N varied photos)
+  //   3. Trip hero images, indexed by day
   //   4. Single destination url as last resort
+  const { data: dayImagesData } = useDayImages(destination ?? '', Math.max(days.length, 5));
   const { data: destImage } = useDestinationImage(destination ?? '');
-  const destBank = destImage?.images ?? [];
+  const dayBank = dayImagesData?.images ?? [];
   const heroBank = heroImages ?? [];
   const imageUrl =
     story?.featuredImageUrl ??
-    (destBank.length > 0 ? destBank[selectedDayIndex % destBank.length] : undefined) ??
+    (dayBank.length > 0 ? dayBank[selectedDayIndex % dayBank.length] : undefined) ??
     (heroBank.length > 0 ? heroBank[selectedDayIndex % heroBank.length] : undefined) ??
     destImage?.url ??
     null;
