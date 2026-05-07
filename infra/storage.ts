@@ -19,7 +19,7 @@ export const documentUploads = new sst.aws.Bucket('DocumentUploads', {
     allowMethods: ['PUT', 'OPTIONS'],
     allowHeaders: ['*'],
     exposeHeaders: ['ETag'],
-    maxAge: 3600,
+    maxAge: '1 hour',
   },
 })
 
