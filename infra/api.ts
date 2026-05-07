@@ -339,8 +339,15 @@ api.route('GET /places/nearby', {
   timeout: '15 seconds',
 })
 
-api.route('GET /api/places/{id}', {
-  handler: 'services/place-detail.handler',
-  link: [foursquareApiKey],
-  timeout: '10 seconds',
-})
+// `services/place-detail.handler` was added by `bcaba4e7 feat: UI
+// homogenization` but the handler file itself was never committed —
+// SST then refused to deploy with "Handler not found". The Next.js
+// route at `apps/web/app/api/search/place-detail/route.ts` already
+// covers the same surface for the web app, so commenting this Lambda
+// out doesn't lose any user-visible functionality. Restore once the
+// real `services/place-detail.ts` lands.
+// api.route('GET /api/places/{id}', {
+//   handler: 'services/place-detail.handler',
+//   link: [foursquareApiKey],
+//   timeout: '10 seconds',
+// })
