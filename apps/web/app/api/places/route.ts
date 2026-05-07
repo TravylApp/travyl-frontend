@@ -12,7 +12,9 @@ import { createServerClient } from '@supabase/ssr'
 // exposes `/places/nearby` (no `/api` prefix) and requires auth, whereas
 // FastAPI serves `/api/places/nearby` openly — and that's the path this
 // route hits. Defaults to staging so local dev works without env config.
-const API_URL = process.env.FASTAPI_URL || 'https://api.dev.gotravyl.com'
+// build-marker:explore-fix-2026-05-07T1200
+const FASTAPI_BASE = 'https://api.dev.gotravyl.com'
+const API_URL = process.env.FASTAPI_URL || FASTAPI_BASE
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_KEY = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)!
 
