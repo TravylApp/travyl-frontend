@@ -2,7 +2,7 @@
 
 import { use } from 'react'
 import { Plus } from 'lucide-react'
-import { useItineraryScreen, useHotels } from '@travyl/shared'
+import { useItineraryScreen, useHotels, useHomeCurrency } from '@travyl/shared'
 import { Module } from '@/components/trip/Module'
 import { HotelsModule } from '@/components/trip/hotels/HotelsModule'
 
@@ -13,6 +13,8 @@ export default function Hotels({ params }: { params: Promise<{ id: string }> }) 
   const rawHotels = rawHotelsQuery.data ?? []
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tripCurrency = ((trip as any)?.currency ?? 'USD').match(/^[A-Z]{3}/)?.[0] ?? 'USD'
+  const { format: formatHome } = useHomeCurrency()
+  const formatPrice = (n: number, currency?: string | null) => formatHome(n, currency ?? tripCurrency)
 
   if (isLoading) {
     return (
@@ -49,6 +51,7 @@ export default function Hotels({ params }: { params: Promise<{ id: string }> }) 
           hotels={hotels}
           rawHotels={rawHotels}
           defaultCurrency={tripCurrency}
+          formatPrice={formatPrice}
         />
       </Module>
     </div>
