@@ -2,12 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useQueryClient } from '@tanstack/react-query'
-import { Plane, Plus } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import type { FlightViewModel, FlightData } from '@travyl/shared'
+import type { FlightViewModel, FlightData, Trip } from '@travyl/shared'
+import { supabase } from '@travyl/shared'
 import { FlightCard } from './FlightCard'
 import { FlightForm } from './FlightForm'
+import { FlightSearchPanel } from './FlightSearchPanel'
+import { FlightResultsList, type FlightSearchState } from './FlightResultsList'
+import { mapSerpFlightToFlightData, type SerpFlight } from './flightSearch'
 import { addFlight, updateFlight, deleteFlight } from './flightMutations'
 
 export interface FlightsModuleProps {
@@ -15,16 +18,31 @@ export interface FlightsModuleProps {
   flights: FlightViewModel[]
   rawFlights: { id: string; data: FlightData }[]
   defaultCurrency: string
+  formatPrice: (n: number, currency?: string | null) => string
 }
 
-export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency }: FlightsModuleProps) {
+export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency, formatPrice }: FlightsModuleProps) {
   const queryClient = useQueryClient()
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const [adding, setAdding] = useState(false)
+  const [searching, setSearching] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [searchState, setSearchState] = useState<FlightSearchState>({
+    loading: false, results: [], error: null, hasSearched: false,
+  })
+  const [busyOfferId, setBusyOfferId] = useState<string | null>(null)
   const hasExpandedRef = useRef(false)
+
+  const { data: trip } = useQuery<Trip | null>({
+    queryKey: ['trip', tripId],
+    queryFn: async () => {
+      const { data } = await supabase.from('trips').select('*').eq('id', tripId).single()
+      return data as Trip | null
+    },
+    enabled: !!tripId,
+    staleTime: 60_000,
+  })
 
   const sorted = useMemo(
     () => [...flights].sort((a, b) => {
@@ -35,8 +53,11 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency }: 
     [flights],
   )
 
-  // Auto-expand a record if URL ?expand=<id> is present (deep link from itinerary cards).
-  // Only fires once — subsequent realtime data updates don't re-open after the user dismisses.
+  const savedOfferIds = useMemo(
+    () => new Set(rawFlights.map((r) => r.data.offer_id).filter(Boolean) as string[]),
+    [rawFlights],
+  )
+
   useEffect(() => {
     if (hasExpandedRef.current) return
     const expandId = searchParams.get('expand')
@@ -47,7 +68,7 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency }: 
   }, [searchParams, flights])
 
   useEffect(() => {
-    const onAdd = () => setAdding(true)
+    const onAdd = () => setSearching(true)
     window.addEventListener('flights:add', onAdd)
     return () => window.removeEventListener('flights:add', onAdd)
   }, [])
@@ -57,14 +78,18 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency }: 
     queryClient.invalidateQueries({ queryKey: ['trip', tripId] })
   }
 
-  const handleAdd = async (data: FlightData) => {
+  const handleAddFromSearch = async (serpFlight: SerpFlight) => {
+    setBusyOfferId(serpFlight.id)
     try {
+      const data = mapSerpFlightToFlightData(serpFlight)
       await addFlight(tripId, data)
       invalidate()
-      setAdding(false)
+      toast.success(`Added ${data.airline || 'flight'}`)
     } catch (e) {
       console.error(e)
-      toast.error("Couldn't save — try again")
+      toast.error("Couldn't add — try again")
+    } finally {
+      setBusyOfferId(null)
     }
   }
 
@@ -97,61 +122,74 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency }: 
     }
   }
 
-  if (flights.length === 0 && !adding) {
-    return (
-      <div className="flex flex-col items-center text-center py-12">
-        <div
-          className="w-12 h-12 rounded-full flex items-center justify-center mb-3"
-          style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.10)', color: 'var(--trip-base)' }}
-        >
-          <Plane size={20} />
-        </div>
-        <p className="text-[15px] font-serif text-gray-700 dark:text-gray-200">No flights booked yet</p>
-        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 max-w-sm">
-          Add your itinerary so the budget and timeline pull together.
-        </p>
-        <button
-          onClick={() => setAdding(true)}
-          className="mt-4 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[13px] font-medium border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.04] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.08] transition"
-        >
-          <Plus size={13} /> Add flight
-        </button>
-      </div>
-    )
+  const tripForPanel = {
+    id: tripId,
+    start_date: trip?.start_date ?? '',
+    end_date: trip?.end_date ?? '',
   }
 
   return (
-    <div className="space-y-3">
-      {adding && (
-        <FlightForm
-          defaultCurrency={defaultCurrency}
-          onSubmit={handleAdd}
-          onCancel={() => setAdding(false)}
-        />
+    <div className="space-y-4">
+      {searching && (
+        <>
+          <FlightSearchPanel trip={tripForPanel} onResultsChange={setSearchState} />
+          <FlightResultsList
+            state={searchState}
+            savedOfferIds={savedOfferIds}
+            busyOfferId={busyOfferId}
+            onAdd={handleAddFromSearch}
+            formatPrice={formatPrice}
+          />
+        </>
       )}
-      {sorted.map((f) => {
-        const raw = rawFlights.find((r) => r.id === f.id)
-        if (editingId === f.id && raw) {
+
+      {flights.length === 0 && !searching && (
+        <div className="flex flex-col items-center text-center py-12">
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center mb-3"
+            style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.10)', color: 'var(--trip-base)' }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5A1.5 1.5 0 0 0 11.5 2 1.5 1.5 0 0 0 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/></svg>
+          </div>
+          <p className="text-[15px] font-serif text-gray-700 dark:text-gray-200">No flights booked yet</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 max-w-sm">
+            Search live inventory to add a flight to your trip.
+          </p>
+          <button
+            onClick={() => setSearching(true)}
+            className="mt-4 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[13px] font-medium text-white shadow-sm hover:shadow-md transition"
+            style={{ backgroundColor: 'var(--trip-base)' }}
+          >
+            Search flights
+          </button>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {sorted.map((f) => {
+          const raw = rawFlights.find((r) => r.id === f.id)
+          if (editingId === f.id && raw) {
+            return (
+              <FlightForm
+                key={f.id}
+                initial={{ ...raw.data, id: f.id }}
+                defaultCurrency={defaultCurrency}
+                onSubmit={(data) => handleUpdate(f.id, data)}
+                onCancel={() => setEditingId(null)}
+                onDelete={() => handleDelete(f.id)}
+              />
+            )
+          }
           return (
-            <FlightForm
+            <FlightCard
               key={f.id}
-              initial={{ ...raw.data, id: f.id }}
-              defaultCurrency={defaultCurrency}
-              onSubmit={(data) => handleUpdate(f.id, data)}
-              onCancel={() => setEditingId(null)}
+              flight={f}
+              onEdit={() => setEditingId(f.id)}
               onDelete={() => handleDelete(f.id)}
             />
           )
-        }
-        return (
-          <FlightCard
-            key={f.id}
-            flight={f}
-            onEdit={() => setEditingId(f.id)}
-            onDelete={() => handleDelete(f.id)}
-          />
-        )
-      })}
+        })}
+      </div>
     </div>
   )
 }

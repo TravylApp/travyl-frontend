@@ -2,7 +2,7 @@
 
 import { use } from 'react'
 import { Plus } from 'lucide-react'
-import { useItineraryScreen, useFlights } from '@travyl/shared'
+import { useItineraryScreen, useFlights, useHomeCurrency } from '@travyl/shared'
 import { Module } from '@/components/trip/Module'
 import { FlightsModule } from '@/components/trip/flights/FlightsModule'
 
@@ -25,6 +25,8 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
   const rawFlights = rawFlightsQuery.data ?? []
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tripCurrency = ((trip as any)?.currency ?? 'USD').match(/^[A-Z]{3}/)?.[0] ?? 'USD'
+  const { format: formatHome } = useHomeCurrency()
+  const formatPrice = (n: number, currency?: string | null) => formatHome(n, currency ?? tripCurrency)
 
   if (isLoading) {
     return (
@@ -61,6 +63,7 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
           flights={flights}
           rawFlights={rawFlights}
           defaultCurrency={tripCurrency}
+          formatPrice={formatPrice}
         />
       </Module>
     </div>
