@@ -154,30 +154,15 @@ api.route('GET /parse-intent', {
   ],
 })
 
-// Trip extraction — parses natural-language prompt into structured trip data
-// Public endpoint (no auth required) — only calls Bedrock, no user data access
-api.route('POST /api/trips/extract', {
-  handler: 'services/extract.handler',
-  permissions: [
-    {
-      actions: ['bedrock:InvokeModel'],
-      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-haiku-20240307-v1:0'],
-    },
-  ],
-})
-
-// Trip planning — generates full day-by-day itinerary with hotels and flights
-api.route('POST /api/trips/plan', {
-  handler: 'services/plan.handler',
-  link: [supabaseSecretKey, supabaseUrl],
-  permissions: [
-    {
-      actions: ['bedrock:InvokeModel'],
-      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-sonnet-20240620-v1:0'],
-    },
-  ],
-  timeout: '60 seconds',
-})
+// Trip extraction + planning are routed to the FastAPI backend
+// (api.dev.gotravyl.com / api.gotravyl.com) via the Next.js proxy at
+// apps/web/app/api/trips/{extract,plan}/route.ts. The Bedrock-based SST
+// handlers below were retired with Justin's commit but the route
+// registrations were left over and broke `sst deploy` because
+// services/extract.ts and services/plan.ts were never committed.
+//
+// api.route('POST /api/trips/extract', { handler: 'services/extract.handler', ... })
+// api.route('POST /api/trips/plan',    { handler: 'services/plan.handler',    ... })
 
 api.route('GET /search/quick', {
   handler: 'services/search-quick.handler',
