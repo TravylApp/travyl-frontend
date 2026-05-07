@@ -1,15 +1,13 @@
 'use client';
 
 import { use, useState, useMemo, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { Search, X, Heart, Loader2 } from 'lucide-react';
-import { useQueries, useQuery } from '@tanstack/react-query';
-import { useItineraryScreen, useServerFavorites, useAuthStore } from '@travyl/shared';
+import { Search, X, Loader2 } from 'lucide-react';
+import { useQueries } from '@tanstack/react-query';
+import { useItineraryScreen } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 import { PlaceDetailModal } from '@/components/explore/PlaceDetailModal';
 import { SectionRail } from '@/components/explore/SectionRail';
 import { PlaceRailCard } from '@/components/explore/PlaceRailCard';
-import { getOpenStatus } from '@/components/explore/openNow';
 
 // ─── Rail definitions ──────────────────────────────────────────────────────
 
@@ -98,21 +96,27 @@ async function fetchRail(category: string, destination: string, lat: number, lng
 
 // ─── Search ────────────────────────────────────────────────────────────────
 
-async function fetchSearch(query: string, lat: number, lng: number): Promise<PlaceItem[]> {
-  if (!query.trim()) return [];
-  const params = new URLSearchParams({ q: query, limit: '24' });
-  if (lat !== 0 || lng !== 0) {
-    params.set('lat', String(lat));
-    params.set('lng', String(lng));
-  }
-  try {
-    const res = await fetch(`/api/places?${params.toString()}`);
-    if (!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data) ? (data as PlaceItem[]).filter((p) => p?.id && p?.name && p.image) : [];
-  } catch {
-    return [];
-  }
+// Categories to fan out a single user search across. The backend's
+// `/api/places/nearby` endpoint takes a category param and returns only
+// matching venues, so a one-shot search would only ever surface one slice
+// (it defaulted to 'sightseeing' = "top attractions"). Fanning across the
+// rail categories pulls in restaurants, bars, parks, museums, cafés, and
+// events too — then we filter by the user's text client-side.
+const SEARCH_CATEGORIES = [
+  'attraction',
+  'restaurant',
+  'nightlife',
+  'park',
+  'museum',
+  'cafe',
+  'event',
+];
+
+function matchesQuery(p: PlaceItem, query: string): boolean {
+  const q = query.toLowerCase().trim();
+  if (!q) return true;
+  const haystack = `${p.name ?? ''} ${(p as { category?: string }).category ?? ''} ${(p as { address?: string }).address ?? ''}`.toLowerCase();
+  return q.split(/\s+/).every((token) => haystack.includes(token));
 }
 
 // ─── Component ─────────────────────────────────────────────────────────────
@@ -136,35 +140,11 @@ export default function TripExplorePage({ params }: { params: Promise<{ id: stri
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [searchInput]);
 
-  // Favorites
-  const session = useAuthStore((s) => s.session);
-  const authToken = session?.access_token ?? null;
-  const { data: serverFavs, addFavorite: serverAdd, removeFavorite: serverRemove } = useServerFavorites(authToken);
-  const serverFavIds = useMemo(() => (serverFavs ?? []).map((f) => f.place_id), [serverFavs]);
-  const [localFavorites, setLocalFavorites] = useState<string[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try { return JSON.parse(localStorage.getItem('places-favorites') || '[]'); } catch { return []; }
-  });
-  const favorites = authToken ? serverFavIds : localFavorites;
-
-  const toggleFavorite = (placeId: string) => {
-    if (authToken) {
-      if (serverFavIds.includes(placeId)) serverRemove(placeId);
-      else serverAdd(placeId);
-      return;
-    }
-    setLocalFavorites((prev) => {
-      const next = prev.includes(placeId) ? prev.filter((f) => f !== placeId) : [...prev, placeId];
-      try { localStorage.setItem('places-favorites', JSON.stringify(next)); } catch {}
-      return next;
-    });
-  };
-
   // Selected place modal
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
-
-  // Filters
-  const [openNowOnly, setOpenNowOnly] = useState(false);
+  const [quickAdd, setQuickAdd] = useState(false);
+  const openPlace = (place: PlaceItem) => { setQuickAdd(false); setSelectedPlace(place); };
+  const quickAddPlace = (place: PlaceItem) => { setQuickAdd(true); setSelectedPlace(place); };
 
   // Rail queries — fired in parallel, one per rail definition.
   // Each rail uses a distinct backend category so SerpAPI/Foursquare
@@ -186,56 +166,54 @@ export default function TripExplorePage({ params }: { params: Promise<{ id: stri
   const dedupedRailItems = useMemo(() => {
     const used = new Set<string>();
     return railQueries.map((q) => {
-      const items = (q.data ?? []).filter((p) => {
+      return (q.data ?? []).filter((p) => {
         if (used.has(p.id)) return false;
         used.add(p.id);
-        if (openNowOnly) {
-          const status = getOpenStatus((p as { hours?: string | null }).hours ?? null);
-          // When parseable and currently closed, drop. When unparseable
-          // (status === null) keep — better to over-show than hide silently.
-          if (status && !status.isOpen) return false;
-        }
         return true;
       });
-      return items;
     });
-  }, [railQueries, openNowOnly]);
+  }, [railQueries]);
 
-  // Search query
-  const { data: searchResultsRaw = [], isLoading: searchLoading, isFetching: searchFetching } = useQuery({
-    queryKey: ['trip-explore-search', id, searchQuery, lat, lng],
-    queryFn: () => fetchSearch(searchQuery, lat, lng),
-    enabled: ready && !!searchQuery,
-    staleTime: 5 * 60 * 1000,
+  // Search — fan one user query across every category so results aren't
+  // capped to "top attractions" (the backend default). Results are merged,
+  // deduped, and filtered by the user's text on the client.
+  const searchQueries = useQueries({
+    queries: SEARCH_CATEGORIES.map((category) => ({
+      queryKey: ['trip-explore-search', id, category, lat, lng, destination] as const,
+      queryFn: () => fetchRail(category, destination, lat, lng),
+      enabled: ready && !!searchQuery,
+      staleTime: 5 * 60 * 1000,
+    })),
   });
-  const searchResults = useMemo(() => {
-    if (!openNowOnly) return searchResultsRaw;
-    return searchResultsRaw.filter((p) => {
-      const status = getOpenStatus((p as { hours?: string | null }).hours ?? null);
-      return !status || status.isOpen;
-    });
-  }, [searchResultsRaw, openNowOnly]);
+  const searchLoading = !!searchQuery && searchQueries.some((q) => q.isLoading);
+  const searchFetching = !!searchQuery && searchQueries.some((q) => q.isFetching);
+  const searchResults = useMemo<PlaceItem[]>(() => {
+    if (!searchQuery) return [];
+    const seen = new Set<string>();
+    const out: PlaceItem[] = [];
+    for (const q of searchQueries) {
+      for (const p of q.data ?? []) {
+        if (seen.has(p.id)) continue;
+        if (!matchesQuery(p, searchQuery)) continue;
+        seen.add(p.id);
+        out.push(p);
+      }
+    }
+    return out;
+  }, [searchQueries, searchQuery]);
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-10 py-6 lg:py-10">
       {/* Hero */}
-      <div className="mb-8 flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 mb-1.5">Explore {destination}</p>
-          <h1 className="font-serif text-[28px] sm:text-[34px] font-normal text-gray-900 dark:text-white tracking-tight leading-[1.1]">
-            What's worth doing here.
-          </h1>
-        </div>
-        <Link
-          href={`/trip/${id}/favorites`}
-          className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-gray-200 dark:border-white/[0.08] text-[13px] font-semibold text-gray-700 dark:text-white/80 hover:border-gray-300 dark:hover:border-white/20 transition-colors"
-        >
-          <Heart size={13} /> Saved ({favorites.length})
-        </Link>
+      <div className="mb-8">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 mb-1.5">Explore {destination}</p>
+        <h1 className="font-serif text-[28px] sm:text-[34px] font-normal text-gray-900 dark:text-white tracking-tight leading-[1.1]">
+          What's worth doing here.
+        </h1>
       </div>
 
       {/* Search bar */}
-      <div className="relative mb-3 max-w-2xl">
+      <div className="relative mb-9 max-w-2xl">
         <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
@@ -253,30 +231,6 @@ export default function TripExplorePage({ params }: { params: Promise<{ id: stri
           >
             <X size={14} />
           </button>
-        )}
-      </div>
-
-      {/* Filter chips */}
-      <div className="flex flex-wrap items-center gap-2 mb-9">
-        <button
-          type="button"
-          onClick={() => setOpenNowOnly((v) => !v)}
-          aria-pressed={openNowOnly}
-          className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full border text-[12px] font-semibold transition-colors ${
-            openNowOnly
-              ? 'bg-[#1e3a5f] border-[#1e3a5f] text-white'
-              : 'border-gray-200 dark:border-white/[0.08] text-gray-700 dark:text-white/70 hover:border-gray-300 dark:hover:border-white/20'
-          }`}
-        >
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${openNowOnly ? 'bg-emerald-300' : 'bg-emerald-500'}`}
-          />
-          Open now
-        </button>
-        {openNowOnly && (
-          <span className="text-[11px] text-gray-400">
-            Only showing places we know are open right now
-          </span>
         )}
       </div>
 
@@ -304,9 +258,8 @@ export default function TripExplorePage({ params }: { params: Promise<{ id: stri
                 <PlaceRailCard
                   key={place.id}
                   place={place}
-                  isFavorited={favorites.includes(place.id)}
-                  onFavorite={toggleFavorite}
-                  onClick={setSelectedPlace}
+                  onClick={openPlace}
+                  onQuickAdd={quickAddPlace}
                 />
               ))}
             </div>
@@ -330,8 +283,6 @@ export default function TripExplorePage({ params }: { params: Promise<{ id: stri
                   <PlaceRailCard
                     key={place.id}
                     place={place}
-                    isFavorited={favorites.includes(place.id)}
-                    onFavorite={toggleFavorite}
                     onClick={setSelectedPlace}
                   />
                 ))}
@@ -345,12 +296,11 @@ export default function TripExplorePage({ params }: { params: Promise<{ id: stri
       {selectedPlace && (
         <PlaceDetailModal
           place={selectedPlace}
-          isFavorited={favorites.includes(selectedPlace.id)}
-          onToggleFavorite={() => toggleFavorite(selectedPlace.id)}
-          onClose={() => setSelectedPlace(null)}
+          onClose={() => { setSelectedPlace(null); setQuickAdd(false); }}
           tripId={id}
           tripStartDate={trip?.start_date ?? null}
           tripEndDate={trip?.end_date ?? null}
+          autoAddToItinerary={quickAdd}
         />
       )}
 

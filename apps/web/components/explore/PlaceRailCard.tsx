@@ -1,18 +1,20 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Heart, MapPin, Star, Clock } from 'lucide-react';
+import { Heart, MapPin, Star, Clock, Plus } from 'lucide-react';
 import type { PlaceItem } from '@travyl/shared';
 import { getOpenStatus } from './openNow';
 
 export interface PlaceRailCardProps {
   place: PlaceItem;
-  isFavorited: boolean;
-  onFavorite: (id: string) => void;
+  isFavorited?: boolean;
+  onFavorite?: (id: string) => void;
   onClick: (place: PlaceItem) => void;
+  /** Optional shortcut — opens the modal directly into the day-picker preview. */
+  onQuickAdd?: (place: PlaceItem) => void;
 }
 
-export function PlaceRailCard({ place, isFavorited, onFavorite, onClick }: PlaceRailCardProps) {
+export function PlaceRailCard({ place, isFavorited = false, onFavorite, onClick, onQuickAdd }: PlaceRailCardProps) {
   const [imageBroken, setImageBroken] = useState(false);
   const openStatus = useMemo(
     () => getOpenStatus((place as { hours?: string | null }).hours ?? null),
@@ -48,16 +50,29 @@ export function PlaceRailCard({ place, isFavorited, onFavorite, onClick }: Place
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onFavorite(place.id); }}
-          aria-label={isFavorited ? 'Remove from favorites' : 'Save to favorites'}
-          className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm transition-colors ${
-            isFavorited ? 'bg-red-500 text-white' : 'bg-white/85 dark:bg-black/55 text-gray-700 dark:text-white hover:bg-white'
-          }`}
-        >
-          <Heart size={14} className={isFavorited ? 'fill-current' : ''} />
-        </button>
+        {onFavorite && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onFavorite(place.id); }}
+            aria-label={isFavorited ? 'Remove from favorites' : 'Save to favorites'}
+            className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm transition-colors ${
+              isFavorited ? 'bg-red-500 text-white' : 'bg-white/85 dark:bg-black/55 text-gray-700 dark:text-white hover:bg-white'
+            }`}
+          >
+            <Heart size={14} className={isFavorited ? 'fill-current' : ''} />
+          </button>
+        )}
+        {onQuickAdd && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onQuickAdd(place); }}
+            aria-label={`Add ${place.name} to itinerary`}
+            title="Add to itinerary"
+            className={`absolute top-2.5 ${onFavorite ? 'right-12' : 'right-2.5'} w-8 h-8 rounded-full flex items-center justify-center bg-[#1e3a5f] hover:bg-[#16314f] text-white shadow-md transition-colors`}
+          >
+            <Plus size={15} strokeWidth={2.5} />
+          </button>
+        )}
         {place.category && (
           <span className="absolute bottom-2.5 left-2.5 px-2 h-6 inline-flex items-center rounded-full bg-white/90 dark:bg-black/60 backdrop-blur-sm text-[10px] font-semibold uppercase tracking-[0.08em] text-[#1e3a5f] dark:text-white">
             {place.category}

@@ -1,6 +1,11 @@
 import { supabase } from './supabase';
 import type { TransitSegment, CreateTransitBookingInput } from '../types';
 
+// `transit` is not yet provisioned in every environment. PostgREST returns
+// PGRST205 / Postgres 42P01 when the relation is missing — treat that as an
+// empty result instead of error-spamming the console on every itinerary load.
+const MISSING_TABLE_CODES = new Set(['PGRST205', '42P01']);
+
 export async function fetchTransit(tripId: string): Promise<TransitSegment[]> {
   const { data, error } = await supabase
     .from('transit')
@@ -8,7 +13,15 @@ export async function fetchTransit(tripId: string): Promise<TransitSegment[]> {
     .eq('trip_id', tripId)
     .order('created_at', { ascending: true });
   if (error) {
-    console.error('[transitApi] fetch error:', error);
+    if (MISSING_TABLE_CODES.has(error.code ?? '')) return [];
+    // PostgrestError fields are non-enumerable, so a bare `console.error(error)`
+    // logs `{}`. Pull the useful bits out by hand.
+    console.error('[transitApi] fetch error:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    });
     return [];
   }
   return (data as any[])?.map(row => ({
