@@ -307,8 +307,11 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
 
   const queryClient = useQueryClient()
 
-  // Background-prefetch intelligence for all visible activities
+  // Background-prefetch intelligence for all visible activities.
+  // Shared-view (anonymous/link) viewers are blocked by RLS and would just
+  // generate noisy 403/404s — skip the prefetch entirely for them.
   useEffect(() => {
+    if (isSharedView) return
     if (!scheduledActivities.length) return
     for (const a of scheduledActivities) {
       queryClient.prefetchQuery({
@@ -317,7 +320,7 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
         staleTime: 60 * 60 * 1000,
       })
     }
-  }, [scheduledActivities, tripId, queryClient])
+  }, [isSharedView, scheduledActivities, tripId, queryClient])
 
   const { theme, toggleTheme } = useCalendarTheme()
   const {
@@ -663,6 +666,13 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
     setEditingActivityId(null)
   }, [moveActivity, updateActivity, queryClient])
 
+  const handleAutoTransit = useCallback(async () => {
+    const count = await fillTransitGaps()
+    if (count > 0) {
+      console.log(`[CalendarDashboard] Auto-created ${count} transit activities`)
+    }
+  }, [fillTransitGaps])
+
   // Early returns for loading / error states (must come after all hooks)
   if (isLoading) return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.15 }}><CalendarSkeleton /></motion.div>
   if (error) return <CalendarError message={error} />
@@ -749,13 +759,6 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
   const handleAddEvent = () => {
     handleCreateActivity(selectedDayIndex ?? 0, 12)
   }
-
-  const handleAutoTransit = useCallback(async () => {
-    const count = await fillTransitGaps()
-    if (count > 0) {
-      console.log(`[CalendarDashboard] Auto-created ${count} transit activities`)
-    }
-  }, [fillTransitGaps])
 
   const handleClickDayHeader = (dayIndex: number) => {
     goToDayView(dayIndex)
@@ -921,7 +924,7 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
                     pollUserId={userId}
                     onVotePoll={(activityId, v) => vote(activityId, userId, v)}
                     bookingStatuses={bookingStatuses}
-                    tripId={tripId}
+                    tripId={isSharedView ? undefined : tripId}
                     ghostActivities={ghostActivities}
                     onConfirmGhost={handleConfirmGhost}
                     onDismissGhost={handleDismissGhost}
