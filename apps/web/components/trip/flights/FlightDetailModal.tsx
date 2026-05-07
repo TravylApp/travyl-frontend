@@ -15,8 +15,10 @@ import {
   Star,
   ExternalLink,
   Building2,
+  Globe,
 } from 'lucide-react'
 import type { SerpFlight } from './flightSearch'
+import { airlineHomepage, googleFlightsSearchUrl } from '@/lib/airlineLinks'
 
 interface AirportInfo {
   iata: string
@@ -233,6 +235,57 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
               </button>
             </div>
           )}
+
+          {/* Outbound booking links — airline website + Google Flights search */}
+          {(() => {
+            const carrier = first?.airline ?? ''
+            const carrierUrl = airlineHomepage(carrier)
+            const googleUrl =
+              first?.departure.id && last?.arrival.id && first?.departure.time
+                ? googleFlightsSearchUrl({
+                    origin: first.departure.id,
+                    destination: last.arrival.id,
+                    date: first.departure.time,
+                  })
+                : null
+            if (!carrierUrl && !googleUrl) return null
+            return (
+              <div className="flex flex-wrap items-center gap-2">
+                {carrierUrl && (
+                  <a
+                    href={carrierUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-[12px] font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
+                  >
+                    {first?.airlineLogo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={first.airlineLogo}
+                        alt=""
+                        className="w-4 h-4 object-contain"
+                      />
+                    ) : (
+                      <Globe size={12} />
+                    )}
+                    Book on {carrier}
+                    <ExternalLink size={10} className="text-gray-400" />
+                  </a>
+                )}
+                {googleUrl && (
+                  <a
+                    href={googleUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-lg text-[12px] font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition"
+                  >
+                    View on Google Flights
+                    <ExternalLink size={10} />
+                  </a>
+                )}
+              </div>
+            )
+          })()}
 
           {/* Leg-by-leg breakdown */}
           <section>
