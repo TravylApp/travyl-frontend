@@ -34,7 +34,7 @@ import {
 import type { ItineraryDayViewModel } from '../viewmodels/itineraryViewModel';
 import { buildBudgetSummary } from '../viewmodels/budgetViewModel';
 import { upscaleGoogleImage } from '../utils';
-import { useSettingsStore } from '../stores/settingsStore';
+import { useDisplayPrefs } from './useDisplayPrefs';
 import { supabase } from '../services/supabase';
 
 /**
@@ -352,7 +352,7 @@ export function useItineraryScreen(tripId: string | undefined) {
   const hotelsQuery = useHotels(tripId);
   const carsQuery = useCars(tripId);
   const transitQuery = useTransit(tripId);
-  const homeCurrency = useSettingsStore((s) => s.currency);
+  const homeCurrency = useDisplayPrefs().currency;
 
   // Realtime sync — listen for postgres_changes on the trip row + every
   // related table and invalidate the matching react-query cache so any

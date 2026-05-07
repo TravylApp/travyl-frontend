@@ -2,14 +2,14 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, LogOut, Eye, EyeOff, Ruler, Coins } from "lucide-react";
+import { ArrowLeft, Loader2, LogOut, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { AvatarUpload } from "@/components/AvatarUpload";
 import { PasswordStrengthMeter } from "@/components/PasswordStrengthMeter";
 import { LoadingBar } from "@/components/LoadingBar";
 import { LocationPicker, type LocationValue } from "@/components/settings/LocationPicker";
-import { useAuthStore, supabase, useSettingsStore, CURRENCIES } from "@travyl/shared";
+import { useAuthStore, supabase } from "@travyl/shared";
 import { fetchProfile, updateProfile, uploadAvatar, updateUserPassword } from "@travyl/shared";
 import type { Profile } from "@travyl/shared";
 
@@ -31,11 +31,12 @@ const EMPTY_FORM: ProfileForm = {
   lng: null,
 };
 
-type SectionId = "profile" | "display" | "password";
+type SectionId = "profile" | "password";
 
+// Currency + units are derived from profile.country (see useDisplayPrefs)
+// — no manual Display tab anymore.
 const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "profile", label: "Profile" },
-  { id: "display", label: "Display" },
   { id: "password", label: "Password" },
 ];
 
@@ -54,10 +55,6 @@ export default function ProfileSettings() {
   const queryClient = useQueryClient();
   const { user, session, loading: authLoading } = useAuthStore();
   const signOut = useAuthStore((s) => s.signOut);
-  const distanceUnits = useSettingsStore((s) => s.distanceUnits);
-  const setDistanceUnits = useSettingsStore((s) => s.setDistanceUnits);
-  const currency = useSettingsStore((s) => s.currency);
-  const setCurrency = useSettingsStore((s) => s.setCurrency);
 
   const [section, setSection] = useState<SectionId>("profile");
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
@@ -300,9 +297,6 @@ export default function ProfileSettings() {
     .toUpperCase()
     .slice(0, 2) || (user?.email?.[0]?.toUpperCase() ?? "?");
 
-  const distanceExample = distanceUnits === "miles" ? "12 mi · 76 °F" : "19 km · 24 °C";
-  const currencySymbol = CURRENCIES.find((c) => c.code === currency)?.symbol ?? "$";
-  const currencyExample = `${currencySymbol}1,250 ${currency}`;
   const usingGoogleAvatar = !!googleAvatarFromUser(user) && form.avatar === googleAvatarFromUser(user);
 
   return (
@@ -450,73 +444,6 @@ export default function ProfileSettings() {
                       {isSavingProfile && <Loader2 size={14} className="animate-spin" />}
                       {isSavingProfile ? "Saving…" : "Save changes"}
                     </button>
-                  </div>
-                </div>
-              )}
-
-              {section === "display" && (
-                <div className="space-y-7">
-                  <div>
-                    <h2 className="text-xl font-serif text-foreground tracking-wide">Display</h2>
-                    <p className="text-sm text-muted-foreground mt-1">How distances, temperature, and prices appear across your trips. Saved automatically.</p>
-                  </div>
-
-                  <div className="rounded-2xl border border-border bg-[var(--magazine-surface)]/40 p-5">
-                    <div className="flex items-start gap-3 mb-4">
-                      <div className="w-9 h-9 rounded-xl bg-[#1e3a5f]/10 flex items-center justify-center text-[#1e3a5f] shrink-0">
-                        <Ruler size={16} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-baseline justify-between gap-3">
-                          <h3 className="text-base font-serif text-foreground">Units &amp; temperature</h3>
-                          <span className="text-xs font-medium tabular-nums text-[#1e3a5f]">{distanceExample}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Used for trip overviews, weather forecasts, and place distances.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="inline-flex rounded-xl border border-border bg-card p-1">
-                      {(["miles", "kilometers"] as const).map((unit) => (
-                        <button
-                          key={unit}
-                          type="button"
-                          onClick={() => setDistanceUnits(unit)}
-                          className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                            distanceUnits === unit ? "bg-[#1e3a5f] text-white" : "text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          {unit === "miles" ? "Miles · °F" : "Kilometers · °C"}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-border bg-[var(--magazine-surface)]/40 p-5">
-                    <div className="flex items-start gap-3 mb-4">
-                      <div className="w-9 h-9 rounded-xl bg-[#1e3a5f]/10 flex items-center justify-center text-[#1e3a5f] shrink-0">
-                        <Coins size={16} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-baseline justify-between gap-3">
-                          <h3 className="text-base font-serif text-foreground">Home currency</h3>
-                          <span className="text-xs font-medium tabular-nums text-[#1e3a5f]">{currencyExample}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Trip budgets, expenses, and price tags convert to this currency.
-                        </p>
-                      </div>
-                    </div>
-                    <select
-                      id="currency"
-                      value={currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                      className={inputClass}
-                    >
-                      {CURRENCIES.map((c) => (
-                        <option key={c.code} value={c.code}>{c.code} · {c.name} ({c.symbol})</option>
-                      ))}
-                    </select>
                   </div>
                 </div>
               )}

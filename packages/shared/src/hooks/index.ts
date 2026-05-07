@@ -45,6 +45,8 @@ export { usePackingList } from './usePackingList';
 export { usePackingSuggestions } from './usePackingSuggestions';
 export { usePlaceImage, usePlaceImages } from './usePlaceImage';
 export { useProfile } from './useProfile';
+export { useDisplayPrefs } from './useDisplayPrefs';
+export type { DisplayPrefs } from './useDisplayPrefs';
 export { useRestaurantFilters, RESTAURANT_CATEGORIES, CUISINE_SUBFILTERS, RESTAURANT_SORT_OPTIONS, RESTAURANT_CATEGORY_ICONS } from './useRestaurantFilters';
 export type { RestaurantCategory, RestaurantSortOption } from './useRestaurantFilters';
 export { useActivityFilters, ACTIVITY_CATEGORIES, ACTIVITY_SUBFILTERS, ACTIVITY_SORT_OPTIONS, ACTIVITY_CATEGORY_ICONS, mapActivityCategory } from './useActivityFilters';

@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { Cloud, Droplets, Sun, ChevronDown, Shield, Pencil, Share2, X, Check } from 'lucide-react';
-import { formatDateRange, useExchangeRates, updateTripDetails, useSettingsStore, useWeather, ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
+import { formatDateRange, useExchangeRates, updateTripDetails, useDisplayPrefs, useWeather, ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
 import { useRailCollapsed } from '@/components/trip-rail';
 
@@ -163,9 +163,9 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
   const [essentialsOpen, setEssentialsOpen] = useState(!compact);
   const [convertAmount, setConvertAmount] = useState<number | string>(1);
   const [convertEditing, setConvertEditing] = useState(false);
-  // Temperature unit follows user's distance preference: miles = °F, kilometers = °C
-  const distanceUnits = useSettingsStore((s) => s.distanceUnits);
-  const useFahrenheit = distanceUnits === 'miles';
+  // Temperature unit follows the user's profile.country (US → °F, else °C).
+  // No manual override — the Display tab was removed.
+  const { useFahrenheit } = useDisplayPrefs();
   const fmtTemp = (c: number) => useFahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`;
   // Prefer live weather from backend, fall back to enrichment snapshot
   const weatherCity = trip?.destination?.split(',')[0]?.trim() || '';

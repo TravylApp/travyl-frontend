@@ -296,3 +296,8 @@ export * from './places'
 // Client-side search intent inference (Places page hint)
 export { inferSearchCategory, inferSearchHint } from './searchIntent'
 export type { InferredCategory } from './searchIntent'
+
+// Country-derived defaults (currency + measurement units).
+// DistanceUnits type already lives on the stores barrel — re-exporting it
+// from utils too would trip TS2308 (ambiguous re-export) in the root index.
+export { currencyForCountry, unitsForCountry } from './countryDefaults'
