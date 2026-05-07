@@ -18,7 +18,7 @@ import {
   Globe,
 } from 'lucide-react'
 import type { SerpFlight } from './flightSearch'
-import { airlineBookingUrl, googleFlightsSearchUrl } from '@/lib/airlineLinks'
+import { airlineHomepage, kayakSearchUrl, googleFlightsSearchUrl } from '@/lib/airlineLinks'
 
 interface AirportInfo {
   iata: string
@@ -236,14 +236,10 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
             </div>
           )}
 
-          {/* Outbound booking links — deep-link to carrier search + Google Flights fallback */}
+          {/* Outbound booking links: Kayak deep-link → carrier homepage → Google Flights */}
           {(() => {
             const carrier = first?.airline ?? ''
-            // SerpAPI's google_flights endpoint returns outbound options only;
-            // return-leg dates would need a follow-up booking_token call we
-            // don't make. So all carrier links default to the outbound date
-            // and the user can add the return on the airline's site.
-            const linkCtx =
+            const route =
               first?.departure.id && last?.arrival.id && first?.departure.time
                 ? {
                     origin: first.departure.id,
@@ -252,17 +248,30 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
                     returnDate: null,
                   }
                 : null
-            const carrierUrl = linkCtx ? airlineBookingUrl(carrier, linkCtx) : null
-            const googleUrl = linkCtx ? googleFlightsSearchUrl(linkCtx) : null
-            if (!carrierUrl && !googleUrl) return null
+            const kayakUrl = route ? kayakSearchUrl(route) : null
+            const googleUrl = route ? googleFlightsSearchUrl(route) : null
+            const carrierUrl = airlineHomepage(carrier)
+            if (!kayakUrl && !googleUrl && !carrierUrl) return null
             return (
               <div className="flex flex-wrap items-center gap-2">
-                {carrierUrl && (
+                {kayakUrl && (
+                  <a
+                    href={kayakUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-[12px] font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
+                  >
+                    <Globe size={12} className="text-[#1e3a5f]" />
+                    View this flight on Kayak
+                    <ExternalLink size={10} className="text-gray-400" />
+                  </a>
+                )}
+                {carrierUrl && carrier && (
                   <a
                     href={carrierUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-[12px] font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
+                    className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-lg text-[12px] font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition"
                   >
                     {first?.airlineLogo ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -271,11 +280,9 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
                         alt=""
                         className="w-4 h-4 object-contain"
                       />
-                    ) : (
-                      <Globe size={12} />
-                    )}
-                    Book on {carrier}
-                    <ExternalLink size={10} className="text-gray-400" />
+                    ) : null}
+                    {carrier} site
+                    <ExternalLink size={10} />
                   </a>
                 )}
                 {googleUrl && (
@@ -285,7 +292,7 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-lg text-[12px] font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition"
                   >
-                    View on Google Flights
+                    Google Flights
                     <ExternalLink size={10} />
                   </a>
                 )}
