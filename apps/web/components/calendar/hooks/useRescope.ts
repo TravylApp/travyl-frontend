@@ -19,8 +19,10 @@ export type RescoperStatus = 'idle' | 'pending-conflict' | 'loading' | 'error'
 export interface UseRescopeReturn {
   status: RescoperStatus
   conflicts: CalendarActivity[]
-  // oldStartDate / oldEndDate tell the hook how to classify the change
-  rescope: (patch: RescopePatch, oldStartDate: Date, oldEndDate: Date) => void
+  // oldStartDate / oldEndDate tell the hook how to classify the change.
+  // oldDestination is logged into itinerary_edits so the audit log shows
+  // what the destination used to be when this rescope happened.
+  rescope: (patch: RescopePatch, oldStartDate: Date, oldEndDate: Date, oldDestination: string) => void
   confirmRescope: (resolution: ConflictResolution) => Promise<void>
   cancelRescope: () => void
 }
