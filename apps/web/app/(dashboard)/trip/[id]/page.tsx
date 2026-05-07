@@ -428,45 +428,61 @@ function PhrasesSection({ phrases, language }: { phrases: Record<string, string>
   const allEntries = Object.entries(phrases);
   const [speaking, setSpeaking] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
-  if (!allEntries.length) return null;
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const cacheRef = useRef<Map<string, string>>(new Map());
+  const activeTextRef = useRef<string | null>(null);
 
-  const entries = showAll ? allEntries : allEntries.slice(0, 6);
-
-  // Map common language names to BCP-47 codes for TTS
-  const langMap: Record<string, string> = {
-    japanese: 'ja', french: 'fr', spanish: 'es', italian: 'it', german: 'de',
-    portuguese: 'pt', chinese: 'zh', korean: 'ko', arabic: 'ar', hindi: 'hi',
-    thai: 'th', vietnamese: 'vi', turkish: 'tr', greek: 'el', dutch: 'nl',
-    swedish: 'sv', norwegian: 'no', polish: 'pl', russian: 'ru',
-  };
-  const langCode = language ? langMap[language.toLowerCase()] || language.slice(0, 2).toLowerCase() : '';
-
-  const speak = (text: string) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    setSpeaking(text);
-    window.speechSynthesis.cancel();
-
-    const doSpeak = () => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      const voices = window.speechSynthesis.getVoices();
-      const match = voices.find(v => v.lang.toLowerCase().startsWith(langCode))
-        || voices.find(v => v.lang.toLowerCase().includes(langCode));
-      if (match) utterance.voice = match;
-      utterance.rate = 0.85;
-      utterance.onend = () => setSpeaking(null);
-      utterance.onerror = () => setSpeaking(null);
-      window.speechSynthesis.speak(utterance);
+  // Revoke blob URLs on unmount so we don't leak memory across navigations.
+  useEffect(() => {
+    const cache = cacheRef.current;
+    return () => {
+      const a = audioRef.current;
+      if (a) { a.pause(); a.src = ''; }
+      for (const url of cache.values()) URL.revokeObjectURL(url);
+      cache.clear();
     };
+  }, []);
 
-    // Voices load async — wait for them if needed
-    if (window.speechSynthesis.getVoices().length > 0) {
-      doSpeak();
-    } else {
-      window.speechSynthesis.onvoiceschanged = () => { doSpeak(); window.speechSynthesis.onvoiceschanged = null; };
-      // Fallback if event never fires
-      setTimeout(doSpeak, 200);
+  const speak = async (text: string) => {
+    if (typeof window === 'undefined') return;
+
+    const prev = audioRef.current;
+    if (prev) { prev.pause(); prev.src = ''; }
+
+    activeTextRef.current = text;
+    setSpeaking(text);
+    const cacheKey = `${language || ''}:${text}`;
+    let url = cacheRef.current.get(cacheKey);
+
+    try {
+      if (!url) {
+        const res = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, lang: language }),
+        });
+        if (!res.ok) throw new Error(`TTS ${res.status}`);
+        const blob = await res.blob();
+        url = URL.createObjectURL(blob);
+        cacheRef.current.set(cacheKey, url);
+      }
+
+      // User tapped a different phrase while we were fetching — abandon this play.
+      if (activeTextRef.current !== text) return;
+
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => setSpeaking(prevSpeak => (prevSpeak === text ? null : prevSpeak));
+      audio.onerror = () => setSpeaking(prevSpeak => (prevSpeak === text ? null : prevSpeak));
+      await audio.play();
+    } catch (err) {
+      console.warn('[tts] playback failed', err);
+      setSpeaking(prevSpeak => (prevSpeak === text ? null : prevSpeak));
     }
   };
+
+  if (!allEntries.length) return null;
+  const entries = showAll ? allEntries : allEntries.slice(0, 6);
 
   return (
     <section>

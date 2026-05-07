@@ -19,6 +19,7 @@ import {
   predicthqApiKey,
   openExchangeRatesAppId,
   openchargeApiKey,
+  elevenLabsApiKey,
 } from './secrets'
 
 export const site = new sst.aws.Nextjs('TravylWeb', {
@@ -69,6 +70,9 @@ export const site = new sst.aws.Nextjs('TravylWeb', {
     // Server-only — Misc
     OPEN_EXCHANGE_RATES_APP_ID: openExchangeRatesAppId.value,
     OPENCHARGE_API_KEY: openchargeApiKey.value,
+
+    // Server-only — TTS
+    ELEVENLABS_API_KEY: elevenLabsApiKey.value,
   },
 })
 
@@ -114,5 +118,8 @@ export const web = new sst.x.DevCommand('TravylWebDev', {
     // Server-only — Misc
     OPEN_EXCHANGE_RATES_APP_ID: openExchangeRatesAppId.value,
     OPENCHARGE_API_KEY: openchargeApiKey.value,
+
+    // Server-only — TTS
+    ELEVENLABS_API_KEY: elevenLabsApiKey.value,
   },
 })
