@@ -396,11 +396,6 @@ export function useItineraryScreen(tripId: string | undefined) {
         { event: '*', schema: 'public', table: 'hotels', filter: `trip_id=eq.${tripId}` },
         () => queryClient.invalidateQueries({ queryKey: ['hotels', tripId] }),
       )
-      .on(
-        'postgres_changes' as any,
-        { event: '*', schema: 'public', table: 'cars', filter: `trip_id=eq.${tripId}` },
-        () => queryClient.invalidateQueries({ queryKey: ['cars', tripId] }),
-      )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);

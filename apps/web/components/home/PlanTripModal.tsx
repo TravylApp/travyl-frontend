@@ -24,6 +24,7 @@ export function PlanTripModal({
   onPlan,
 }: PlanTripModalProps) {
   const buildPrompt = (prefs: {
+    destination?: string;
     duration?: string;
     travelers?: string;
     interests?: string[];
@@ -31,7 +32,8 @@ export function PlanTripModal({
     pace?: string;
   }) => {
     const parts: string[] = [tripCase.prompt];
-    if (tripCase.location) parts.push(`to ${tripCase.location}`);
+    const location = prefs.destination?.trim() || tripCase.location;
+    if (location) parts.push(`to ${location}`);
     if (prefs.duration) parts.push(prefs.duration);
     if (prefs.travelers) parts.push(prefs.travelers);
     if (prefs.interests?.length)
@@ -42,6 +44,7 @@ export function PlanTripModal({
   };
 
   const handleSubmit = (prefs: {
+    destination?: string;
     duration?: string;
     travelers?: string;
     interests?: string[];
@@ -49,7 +52,13 @@ export function PlanTripModal({
     pace?: string;
   }) => {
     const prompt = buildPrompt(prefs);
-    onPlan(prompt, tripCase.context);
+    const location = prefs.destination?.trim() || tripCase.location;
+    // Pass custom destination context if it differs from the preset
+    const context =
+      location !== tripCase.location
+        ? { city: location, country: "" }
+        : tripCase.context;
+    onPlan(prompt, context);
     onClose();
   };
 

@@ -373,42 +373,6 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
   );
 }
 
-// ─── Bottom Photo Mosaic (full-bleed, auto-rotating) ───
-
-function TripPhotoMosaic({ photos, destination }: { photos: string[]; destination?: string }) {
-  const [current, setCurrent] = useState(0);
-
-  useEffect(() => {
-    setCurrent(0);
-    if (photos.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrent((c) => (c + 1) % photos.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [photos]);
-
-  return (
-    <div className="w-full relative overflow-hidden" style={{ height: 600 }}>
-      {photos.map((src, i) => (
-        <Image
-          key={i}
-          src={src}
-          alt={destination || 'Trip photo'}
-          fill
-          className="object-cover transition-opacity duration-[2000ms]"
-          style={{ opacity: i === current ? 1 : 0, objectPosition: 'center 40%' }}
-          sizes="100vw"
-          priority={i === 0}
-        />
-      ))}
-      <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{
-        height: '25%',
-        background: 'linear-gradient(to top, white 0%, transparent 100%)',
-      }} />
-    </div>
-  );
-}
-
 // ─── Main Layout ────────────────────────────────────────────
 
 export default function TripLayoutInner({
@@ -659,9 +623,6 @@ function TripLayoutContent({
       {/* Below-the-fold content */}
       {isOverview && (
         <div className="relative z-10">
-          {!isMagazine && (destImageData?.images?.length ?? 0) > 0 && (
-            <TripPhotoMosaic photos={destImageData!.images} destination={trip?.destination} />
-          )}
           {isMagazine ? (
             <div className={`px-6 sm:px-10 ${railCollapsed ? 'md:pl-[96px]' : 'md:pl-[260px]'} md:pr-10 mt-4 pb-8 transition-[padding] duration-200 ease-out`}>
               <TripExploreSection trip={trip} embedded />

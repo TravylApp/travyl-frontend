@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { checkOrigin, rateLimit } from '@/lib/api-utils'
+import { createServerClient } from '@supabase/ssr'
+import { checkOrigin, rateLimit, supabaseUrl, supabaseKey } from '@/lib/api-utils'
 
 const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
 
@@ -24,14 +25,28 @@ export async function POST(req: NextRequest) {
   if (typeof body.country === 'string') safeBody.country = body.country.slice(0, 100)
   if (typeof body.answers === 'object' && body.answers) safeBody.answers = body.answers
 
+  // Extract auth token — the browser uses Supabase SSR cookies, not an
+  // Authorization header, so we read the session from the request cookies
+  // and forward the access token as a Bearer token to the backend Lambda.
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  try {
+    const supabase = createServerClient(supabaseUrl, supabaseKey, {
+      cookies: {
+        getAll() { return req.cookies.getAll() },
+        setAll() {},
+      },
+    })
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`
+    }
+  } catch {
+    // No session available — backend will return 401
+  }
+
   const res = await fetch(`${API_URL}/api/trips/plan`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(req.headers.get('authorization')
-        ? { Authorization: req.headers.get('authorization')! }
-        : {}),
-    },
+    headers,
     body: JSON.stringify(safeBody),
   })
 

@@ -71,7 +71,10 @@ export function Select({
   )
 }
 
-export function DateInput(props: { value: string; onChange: (v: string) => void; invalid?: boolean; disabled?: boolean }) {
+export function DateInput(props: {
+  value: string; onChange: (v: string) => void; invalid?: boolean; disabled?: boolean;
+  min?: string; max?: string;
+}) {
   return <Input type="date" {...props} />
 }
 

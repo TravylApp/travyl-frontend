@@ -66,30 +66,38 @@ export async function GET(req: NextRequest) {
     }
 
     const slug = (s: string) => (s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60)
-    const hotels = properties.slice(0, 20).map((p: any) => ({
-      // Content-derived stable ID so the same property keeps the same offer_id across re-searches.
-      id: `serp:${slug(p.name)}:${p.gps_coordinates?.latitude ?? 0}:${p.gps_coordinates?.longitude ?? 0}`,
-      name: p.name,
-      stars: p.hotel_class ?? 0,
-      rating: p.overall_rating ?? 0,
-      reviews: p.reviews ?? 0,
-      price: p.rate_per_night?.lowest ? parseFloat(p.rate_per_night.lowest.replace(/[^0-9.]/g, '')) : null,
-      currency: 'USD',
-      address: p.location ?? '',
-      neighborhood: p.neighborhood ?? '',
-      lat: p.gps_coordinates?.latitude ?? 0,
-      lng: p.gps_coordinates?.longitude ?? 0,
-      images: [
-        upscaleGoogleImage(p.images?.[0]?.thumbnail) ?? p.images?.[0]?.thumbnail ?? upscaleGoogleImage(p.images?.[0]?.original_image) ?? p.images?.[0]?.original_image ?? '',
-        ...(p.images?.slice(1, 4).map((img: any) => upscaleGoogleImage(img.thumbnail) ?? img.thumbnail ?? upscaleGoogleImage(img.original_image) ?? img.original_image ?? '') ?? []),
-      ].filter(Boolean),
-      amenities: p.amenities ?? [],
-      checkIn: p.check_in_time ?? '3:00 PM',
-      checkOut: p.check_out_time ?? '11:00 AM',
-      description: p.description ?? '',
-      link: p.link ?? '',
-      source: 'serpapi',
-    }))
+    const hotels = properties.slice(0, 20).map((p: any) => {
+      // hotel_class comes as "3-star hotel" — extract just the number
+      const starClass = typeof p.hotel_class === 'string'
+        ? parseInt(p.hotel_class, 10) || 0
+        : (p.hotel_class as number) ?? 0
+
+      return {
+        // Content-derived stable ID so the same property keeps the same offer_id across re-searches.
+        id: `serp:${slug(p.name)}:${p.gps_coordinates?.latitude ?? 0}:${p.gps_coordinates?.longitude ?? 0}`,
+        name: p.name,
+        stars: starClass,
+        rating: p.overall_rating ?? 0,
+        reviews: p.reviews ?? 0,
+        // Use extracted_lowest (number) if available
+        price: p.rate_per_night?.extracted_lowest ?? null,
+        currency: 'USD',
+        address: p.location ?? p.address ?? '',
+        neighborhood: p.neighborhood ?? '',
+        lat: p.gps_coordinates?.latitude ?? 0,
+        lng: p.gps_coordinates?.longitude ?? 0,
+        images: [
+          upscaleGoogleImage(p.images?.[0]?.thumbnail) ?? p.images?.[0]?.thumbnail ?? upscaleGoogleImage(p.images?.[0]?.original_image) ?? p.images?.[0]?.original_image ?? '',
+          ...(p.images?.slice(1, 4).map((img: any) => upscaleGoogleImage(img.thumbnail) ?? img.thumbnail ?? upscaleGoogleImage(img.original_image) ?? img.original_image ?? '') ?? []),
+        ].filter(Boolean),
+        amenities: p.amenities ?? [],
+        checkIn: p.check_in_time ?? '3:00 PM',
+        checkOut: p.check_out_time ?? '11:00 AM',
+        description: p.description ?? '',
+        link: p.link ?? '',
+        source: 'serpapi',
+      }
+    })
 
     return NextResponse.json({
       total: properties.length,

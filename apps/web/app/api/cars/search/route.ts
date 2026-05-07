@@ -1,29 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin, rateLimit } from '@/lib/api-utils'
 
-const DUFFEL_API_KEY = process.env.DUFFEL_API_KEY
-const DUFFEL_BASE = 'https://api.duffel.com'
+const PCL_HOST = 'priceline-com2.p.rapidapi.com'
+const PCL_KEY = process.env.PRICELINE_RAPIDAPI_KEY
 
-async function geocode(location: string): Promise<{ lat: number; lng: number } | null> {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(location)}&format=json&limit=1`,
-      { headers: { 'Accept-Language': 'en', 'User-Agent': 'Travyl/1.0 (travel planning app)' } },
-    )
-    const data = await res.json()
-    if (data.length > 0) {
-      return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
-    }
-  } catch {}
-  return null
+function toPclDate(d: string): string {
+  // Pass through YYYY-MM-DD — API expects ISO format
+  return d
 }
 
 export async function GET(req: NextRequest) {
   const blocked = checkOrigin(req) || rateLimit(req, 'cars', 10, 60_000)
   if (blocked) return blocked
 
-  if (!DUFFEL_API_KEY) {
-    return NextResponse.json({ error: 'Duffel API not configured', rates: [] })
+  if (!PCL_KEY) {
+    return NextResponse.json({ error: 'Priceline API not configured', rates: [] })
   }
 
   const pickupLocation = req.nextUrl.searchParams.get('pickup_location')
@@ -37,75 +28,64 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Missing required params: pickup_location, pickup_date, dropoff_date', rates: [] })
   }
 
-  const pickupLoc: string = pickupLocation
-  const dropoffLoc: string = dropoffLocation || pickupLoc
-  const pickupCoords = await geocode(pickupLoc)
-  const dropoffCoords = dropoffLoc !== pickupLoc ? await geocode(dropoffLoc) : pickupCoords
-
-  if (!pickupCoords || !dropoffCoords) {
-    return NextResponse.json({ error: 'Could not geocode location', rates: [] })
-  }
-
   try {
-    const body = {
-      data: {
-        pickup_date: pickupDate,
-        pickup_time: pickupTime,
-        pickup_location: {
-          radius: 10,
-          geographic_coordinates: { latitude: pickupCoords.lat, longitude: pickupCoords.lng },
-        },
-        dropoff_date: dropoffDate,
-        dropoff_time: dropoffTime,
-        dropoff_location: {
-          radius: 10,
-          geographic_coordinates: { latitude: dropoffCoords.lat, longitude: dropoffCoords.lng },
-        },
-        driver: { age: 30, residence_country_code: 'US' },
-      },
-    }
+    const qs = new URLSearchParams({
+      pickUpLocation: pickupLocation,
+      dropOffLocation: dropoffLocation || pickupLocation,
+      pickUpDate: toPclDate(pickupDate),
+      dropOffDate: toPclDate(dropoffDate),
+      pickUpTime: pickupTime,
+      dropOffTime: dropoffTime,
+    })
 
-    const res = await fetch(`${DUFFEL_BASE}/cars/search`, {
-      method: 'POST',
+    const res = await fetch(`https://${PCL_HOST}/cars/search?${qs}`, {
+      method: 'GET',
       headers: {
-        Authorization: `Bearer ${DUFFEL_API_KEY}`,
-        'Duffel-Version': 'v2',
+        'x-rapidapi-host': PCL_HOST,
+        'x-rapidapi-key': PCL_KEY,
         'Content-Type': 'application/json',
-        Accept: 'application/json',
       },
-      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(20000),
     })
 
     const text = await res.text()
-    let data: any = {}
-    try { data = JSON.parse(text) } catch {}
+    let json: any = {}
+    try { json = JSON.parse(text) } catch {}
 
     if (!res.ok) {
-      console.error('[cars/search] Duffel error', { status: res.status, error: data?.errors || text.slice(0, 300) })
-      return NextResponse.json({ error: data?.errors?.[0]?.title || 'Car search failed', rates: [], upstream_status: res.status })
+      const errMsg = json?.message || json?.error || `HTTP ${res.status}`
+      console.error('[cars/search] Priceline error', { status: res.status, error: errMsg, full: text.slice(0, 500) })
+      return NextResponse.json({ error: errMsg, rates: [], upstream_status: res.status })
     }
 
-    const rates = (data.data?.rates ?? []).map((rate: any, i: number) => ({
-      id: `duffel-${i}`,
-      supplier: rate.supplier?.name ?? 'Unknown',
-      supplier_logo: rate.supplier?.logo_url ?? null,
-      vehicle: rate.car?.name ?? null,
-      category: rate.car?.category ?? null,
-      transmission: rate.car?.transmission ?? null,
-      fuel: rate.car?.fuel ?? null,
-      passengers: rate.car?.max_passengers ?? null,
-      baggage: rate.car?.baggage ?? null,
-      images: rate.car?.images?.map((img: any) => img.url) ?? [],
-      total_amount: rate.total_amount,
-      total_currency: rate.total_currency,
-      base_amount: rate.base_amount,
-      base_currency: rate.base_currency,
-      payment_type: rate.payment_type,
-      mileage: rate.mileage,
-      pickup_name: rate.pickup_location?.name ?? pickupLocation,
-      dropoff_name: rate.dropoff_location?.name ?? dropoffLocation,
-      source: 'duffel',
-    }))
+    const vehicles = json?.data?.vehicles ?? []
+
+    const rates = vehicles.map((v: any, i: number) => {
+      const rate = v.rate?.[0] ?? {}
+      const features = v.vehicleFeatures ?? {}
+      return {
+        id: `pcl-${i}`,
+        supplier: v.partner?.name ?? 'Unknown',
+        supplier_logo: v.partner?.url?.startsWith('//') ? `https:${v.partner.url}` : (v.partner?.url ?? null),
+        vehicle: v.example ?? v.name ?? null,
+        category: v.categoryCodes?.[0] ?? null,
+        transmission: features.transmission === 'auto' ? 'Automatic' : (features.transmission ?? null),
+        fuel: features.fuelType ?? null,
+        passengers: features.peopleCapacity ?? null,
+        baggage: features.bagCapacity ?? null,
+        images: v.imageUrl ? [v.imageUrl] : [],
+        total_amount: rate.totalPrice?.toString(),
+        total_currency: rate.currencyCode ?? 'USD',
+        daily_amount: rate.dailyPrice?.toString(),
+        payment_type: rate.isPrepay ? 'prepay' : 'pay_later',
+        mileage: features.isUnlimitedMileage ? { type: 'unlimited' } : null,
+        pickup_name: v.pickupLocation?.counterDisplayName ?? pickupLocation,
+        dropoff_name: v.returnLocation?.counterDisplayName ?? dropoffLocation,
+        pickup_time: pickupTime,
+        dropoff_time: dropoffTime,
+        source: 'priceline',
+      }
+    })
 
     return NextResponse.json({ rates, total: rates.length })
   } catch (err) {

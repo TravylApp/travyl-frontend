@@ -2,14 +2,15 @@
 
 import { Suspense, useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTrips } from '@travyl/shared';
 import type { TripCard as TripCardType } from '@travyl/shared';
-import { Plus } from 'lucide-react';
+import { Plus, Search, X } from 'lucide-react';
 import { PaperPlane } from '@/components/ui';
 import { Footer } from '@/components/home';
 import { ViewToggle, TripCard, TripListItem, CreateTripModal } from '@/components/trips';
 import { useIndexTrip } from '@/hooks/useIndexTrip';
+import { useContextSearch } from '@/hooks/useContextSearch';
 
 // Tab filter types
 type StatusFilter = 'all' | 'active' | 'upcoming' | 'past';
@@ -189,9 +190,47 @@ function TripMasonryGrid({ trips }: { trips: TripCardType[] }) {
 }
 
 function TripsContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const statusParam = (searchParams.get('status') as StatusFilter) || 'all';
   const searchQuery = searchParams.get('search') || '';
+
+  // Local search input state
+  const [localSearch, setLocalSearch] = useState(searchQuery);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Update local search when URL param changes (e.g. from external link)
+  useEffect(() => {
+    setLocalSearch(searchQuery);
+  }, [searchQuery]);
+
+  // Debounced context search (semantic vector search via Lambda)
+  const { results: semanticResults, isLoading: semanticLoading } = useContextSearch(localSearch);
+
+  // Sync search to URL params (for shareability + client-side filtering)
+  const syncSearchToUrl = useCallback((q: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (q.trim()) {
+      params.set('search', q.trim());
+    } else {
+      params.delete('search');
+    }
+    router.replace(`/trips?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
+
+  // Debounce URL sync
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const handleSearchChange = useCallback((value: string) => {
+    setLocalSearch(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => syncSearchToUrl(value), 400);
+  }, [syncSearchToUrl]);
+
+  const clearSearch = useCallback(() => {
+    setLocalSearch('');
+    syncSearchToUrl('');
+    searchInputRef.current?.focus();
+  }, [syncSearchToUrl]);
 
   // Local state for view mode
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -241,9 +280,30 @@ function TripsContent() {
       ?? FALLBACK_IMAGE,
   }))
 
-  // Apply filters
+  // Apply filters — merge semantic (vector) search with client-side text filter
   let displayTrips = filterTripsByStatus(allTrips, statusParam);
-  displayTrips = filterTripsBySearch(displayTrips, searchQuery);
+
+  if (localSearch.trim()) {
+    // Semantic results: map context search results to trip IDs for priority
+    const semanticTripIds = new Set(
+      (semanticResults ?? []).map((r) => r.tripId),
+    );
+
+    // Sort: semantic matches first (in score order), then text matches
+    const semanticMatches = displayTrips.filter((t) => semanticTripIds.has(t.id));
+    const textMatches = filterTripsBySearch(displayTrips, localSearch)
+      .filter((t) => !semanticTripIds.has(t.id));
+
+    // Order semantic matches by their context search score
+    const scoreMap = new Map(
+      (semanticResults ?? []).map((r) => [r.tripId, r.score]),
+    );
+    semanticMatches.sort((a, b) => (scoreMap.get(b.id) ?? 0) - (scoreMap.get(a.id) ?? 0));
+
+    displayTrips = [...semanticMatches, ...textMatches];
+  } else {
+    displayTrips = filterTripsBySearch(displayTrips, localSearch);
+  }
 
   if (isLoading && !isError) {
     return (
@@ -282,6 +342,29 @@ function TripsContent() {
               Plan a Trip
             </button>
           </div>
+        </div>
+
+        {/* Search bar */}
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            value={localSearch}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Search trips by name, destination, or description..."
+            className="w-full pl-9 pr-8 py-2 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 outline-none focus:bg-white focus:border-[#1e3a5f]/30 focus:ring-1 focus:ring-[#1e3a5f]/20 transition-all"
+          />
+          {localSearch && (
+            <button onClick={clearSearch} className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-100 transition-colors">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+          {semanticLoading && (
+            <div className="absolute right-8 top-1/2 -translate-y-1/2">
+              <div className="w-3.5 h-3.5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+            </div>
+          )}
         </div>
 
         {/* Status Tabs */}

@@ -249,11 +249,15 @@ export async function fetchHotels(tripId: string): Promise<Hotel[]> {
 }
 
 export async function fetchCars(tripId: string): Promise<Car[]> {
+  // Cars are stored in trip_context.cars JSONB, not a dedicated table
   const { data, error } = await supabase
-    .from('cars').select('*').eq('trip_id', tripId)
-    .order('created_at', { ascending: true });
-  if (error) return [];
-  return data ?? [];
+    .from('trips')
+    .select('trip_context')
+    .eq('id', tripId)
+    .single();
+  if (error || !data?.trip_context) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data.trip_context as any).cars as Car[] | undefined) ?? [];
 }
 
 /**

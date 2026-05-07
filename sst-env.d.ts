@@ -14,6 +14,10 @@ declare module "sst" {
       "type": "sst.aws.Router"
       "url": string
     }
+    "DocumentUploads": {
+      "name": string
+      "type": "sst.aws.Bucket"
+    }
     "DuffelApiToken": {
       "type": "sst.sst.Secret"
       "value": string

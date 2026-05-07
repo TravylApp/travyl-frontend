@@ -255,7 +255,9 @@ export default function Home() {
   const { data: heroConfig } = useHeroConfig();
 
   const heroSectionRef = useRef<HTMLElement>(null);
+  const searchButtonRef = useRef<HTMLButtonElement>(null);
   const [showTakeoff, setShowTakeoff] = useState(false);
+  const [buttonRect, setButtonRect] = useState<DOMRect | null>(null);
   const [heroSlide, setHeroSlide] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -638,6 +640,8 @@ export default function Home() {
   // Show takeoff when planning starts
   useEffect(() => {
     if ((planner.state.phase === 'extracting' || planner.state.phase === 'planning') && !showTakeoff) {
+      const rect = searchButtonRef.current?.getBoundingClientRect() ?? null;
+      setButtonRect(rect);
       setShowTakeoff(true);
       setLoadingError(null);
       setTakeoffCompleted(false);
@@ -838,6 +842,7 @@ export default function Home() {
                     inputRef={inputRef}
                   />
                   <button
+                    ref={searchButtonRef}
                     onClick={onSearch}
                     disabled={isExtracting || isPlanning}
                     aria-label="Generate trip"
@@ -973,7 +978,7 @@ export default function Home() {
       <Testimonials />
 
       {/* ─── Tag Us — social feed ─────────────────────────── */}
-      <TagUs trendingDestinations={trendingDestinations} />
+      <TagUs />
 
       {/* ─── Final CTA ────────────────────────────────────── */}
       <FinalCTA />
@@ -988,6 +993,7 @@ export default function Home() {
       {/* ─── Takeoff Animation Overlay ─────────────────────────── */}
       <TakeoffTransition
         visible={showTakeoff}
+        buttonRect={buttonRect}
         statusMessage={plannerStatusMessage}
         completed={takeoffCompleted}
         error={loadingError}

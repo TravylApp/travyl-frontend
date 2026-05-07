@@ -102,16 +102,6 @@ const MODEL_ID = 'anthropic.claude-3-haiku-20240307-v1:0'
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Fisher-Yates shuffle — returns a new array */
-function shuffleArray<T>(arr: T[]): T[] {
-  const out = [...arr]
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[out[i], out[j]] = [out[j], out[i]]
-  }
-  return out
-}
-
 const HAIKU_PROMPT = `You are a travel search intent parser. Extract structured intent from a search query.
 Return ONLY valid JSON — no explanation, no markdown, no code fences.
 Schema:
@@ -252,7 +242,7 @@ async function fetchFoursquare(
   }
 
   const data = (await res.json()) as FsqApiResponse
-  const places = shuffleArray(data.results ?? [])
+  const places = data.results ?? []
 
   const grouped: { restaurant: FsqResult[]; hotel: FsqResult[]; activity: FsqResult[] } = {
     restaurant: [],
@@ -289,7 +279,7 @@ async function fetchDiscover(location: string, q: string): Promise<DiscoverResul
   const cached = await getCachedDiscover(location, q)
   if (cached) {
     console.log('[search-deep] discover cache hit for', location, q)
-    return shuffleArray(cached)
+    return cached
   }
 
   console.log('[search-deep] discover cache miss, firing 3 SerpAPI calls for', location, q)
@@ -324,7 +314,7 @@ async function fetchDiscover(location: string, q: string): Promise<DiscoverResul
     await setCachedDiscover(location, q, discoverResults)
   }
 
-  return shuffleArray(discoverResults)
+  return discoverResults
 }
 
 // ---------------------------------------------------------------------------
