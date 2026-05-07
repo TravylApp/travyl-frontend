@@ -492,6 +492,8 @@ export interface ActivityData {
   booking_ref?: string
   pollResult?: 'remove'
   unscheduled?: boolean
+  /** Transit vehicle type for ground transport activities */
+  transit_vehicle_type?: string
 }
 
 export interface CalendarActivity {
@@ -537,6 +539,8 @@ export interface CalendarActivity {
   checkOut?: string
   /** Booking confirmation reference */
   bookingRef?: string
+  /** Transit vehicle type for transport activities */
+  transitVehicleType?: 'train' | 'bus' | 'ferry' | 'rideshare' | 'shuttle'
 }
 
 export interface Poll {
