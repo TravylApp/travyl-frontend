@@ -25,6 +25,7 @@ export interface DayViewProps {
   onConfirmGhost?: (activity: CalendarActivity) => void
   onDismissGhost?: (id: string) => void
   tripId?: string
+  onRegenerateDay?: (dayIndex: number) => void
 }
 
 export function DayView({
@@ -48,6 +49,7 @@ export function DayView({
   onConfirmGhost,
   onDismissGhost,
   tripId,
+  onRegenerateDay,
 }: DayViewProps) {
   const dayActivities = activities.filter((a) => a.day === dayIndex)
 
@@ -78,6 +80,7 @@ export function DayView({
           onDismissGhost={onDismissGhost}
           tripId={tripId}
           isDayView={true}
+          onRegenerateDay={onRegenerateDay}
         />
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import { useAuthStore, useProfile } from '@travyl/shared';
-import { CalendarDashboard } from '@/components/calendar/CalendarDashboard';
+import { CalendarShell } from '@/components/calendar/CalendarShell';
 import { YjsTripProvider } from '@/components/calendar/providers/YjsTripProvider';
 
 export default function CalendarPage({ params }: { params: Promise<{ id: string }> }) {
@@ -12,7 +12,7 @@ export default function CalendarPage({ params }: { params: Promise<{ id: string 
 
   return (
     <YjsTripProvider tripId={id}>
-      <CalendarDashboard
+      <CalendarShell
         tripId={id}
         userId={user?.id ?? 'anonymous'}
         userName={profile?.display_name ?? user?.user_metadata?.display_name ?? user?.user_metadata?.full_name ?? user?.email ?? 'Guest'}

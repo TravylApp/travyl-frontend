@@ -116,10 +116,6 @@ declare module "sst" {
       "sender": string
       "type": "sst.aws.Email"
     }
-    "TravylWeb": {
-      "type": "sst.aws.Nextjs"
-      "url": string
-    }
     "TripadvisorApiKey": {
       "type": "sst.sst.Secret"
       "value": string

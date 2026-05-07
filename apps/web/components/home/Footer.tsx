@@ -164,7 +164,7 @@ export function Footer() {
           </div>
 
           {/* Copyright + Theme toggle */}
-          <div className="mt-8 pt-6 flex items-center justify-between border-t border-magazine-border">
+          <div className="md:col-span-5 mt-8 pt-6 flex items-center justify-between border-t border-magazine-border">
             <p className="text-xs text-magazine-text">
               &copy; {new Date().getFullYear()} Travyl. All rights reserved.
             </p>

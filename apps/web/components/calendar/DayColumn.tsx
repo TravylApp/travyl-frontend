@@ -44,6 +44,7 @@ interface DayColumnProps {
   bookingStatuses?: Map<string, 'matched' | 'opened'>
   tripId?: string
   isDayView?: boolean
+  onRegenerateDay?: (dayIndex: number) => void
   ghostActivities?: CalendarActivity[]
   onConfirmGhost?: (activity: CalendarActivity) => void
   onDismissGhost?: (id: string) => void
@@ -117,6 +118,7 @@ export function DayColumn({
   ghostActivities = [],
   onConfirmGhost,
   onDismissGhost,
+  onRegenerateDay,
 }: DayColumnProps) {
   const date = useMemo(() => {
     const d = new Date(tripStartDate.getTime() + dayIndex * 24 * 60 * 60 * 1000)
@@ -187,7 +189,7 @@ export function DayColumn({
       {/* Day header */}
       <div
         className={[
-          'text-center text-xs font-medium py-1 text-cal-text-secondary select-none',
+          'text-center text-xs font-medium py-1 text-cal-text-secondary select-none group',
           onClickDayHeader
             ? 'cursor-pointer hover:bg-cal-border-light transition-colors'
             : '',
@@ -219,6 +221,22 @@ export function DayColumn({
               hoursConflictCount={Object.values(dayIntel.activities).filter(a => a.conflicts.hours).length}
               travelTimeConflictCount={Object.values(dayIntel.activities).filter(a => a.conflicts.travelTime).length}
             />
+          )}
+          {onRegenerateDay && (
+            <button
+              type="button"
+              className="ml-0.5 p-0.5 rounded hover:bg-cal-border-light text-cal-text-secondary opacity-0 group-hover:opacity-100 transition-opacity"
+              title="Regenerate day"
+              onClick={(e) => {
+                e.stopPropagation()
+                onRegenerateDay(dayIndex)
+              }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg>
+            </button>
           )}
         </span>
       </div>

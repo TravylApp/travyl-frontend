@@ -1,6 +1,6 @@
 import { activityCdn, cacheTable, placeIndex, userInteractions, documentUploads } from './storage'
 import { bus } from './events'
-import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey, ticketmasterApiKey, openTableAffiliateKey, duffelApiToken, graphhopperApiKey, openchargeApiKey, openExchangeRatesAppId, predicthqApiKey } from './secrets'
+import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey, ticketmasterApiKey, openTableAffiliateKey, duffelApiToken, graphhopperApiKey, openchargeApiKey, openExchangeRatesAppId, predicthqApiKey, otpServerUrl, otpApiKey } from './secrets'
 
 export const email = new sst.aws.Email('TravylEmail', {
   sender: 'gotravyl.com',
@@ -109,6 +109,18 @@ api.route('GET /recommendations/generate', {
   timeout: '20 seconds',
 })
 
+api.route('POST /regenerate/activity', {
+  handler: 'services/regenerate.handler',
+  link: [supabaseSecretKey, supabaseUrl, serpApiKey],
+  timeout: '20 seconds',
+})
+
+api.route('POST /regenerate/day', {
+  handler: 'services/regenerate.dayHandler',
+  link: [supabaseSecretKey, supabaseUrl, serpApiKey],
+  timeout: '30 seconds',
+})
+
 api.route('POST /invite', {
   handler: 'services/invite.handler',
   link: [supabaseSecretKey, supabaseUrl, email],
@@ -177,7 +189,7 @@ api.route('GET /search/quick', {
 
 api.route('GET /search/deep', {
   handler: 'services/search-deep.handler',
-  link: [supabaseSecretKey, supabaseUrl, serpApiKey, foursquareApiKey, cacheTable],
+  link: [supabaseSecretKey, supabaseUrl, serpApiKey, cacheTable],
   permissions: [
     {
       actions: ['bedrock:InvokeModel'],
@@ -330,15 +342,37 @@ api.route('GET /weather/forecast', {
 })
 
 api.route('GET /transit/directions', {
-  handler: 'services/transit.handler',
-  link: [supabaseSecretKey, supabaseUrl, graphhopperApiKey],
+  handler: 'services/transit-search.handler',
+  link: [supabaseSecretKey, supabaseUrl, otpServerUrl, otpApiKey],
   timeout: '20 seconds',
 })
 
 api.route('POST /transit/optimize-route', {
   handler: 'services/transit.optimizeHandler',
-  link: [supabaseSecretKey, supabaseUrl, graphhopperApiKey],
+  link: [supabaseSecretKey, supabaseUrl, graphhopperApiKey, otpServerUrl, otpApiKey],
   timeout: '30 seconds',
+})
+
+// Transit bookings CRUD
+api.route('GET /transit/bookings', {
+  handler: 'services/transit-bookings.listHandler',
+  link: [supabaseSecretKey, supabaseUrl],
+  timeout: '10 seconds',
+})
+api.route('POST /transit/book', {
+  handler: 'services/transit-bookings.createHandler',
+  link: [supabaseSecretKey, supabaseUrl],
+  timeout: '10 seconds',
+})
+api.route('PUT /transit/book/{id}', {
+  handler: 'services/transit-bookings.updateHandler',
+  link: [supabaseSecretKey, supabaseUrl],
+  timeout: '10 seconds',
+})
+api.route('DELETE /transit/book/{id}', {
+  handler: 'services/transit-bookings.deleteHandler',
+  link: [supabaseSecretKey, supabaseUrl],
+  timeout: '10 seconds',
 })
 
 api.route('GET /timezone/convert', {

@@ -277,7 +277,7 @@ function RailDesktop({
 
 // ── Mobile bottom bar ────────────────────────────────────────
 
-const MOBILE_PRIMARY: string[] = ['', 'itinerary', 'hotels', 'flights', 'activities'];
+const MOBILE_PRIMARY: string[] = ['', 'itinerary', 'hotels', 'flights', 'transit', 'activities'];
 
 function RailMobile({
   basePath, isActive, tabColorFor, isTabHidden, onOpenHistory,

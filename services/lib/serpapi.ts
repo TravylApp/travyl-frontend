@@ -68,7 +68,7 @@ function toSuggestionCard(place: SerpLocalResult, category: string, index: numbe
     longitude: place.gps_coordinates?.longitude ?? 0,
     description: place.description ?? '',
     source: 'ai',
-    relevanceScore: Math.max(0, 1 - index * 0.05),
+    relevanceScore: Math.round(Math.max(0, 1 - index * 0.05) * 100) / 100,
   }
 }
 
@@ -80,9 +80,10 @@ function toSuggestionCard(place: SerpLocalResult, category: string, index: numbe
 export async function searchPlaces(
   destination: string,
   category: string,
-  options?: { limit?: number },
+  options?: { limit?: number; queryModifier?: string },
 ): Promise<SuggestionCard[]> {
-  const query = CATEGORY_QUERIES[category] ?? CATEGORY_QUERIES.all
+  const baseQuery = CATEGORY_QUERIES[category] ?? CATEGORY_QUERIES.all
+  const query = options?.queryModifier ? `${baseQuery} ${options.queryModifier}` : baseQuery
   const limit = options?.limit ?? 10
 
   // SerpAPI google_local only accepts simple locations like "Paris, France".

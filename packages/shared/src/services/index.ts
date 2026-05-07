@@ -88,7 +88,7 @@ export {
 } from './placesDiscovery';
 export type { DiscoverPageResult } from './placesDiscovery';
 
-export { fetchTransit } from './transitApi';
+export { fetchTransit, addTransit, updateTransit, deleteTransit } from './transitApi';
 
 export {
   fetchAuditEntries,
