@@ -17,6 +17,7 @@ export const pexels = new sst.Secret('Pexels')
 
 // ─── Travel & Flights ───────────────────────────────────────
 export const duffelApiToken = new sst.Secret('DuffelApiToken')
+export const pricelineRapidapiKey = new sst.Secret('PricelineRapidapiKey')
 
 // ─── Weather & Maps ─────────────────────────────────────────
 export const visualCrossingApiKey = new sst.Secret('VisualCrossingApiKey')

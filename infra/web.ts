@@ -11,6 +11,7 @@ import {
   tripadvisorApiKey,
   geonamesUsername,
   duffelApiToken,
+  pricelineRapidapiKey,
   visualCrossingApiKey,
   graphhopperApiKey,
   timezonedbApiKey,
@@ -49,6 +50,7 @@ export const site = new sst.aws.Nextjs('TravylWeb', {
 
     // Server-only — Travel
     DUFFEL_API_TOKEN: duffelApiToken.value,
+    PRICELINE_RAPIDAPI_KEY: pricelineRapidapiKey.value,
 
     // Server-only — Weather & Maps
     VISUAL_CROSSING_API_KEY: visualCrossingApiKey.value,
@@ -93,6 +95,7 @@ export const web = new sst.x.DevCommand('TravylWebDev', {
 
     // Server-only — Travel
     DUFFEL_API_TOKEN: duffelApiToken.value,
+    PRICELINE_RAPIDAPI_KEY: pricelineRapidapiKey.value,
 
     // Server-only — Weather & Maps
     VISUAL_CROSSING_API_KEY: visualCrossingApiKey.value,
