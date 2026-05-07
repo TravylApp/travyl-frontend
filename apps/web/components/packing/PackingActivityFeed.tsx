@@ -1,7 +1,7 @@
 'use client'
 
 import type { PackingAuditEntry } from '@travyl/shared'
-import { stringToColor } from './utils'
+import { PlaceholderAvatar } from '@/components/ui/PlaceholderAvatar'
 
 interface PackingActivityFeedProps {
   entries: PackingAuditEntry[]
@@ -58,20 +58,19 @@ export function PackingActivityFeed({ entries, currentUserId, maxVisible = 6 }: 
     <div className="flex flex-col">
       {visible.map((entry, idx) => {
         const displayName = entry.user_display_name ?? 'User'
-        const avatarColor = stringToColor(displayName)
+        const avatarUrl = entry.user_avatar_url ?? null
         const isMe = entry.user_id === currentUserId
         return (
           <div
             key={`${entry.created_at}-${idx}`}
             className="flex items-center gap-2.5 py-2 text-[12px] text-gray-600 dark:text-gray-300"
           >
-            <span
-              className="shrink-0 w-[18px] h-[18px] rounded-full flex items-center justify-center text-[9px] font-semibold text-white"
-              style={{ backgroundColor: avatarColor }}
-              title={displayName}
-            >
-              {displayName[0].toUpperCase()}
-            </span>
+            <PlaceholderAvatar
+              userId={entry.user_id}
+              name={displayName}
+              avatarUrl={avatarUrl}
+              size={18}
+            />
             <span className="flex-1 min-w-0 truncate">
               <span className="font-semibold text-[var(--trip-base)]">
                 {isMe ? 'You' : displayName}
