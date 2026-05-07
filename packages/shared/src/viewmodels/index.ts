@@ -34,3 +34,8 @@ export {
   type BudgetCategory,
   type BudgetSummary,
 } from './budgetViewModel';
+
+export {
+  buildTransitViewModel,
+  type TransitViewModel,
+} from './transitViewModel';

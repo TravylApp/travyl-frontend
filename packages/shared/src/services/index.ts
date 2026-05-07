@@ -88,6 +88,8 @@ export {
 } from './placesDiscovery';
 export type { DiscoverPageResult } from './placesDiscovery';
 
+export { fetchTransit } from './transitApi';
+
 export {
   fetchAuditEntries,
   groupAuditEntries,

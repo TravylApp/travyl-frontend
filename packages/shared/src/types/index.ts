@@ -1173,3 +1173,5 @@ export interface DocumentParseResult {
   rawText: string | null
   data: DocumentParseData
 }
+
+export type { TransitData, TransitSegment, VehicleType } from './transit';
