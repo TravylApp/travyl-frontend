@@ -278,25 +278,11 @@ export function detectRoutePairs(
     }
   }
 
-  // Filter out already-booked pairs
-  const bookedPairs = transitBookings.map(b => {
-    const d = b.data;
-    // Check proximity to existing bookings
-    return { origin: { lat: 0, lng: 0 }, destination: { lat: 0, lng: 0 } }; // placeholder
-  });
-
-  return pairs.filter(p => {
-    return !transitBookings.some(b => {
-      const d = b.data;
-      // We can't check coordinates against TransitData since it only has labels,
-      // so skip this filter for now — dedup by label proximity
-      return false;
-    });
-  });
+  return pairs;
 }
 ```
 
-Note: The "skip already-booked" filter is intentionally light since `TransitData` stores labels not coordinates. We skip this in the utility and instead rely on the React Query cache invalidation (saving a booking invalidates the suggestion for that pair).
+Note: The "skip already-booked" filter is handled externally — saved pairs are tracked via a `dismissedPairs` state set in `TransitsModule` that filters them from the display. See Task 7.
 
 - [ ] **Step 2: Run typecheck**
 
@@ -545,7 +531,7 @@ git commit -m "feat: create TransitDaySection and TransitBetweenDaysSection"
 
 - [ ] **Step 1: Install p-limit in apps/web**
 
-Run: `npm install --workspace=apps/web p-limit`
+Run: `npm install --workspace=apps/web p-limit@^5.0.0`
 Expected: Added to `apps/web/package.json` dependencies.
 
 - [ ] **Step 2: Commit**
@@ -568,7 +554,7 @@ This is the largest task. The module gets new props, runs `detectRoutePairs`, fi
 
 Add imports at the top:
 ```tsx
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import pLimit from 'p-limit';
 import { detectRoutePairs, type RoutePair } from './detectRoutePairs';
 import { TransitRoutePairCard } from './TransitRoutePairCard';
@@ -609,12 +595,17 @@ Add this after the existing state declarations (after line 52):
   const [suggestionResults, setSuggestionResults] = useState<Record<string, TransitDirectionResult[]>>({});
   const [suggestionLoading, setSuggestionLoading] = useState<Record<string, boolean>>({});
   const [suggestionErrors, setSuggestionErrors] = useState<Record<string, string | null>>({});
-  const suggestionFetchedRef = useRef(false);
+  const [dismissedPairIds, setDismissedPairIds] = useState<Set<string>>(new Set());
+  const routePairsVersionRef = useRef(0);
+
+  // Track routePairs identity changes for re-fetching
+  const routePairsKey = routePairs.map(p => p.id).join(',');
 
   // Fetch OTP results for all route pairs with concurrency limit
   useEffect(() => {
-    if (routePairs.length === 0 || suggestionFetchedRef.current) return;
-    suggestionFetchedRef.current = true;
+    if (routePairs.length === 0) return;
+
+    const currentVersion = ++routePairsVersionRef.current;
 
     const limit = pLimit(4);
     const fetchPromises = routePairs.map((pair) =>
@@ -638,60 +629,67 @@ Add this after the existing state declarations (after line 52):
           }
 
           const results: TransitDirectionResult[] = await response.json();
-          setSuggestionResults((prev) => ({ ...prev, [pair.id]: results }));
-          setSuggestionErrors((prev) => ({ ...prev, [pair.id]: null }));
+          // Only apply if this is still the latest fetch (not stale)
+          if (currentVersion === routePairsVersionRef.current) {
+            setSuggestionResults((prev) => ({ ...prev, [pair.id]: results }));
+            setSuggestionErrors((prev) => ({ ...prev, [pair.id]: null }));
+          }
         } catch (err: any) {
-          setSuggestionErrors((prev) => ({ ...prev, [pair.id]: err.message }));
+          if (currentVersion === routePairsVersionRef.current) {
+            setSuggestionErrors((prev) => ({ ...prev, [pair.id]: err.message }));
+          }
         } finally {
-          setSuggestionLoading((prev) => ({ ...prev, [pair.id]: false }));
+          if (currentVersion === routePairsVersionRef.current) {
+            setSuggestionLoading((prev) => ({ ...prev, [pair.id]: false }));
+          }
         }
       })
     );
 
     Promise.all(fetchPromises).catch(() => {});
-  }, [routePairs]);
+  }, [routePairsKey]);
 ```
 
-- [ ] **Step 3: Add handleAddFromSuggestion handler**
+- [ ] **Step 3: Add handleAddFromSuggestion + update mutation onSuccess**
 
-Add alongside the existing `handleAddFromSearch`:
-```tsx
-  async function handleAddFromSuggestion(pairId: string, result: TransitDirectionResult) {
-    const pair = routePairs.find((p) => p.id === pairId);
-    if (!pair) return;
-
-    await addMutation.mutateAsync({
-      vehicleType: result.steps[0]?.mode ?? 'train',
-      provider: result.steps[0]?.carrier ?? '',
-      routeName: result.steps.map((s) => s.line).filter(Boolean).join(' → ') || 'Transit route',
-      originLabel: pair.origin.label,
-      destinationLabel: pair.destination.label,
-      departureAt: result.departure_at,
-      arrivalAt: result.arrival_at,
-      price: result.fare?.amount ?? null,
-      currency: result.fare?.currency ?? 'USD',
-      bookingRef: null,
-      confirmationCode: null,
-      notes: null,
-    });
-  }
-```
-
-- [ ] **Step 4: Update the mutation onSuccess to invalidate suggestion cache**
-
-Update `updateMutation` into `addMutation` to also clear suggestions:
+Update `addMutation` to add the saved pair's ID to `dismissedPairs`:
 ```tsx
   const addMutation = useMutation({
     mutationFn: (data: TransitData) => addTransit(tripId, { trip_id: tripId, data }),
     onSuccess: () => {
       setAdding(false);
       invalidate();
-      // Clear suggestion results for the added pair
-      setSuggestionResults({});
-      setSuggestionErrors({});
-      suggestionFetchedRef.current = false;
     },
   });
+```
+
+Also update `handleAddFromSuggestion` to dismiss the pair after a successful save:
+```tsx
+  async function handleAddFromSuggestion(pairId: string, result: TransitDirectionResult) {
+    const pair = routePairs.find((p) => p.id === pairId);
+    if (!pair) return;
+
+    try {
+      await addMutation.mutateAsync({
+        vehicleType: result.steps[0]?.mode ?? 'train',
+        provider: result.steps[0]?.carrier ?? '',
+        routeName: result.steps.map((s) => s.line).filter(Boolean).join(' → ') || 'Transit route',
+        originLabel: pair.origin.label,
+        destinationLabel: pair.destination.label,
+        departureAt: result.departure_at,
+        arrivalAt: result.arrival_at,
+        price: result.fare?.amount ?? null,
+        currency: result.fare?.currency ?? 'USD',
+        bookingRef: null,
+        confirmationCode: null,
+        notes: null,
+      });
+      // Dismiss the pair so it disappears from suggestions immediately
+      setDismissedPairIds(prev => new Set(prev).add(pairId));
+    } catch {
+      // Error toast is handled by React Query
+    }
+  }
 ```
 
 - [ ] **Step 5: Update the empty state conditional**
@@ -731,10 +729,15 @@ Before the `{bookings.length > 0 && (...)}` section, add:
 And add the `renderSuggestions` helper function inside the component:
 ```tsx
   function renderSuggestions() {
+    // Filter out dismissed (saved) pairs
+    const visiblePairs = routePairs.filter(p => !dismissedPairIds.has(p.id));
+
+    if (visiblePairs.length === 0) return null;
+
     const byDay: Record<number, RoutePair[]> = {};
     const crossDay: RoutePair[] = [];
 
-    for (const pair of routePairs) {
+    for (const pair of visiblePairs) {
       if (pair.type === 'cross-day') {
         crossDay.push(pair);
       } else {
@@ -761,7 +764,14 @@ And add the `renderSuggestions` helper function inside the component:
                   onAddResult={(result) => handleAddFromSuggestion(pair.id, result)}
                   onRetry={() => {
                     setSuggestionErrors((prev) => ({ ...prev, [pair.id]: null }));
-                    suggestionFetchedRef.current = false;
+                    // Re-fetch this specific pair by clearing its error + result
+                    setSuggestionResults((prev) => {
+                      const next = { ...prev };
+                      delete next[pair.id];
+                      return next;
+                    });
+                    // Re-trigger the fetch effect for this pair
+                    routePairsVersionRef.current++;
                   }}
                 />
               ))}
@@ -781,7 +791,12 @@ And add the `renderSuggestions` helper function inside the component:
                 onAddResult={(result) => handleAddFromSuggestion(pair.id, result)}
                 onRetry={() => {
                   setSuggestionErrors((prev) => ({ ...prev, [pair.id]: null }));
-                  suggestionFetchedRef.current = false;
+                  setSuggestionResults((prev) => {
+                    const next = { ...prev };
+                    delete next[pair.id];
+                    return next;
+                  });
+                  routePairsVersionRef.current++;
                 }}
               />
             ))}
