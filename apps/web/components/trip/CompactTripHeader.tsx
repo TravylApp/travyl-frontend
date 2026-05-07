@@ -2,8 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
-import { Pencil, X, Check, Calendar, Users, ChevronDown } from 'lucide-react';
-import { formatDateRange, updateTripDetails, useWeather } from '@travyl/shared';
+import { Pencil, X, Check, Calendar, Users, ChevronDown, Share2, Map } from 'lucide-react';
+import { formatDateRange, updateTripDetails, useWeather, ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
 import { useRailCollapsed } from '@/components/trip-rail';
 
@@ -12,12 +12,45 @@ export function CompactTripHeader({
   trip,
   onTripUpdate,
   overrideImage,
+  mapOpen,
+  onToggleMap,
 }: {
   tripId: string;
   trip: Trip | null;
   onTripUpdate?: () => void;
   overrideImage?: string;
+  mapOpen?: boolean;
+  onToggleMap?: () => void;
 }) {
+  const [shareBusy, setShareBusy] = useState(false);
+
+  const handleShare = useCallback(async () => {
+    if (!trip?.id || shareBusy) return;
+    setShareBusy(true);
+    try {
+      const token = await ensureShareLinkToken(trip.id);
+      if (trip.visibility === 'private') {
+        try { await updateTripVisibility(trip.id, 'link'); } catch {}
+      }
+      const url = `${window.location.origin}/trip/${trip.id}/share/${token}`;
+      const message = `Join me planning my trip to ${trip.destination} on Travyl: ${url}`;
+      const title = trip.title ?? `Trip to ${trip.destination}`;
+      if (typeof navigator !== 'undefined' && (navigator as any).share) {
+        try { await (navigator as any).share({ title, text: message, url }); return; } catch {}
+      }
+      try {
+        await navigator.clipboard.writeText(url);
+        window.alert(`Link copied to clipboard:\n${url}`);
+      } catch {
+        window.alert(`Share link:\n${url}`);
+      }
+    } catch (e: any) {
+      window.alert(`Share failed: ${e?.message ?? 'unknown error'}`);
+    } finally {
+      setShareBusy(false);
+    }
+  }, [trip?.id, trip?.destination, trip?.title, trip?.visibility, shareBusy]);
+
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editStart, setEditStart] = useState('');
@@ -122,6 +155,34 @@ export function CompactTripHeader({
         <div className="absolute inset-0" style={{
           background: 'linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 40%, rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.8) 100%)',
         }} />
+
+        {/* Floating action buttons — circular Share + Map, overlaid on hero */}
+        <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
+          <button
+            onClick={handleShare}
+            disabled={!trip?.id || shareBusy}
+            title="Share this trip"
+            aria-label="Share this trip"
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+          >
+            <Share2 size={16} />
+          </button>
+          {onToggleMap && (
+            <button
+              onClick={onToggleMap}
+              title={mapOpen ? 'Hide map' : 'Show map'}
+              aria-label={mapOpen ? 'Hide map' : 'Show map'}
+              aria-pressed={mapOpen}
+              className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md border shadow-lg transition-all duration-200 hover:scale-105 ${
+                mapOpen
+                  ? 'bg-white text-gray-900 border-white'
+                  : 'bg-white/15 hover:bg-white/25 border-white/25 text-white'
+              }`}
+            >
+              <Map size={16} />
+            </button>
+          )}
+        </div>
 
         {/* Content — all on the hero image */}
         <div className={`relative z-10 flex flex-col justify-end max-w-7xl mx-auto px-6 sm:px-10 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} pb-5 transition-[padding] duration-200 ease-out`} style={{ minHeight: 300 }}>
