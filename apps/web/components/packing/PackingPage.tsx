@@ -126,7 +126,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
     <div className="w-full px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
         {/* Left column — packing list */}
-        <div className="lg:col-span-7">
+        <div className="lg:col-span-8">
           <Module
             title="Packing list"
             description={progress.total > 0 ? `${progress.packed} of ${progress.total} items packed` : 'No items yet'}
@@ -182,7 +182,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
         </div>
 
         {/* Right column — sticky stack */}
-        <div className="lg:col-span-5 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto space-y-6 lg:space-y-8">
+        <div className="lg:col-span-4 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto space-y-6 lg:space-y-8">
           {/* Suggestions — no card wrapper */}
           <div>
             <div className="flex items-start justify-between gap-4 mb-3">

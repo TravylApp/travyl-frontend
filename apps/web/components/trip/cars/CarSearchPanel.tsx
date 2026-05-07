@@ -894,10 +894,10 @@ export function CarSearchPanel({
               return (
                 <div
                   key={rate.id}
-                  className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] overflow-hidden hover:border-gray-300 dark:hover:border-white/[0.12] hover:shadow-sm transition-all"
+                  className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] overflow-hidden hover:border-gray-300 dark:hover:border-white/[0.12] hover:shadow-sm transition-all flex flex-col max-h-[460px]"
                 >
                   {/* Image */}
-                  <div className="relative">
+                  <div className="relative shrink-0">
                     <CarRateImage
                       src={rate.images?.[0]}
                       alt={rate.vehicle || rate.supplier}
@@ -913,8 +913,8 @@ export function CarSearchPanel({
                     )}
                   </div>
 
-                  {/* Content */}
-                  <div className="p-4">
+                  {/* Content - scrollable if overflowing */}
+                  <div className="p-4 overflow-y-auto min-h-0">
                     {/* Vehicle name + Supplier row */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
