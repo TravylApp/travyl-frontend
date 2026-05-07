@@ -89,12 +89,14 @@ export function GlanceView({
         onNext={() => onSelectDay(Math.min(days.length - 1, selectedDayIndex + 1))}
       />
 
-      <div className="mt-7 flex items-center gap-4">
-        <DayPipPager
-          activeIndex={selectedDayIndex}
-          activityCounts={activityCounts}
-          onSelect={onSelectDay}
-        />
+      <div className="mt-7 flex justify-center">
+        <div className="w-full max-w-[640px]">
+          <DayPipPager
+            activeIndex={selectedDayIndex}
+            activityCounts={activityCounts}
+            onSelect={onSelectDay}
+          />
+        </div>
       </div>
 
       <div className="mt-5 flex items-center justify-center gap-2.5 text-[11.5px] text-[var(--trip-base)] dark:text-white/60 font-medium tracking-wide">
