@@ -264,14 +264,14 @@ function OptionCard({ label, index, selected, onSelect }: {
     <button
       onClick={onSelect}
       aria-pressed={selected}
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm transition-all duration-200 w-full ${
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm transition-all duration-200 w-full backdrop-blur-md ${
         selected
-          ? "bg-[#1e3a5f] text-white shadow-md ring-1 ring-white/30"
-          : "bg-white/10 text-white/80 hover:bg-white/20 border border-white/15"
+          ? "bg-[#1e3a5f] text-white shadow-lg ring-1 ring-white/40"
+          : "bg-black/45 text-white hover:bg-black/55 border border-white/25 shadow-md"
       }`}
     >
       <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 transition-all ${
-        selected ? "bg-white/20 text-white" : "bg-white/10 text-white/50"
+        selected ? "bg-white/20 text-white" : "bg-white/15 text-white/85"
       }`}>
         {selected ? "✓" : keys[index] || index + 1}
       </span>
@@ -854,35 +854,44 @@ export default function Home() {
               </div>
             )}
 
-            {/* Search bar — hidden during questions */}
-            {!(isClarifying && showQuestions) && (
-              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-                <div className="flex items-center p-1.5 gap-2">
-                  <HeroSearchInput
-                    tripQuery={tripQuery}
-                    setTripQuery={setTripQuery}
-                    onSearch={onSearch}
-                    staticPlaceholder={heroConfig?.search_placeholder}
-                    inputRef={inputRef}
-                  />
-                  <button
-                    onClick={onSearch}
-                    disabled={isExtracting || isPlanning}
-                    aria-label="Generate trip"
-                    className="bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 shrink-0"
-                  >
-                    <PaperPlane size={16} />
-                  </button>
-                </div>
+            {/* Search bar — always visible, even during the clarifying flow so the
+                user can refine their original prompt without losing context. */}
+            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+              <div className="flex items-center p-1.5 gap-2">
+                <HeroSearchInput
+                  tripQuery={tripQuery}
+                  setTripQuery={setTripQuery}
+                  onSearch={onSearch}
+                  staticPlaceholder={heroConfig?.search_placeholder}
+                  inputRef={inputRef}
+                />
+                <button
+                  onClick={onSearch}
+                  disabled={isExtracting || isPlanning}
+                  aria-label="Generate trip"
+                  className="bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 shrink-0"
+                >
+                  <PaperPlane size={16} />
+                </button>
               </div>
-            )}
+            </div>
 
             {/* Questions — only shown if user clicked Refine */}
             {isClarifying && showQuestions && currentQuestion && (
               <div className="mt-4 animate-[fadeSlideIn_0.3s_ease-out]">
                 <div className="bg-black/50 backdrop-blur-xl rounded-2xl p-4 border border-white/20 shadow-2xl">
                   <div className="flex items-center gap-2 mb-3">
-                    <Sparkles size={14} className="text-white/60" />
+                    {currentQIdx > 0 ? (
+                      <button
+                        onClick={() => setCurrentQIdx((i) => Math.max(0, i - 1))}
+                        aria-label="Previous question"
+                        className="w-6 h-6 -ml-1 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                      </button>
+                    ) : (
+                      <Sparkles size={14} className="text-white/60" />
+                    )}
                     <p className="text-sm text-white font-semibold">{currentQuestion.question}</p>
                     <span className="ml-auto text-[10px] text-white/40 font-medium shrink-0">
                       {currentQIdx + 1}/{questions.length}
