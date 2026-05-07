@@ -20,3 +20,6 @@ export * from './config';
 
 // View Models (presentation logic)
 export * from './viewmodels';
+
+// Day Slide (At-a-Glance) — templated story builder
+export { buildTemplatedDayStory } from './utils/buildTemplatedDayStory';
