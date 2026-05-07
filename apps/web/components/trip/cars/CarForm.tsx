@@ -80,6 +80,10 @@ export function CarForm({ initial, defaultCurrency = 'USD', onSubmit, onCancel, 
         price: price ? Number(price) : null,
         currency: price ? currency : null,
         booking_ref: bookingRef.trim() || null,
+        // Preserve supplier metadata captured at search time — these aren't
+        // editable in the form but must survive save/edit round-trips.
+        supplier_logo: initial?.supplier_logo ?? null,
+        booking_url: initial?.booking_url ?? null,
       }
       await onSubmit(data)
     } finally {
