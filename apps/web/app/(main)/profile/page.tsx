@@ -1,14 +1,24 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTrips, useAuthStore, useProfile } from '@travyl/shared'
 import type { Trip, TripCard as TripCardType } from '@travyl/shared'
 import { TripCard } from '@/components/trips/TripCard'
 import { PlaceholderAvatar } from '@/components/ui/PlaceholderAvatar'
-import { Settings, LogOut, MapPin, Calendar, Heart } from 'lucide-react'
+import { Settings, LogOut, MapPin, Calendar, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
+
+type StatusFilter = 'all' | 'planning' | 'booked' | 'active' | 'completed'
+
+const STATUS_OPTIONS: { id: StatusFilter; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'planning', label: 'Planning' },
+  { id: 'booked', label: 'Booked' },
+  { id: 'active', label: 'Traveling' },
+  { id: 'completed', label: 'Completed' },
+]
 
 function tripToCard(trip: Trip): TripCardType {
   const coverImage = trip.cover_image_url || trip.trip_context?.hero_images?.[0] || ''
@@ -26,7 +36,8 @@ export default function ProfilePage() {
   const { data: profile } = useProfile()
   const { data: trips, isLoading: tripsLoading } = useTrips()
 
-  const [activeTab, setActiveTab] = useState<'trips' | 'favorites'>('trips')
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [query, setQuery] = useState('')
 
   const handleSignOut = async () => {
     try {
@@ -47,11 +58,35 @@ export default function ProfilePage() {
 
   const tripCount = trips?.length || 0
   const completedCount = trips?.filter((t) => t.status === 'completed').length || 0
+  const planningCount = trips?.filter((t) => t.status === 'planning').length || 0
   const homeCity = profile?.city
     ? profile.country
       ? `${profile.city}, ${profile.country}`
       : profile.city
     : null
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<StatusFilter, number> = { all: 0, planning: 0, booked: 0, active: 0, completed: 0 }
+    if (!trips) return counts
+    counts.all = trips.length
+    for (const t of trips) {
+      if (t.status in counts) counts[t.status as StatusFilter] = (counts[t.status as StatusFilter] || 0) + 1
+    }
+    return counts
+  }, [trips])
+
+  const filteredTrips = useMemo(() => {
+    if (!trips) return []
+    const q = query.trim().toLowerCase()
+    return trips.filter((t) => {
+      if (statusFilter !== 'all' && t.status !== statusFilter) return false
+      if (!q) return true
+      return (
+        t.title.toLowerCase().includes(q) ||
+        t.destination.toLowerCase().includes(q)
+      )
+    })
+  }, [trips, statusFilter, query])
 
   return (
     <div className="min-h-screen bg-background relative">
@@ -116,56 +151,102 @@ export default function ProfilePage() {
             <StatPill icon={<MapPin size={14} className="text-[#1e3a5f]" />} value={tripCount} label="Trips" />
             <StatPill icon={<Calendar size={14} className="text-[#b8953e]" />} value={completedCount} label="Completed" />
             <StatPill
-              icon={<Heart size={14} className="text-rose-500" />}
-              value={trips?.filter((t) => t.status === 'planning').length || 0}
+              icon={<MapPin size={14} className="text-emerald-600" />}
+              value={planningCount}
               label="In planning"
             />
           </div>
         </div>
       </header>
 
-      {/* Tabs */}
-      <nav className="relative bg-background/60 backdrop-blur border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-8">
-          <TabButton active={activeTab === 'trips'} onClick={() => setActiveTab('trips')}>My trips</TabButton>
-          <TabButton active={activeTab === 'favorites'} onClick={() => setActiveTab('favorites')}>Favorites</TabButton>
-        </div>
-      </nav>
-
       {/* Content */}
-      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-12">
-        {activeTab === 'trips' && (
-          <div>
-            {tripsLoading ? (
-              <div className="text-center py-16">
-                <div className="w-10 h-10 border-4 border-[#1e3a5f] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-sm text-muted-foreground">Loading trips…</p>
-              </div>
-            ) : trips && trips.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {trips.map((trip) => (
-                  <TripCard key={trip.id} trip={tripToCard(trip)} />
-                ))}
-              </div>
-            ) : (
-              <EmptyState
-                icon={<MapPin className="w-12 h-12 text-[#1e3a5f]/30" />}
-                title="No trips yet"
-                body="Create your first trip and we'll help you plan, pack, and explore."
-                cta={{ href: '/trips', label: 'Explore trips' }}
-              />
-            )}
-          </div>
-        )}
+      <section className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 md:pb-16">
+        <div className="border-t border-border pt-8">
+          <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
+            <h2 className="text-xl md:text-2xl font-serif font-normal tracking-wide text-foreground">My trips</h2>
 
-        {activeTab === 'favorites' && (
-          <EmptyState
-            icon={<Heart className="w-12 h-12 text-[#1e3a5f]/30" />}
-            title="No favorites yet"
-            body="Save places and destinations to see them here."
-            cta={{ href: '/places', label: 'Explore destinations' }}
-          />
-        )}
+            <div className="relative w-full sm:w-72">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by name or destination…"
+                className="w-full h-10 pl-9 pr-9 text-sm text-foreground bg-card border border-border rounded-xl placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/40 transition-colors"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery('')}
+                  aria-label="Clear search"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 inline-flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Status filter chips */}
+          <div className="flex flex-wrap gap-2 mb-6">
+            {STATUS_OPTIONS.map((opt) => {
+              const count = statusCounts[opt.id]
+              const isActive = statusFilter === opt.id
+              return (
+                <button
+                  key={opt.id}
+                  onClick={() => setStatusFilter(opt.id)}
+                  className={`inline-flex items-center gap-2 px-3.5 h-9 rounded-full border text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-[#1e3a5f] text-white border-[#1e3a5f]'
+                      : 'bg-card text-foreground border-border hover:border-[#1e3a5f]/40'
+                  }`}
+                >
+                  {opt.label}
+                  <span
+                    className={`text-xs tabular-nums ${
+                      isActive ? 'text-white/70' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+
+          {tripsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="h-64 rounded-2xl bg-muted shimmer-skeleton" />
+              ))}
+            </div>
+          ) : !trips || trips.length === 0 ? (
+            <EmptyState
+              icon={<MapPin className="w-12 h-12 text-[#1e3a5f]/30" />}
+              title="No trips yet"
+              body="Create your first trip and we'll help you plan, pack, and explore."
+              cta={{ href: '/trips', label: 'Explore trips' }}
+            />
+          ) : filteredTrips.length === 0 ? (
+            <EmptyState
+              icon={<Search className="w-10 h-10 text-[#1e3a5f]/30" />}
+              title="Nothing matches"
+              body={
+                query
+                  ? `No trips match "${query}"${statusFilter !== 'all' ? ` in ${statusFilter}` : ''}.`
+                  : `You don't have any ${statusFilter} trips yet.`
+              }
+              cta={{ href: '/trips', label: 'Browse all trips' }}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredTrips.map((trip) => (
+                <TripCard key={trip.id} trip={tripToCard(trip)} />
+              ))}
+            </div>
+          )}
+        </div>
       </section>
     </div>
   )
@@ -178,30 +259,6 @@ function StatPill({ icon, value, label }: { icon: React.ReactNode; value: number
       <span className="text-base font-serif text-foreground tabular-nums">{value}</span>
       <span className="text-xs uppercase tracking-widest text-muted-foreground font-semibold">{label}</span>
     </div>
-  )
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`relative py-4 text-sm font-medium tracking-wide transition-colors ${
-        active ? 'text-[#1e3a5f]' : 'text-muted-foreground hover:text-foreground'
-      }`}
-    >
-      {children}
-      {active && (
-        <span className="absolute left-0 right-0 -bottom-px h-0.5 bg-[#1e3a5f] rounded-full" />
-      )}
-    </button>
   )
 }
 
