@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useQueries } from '@tanstack/react-query'
 import {
   X,
   Plane,
@@ -9,8 +10,64 @@ import {
   ArmchairIcon,
   Plus,
   Check,
+  MapPin,
+  Star,
+  ExternalLink,
+  Building2,
 } from 'lucide-react'
 import type { SerpFlight } from './flightSearch'
+
+interface AirportInfo {
+  iata: string
+  name: string
+  image: string | null
+  images: string[]
+  rating: number | null
+  reviewCount: number | null
+  address: string | null
+  description: string | null
+  website: string | null
+  latitude: number | null
+  longitude: number | null
+}
+
+async function fetchAirportInfo(iata: string, fallbackName: string): Promise<AirportInfo> {
+  try {
+    const q = `${iata} airport ${fallbackName ?? ''}`.trim()
+    const res = await fetch(`/api/search/maps?q=${encodeURIComponent(q)}`)
+    if (!res.ok) throw new Error('lookup failed')
+    const arr = await res.json()
+    const top = Array.isArray(arr) && arr.length > 0 ? arr[0] : null
+    if (!top) throw new Error('no result')
+    return {
+      iata,
+      name: top.name || fallbackName || iata,
+      image: top.image || null,
+      images: Array.isArray(top.images) ? top.images.slice(0, 4) : [],
+      rating: typeof top.rating === 'number' && top.rating > 0 ? top.rating : null,
+      reviewCount: typeof top.reviewCount === 'number' && top.reviewCount > 0 ? top.reviewCount : null,
+      address: top.address || null,
+      description: top.description || null,
+      website: top.website || null,
+      latitude: typeof top.latitude === 'number' ? top.latitude : null,
+      longitude: typeof top.longitude === 'number' ? top.longitude : null,
+    }
+  } catch {
+    return {
+      iata,
+      name: fallbackName || iata,
+      image: null,
+      images: [],
+      rating: null,
+      reviewCount: null,
+      address: null,
+      description: null,
+      website: null,
+      latitude: null,
+      longitude: null,
+    }
+  }
+}
 
 export interface FlightDetailModalProps {
   flight: SerpFlight
@@ -67,6 +124,16 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
     }
     return Array.from(seen.values())
   }, [flight.legs])
+
+  // Fetch enriched airport metadata in parallel (cached by IATA)
+  const airportQueries = useQueries({
+    queries: airports.map((a) => ({
+      queryKey: ['airport-info', a.iata] as const,
+      queryFn: () => fetchAirportInfo(a.iata, a.name),
+      staleTime: 24 * 60 * 60 * 1000, // 24h — airports don't move
+      gcTime: 24 * 60 * 60 * 1000,
+    })),
+  })
 
   const co2Kg = flight.carbonEmissions?.this_flight != null
     ? Math.round(flight.carbonEmissions.this_flight / 1000)
@@ -243,25 +310,20 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
             </ol>
           </section>
 
-          {/* Airports referenced in this itinerary */}
+          {/* Airports referenced in this itinerary — enriched cards */}
           {airports.length > 0 && (
             <section>
               <h3 className="text-[11px] font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">
                 Airports
               </h3>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {airports.map((a) => (
-                  <li
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {airports.map((a, i) => (
+                  <AirportCard
                     key={a.iata}
-                    className="rounded-lg border border-gray-200 dark:border-white/[0.08] px-3 py-2 flex items-center gap-3"
-                  >
-                    <span className="font-mono text-[13px] font-bold text-[var(--trip-base)] tabular-nums">
-                      {a.iata}
-                    </span>
-                    <span className="text-[12px] text-gray-700 dark:text-gray-300 truncate">
-                      {a.name || '—'}
-                    </span>
-                  </li>
+                    fallback={a}
+                    info={airportQueries[i]?.data ?? null}
+                    loading={airportQueries[i]?.isLoading ?? false}
+                  />
                 ))}
               </ul>
             </section>
@@ -305,5 +367,83 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
         </div>
       </div>
     </div>
+  )
+}
+
+function AirportCard({
+  fallback,
+  info,
+  loading,
+}: {
+  fallback: { iata: string; name: string }
+  info: AirportInfo | null
+  loading: boolean
+}) {
+  const [imgFailed, setImgFailed] = useState(false)
+  const name = info?.name || fallback.name || fallback.iata
+  const image = info?.image && !imgFailed ? info.image : null
+
+  return (
+    <li className="rounded-xl border border-gray-200 dark:border-white/[0.08] overflow-hidden bg-white dark:bg-white/[0.02]">
+      {/* Image */}
+      <div className="relative aspect-[16/9] bg-gradient-to-br from-gray-100 to-gray-200 dark:from-white/[0.03] dark:to-white/[0.06]">
+        {image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={image}
+            alt={name}
+            referrerPolicy="no-referrer"
+            onError={() => setImgFailed(true)}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : loading ? (
+          <div className="absolute inset-0 shimmer-skeleton" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-gray-300 dark:text-gray-600">
+            <Building2 size={28} />
+          </div>
+        )}
+        <span className="absolute top-2 left-2 inline-flex items-center px-2 h-6 rounded-md bg-white/95 dark:bg-black/70 backdrop-blur font-mono text-[11px] font-bold text-[var(--trip-base)] tabular-nums">
+          {fallback.iata}
+        </span>
+      </div>
+
+      {/* Body */}
+      <div className="p-3 space-y-1.5">
+        <h4 className="text-[13px] font-semibold text-gray-900 dark:text-white leading-tight line-clamp-2">
+          {name}
+        </h4>
+        {info?.address && (
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 inline-flex items-start gap-1 leading-snug">
+            <MapPin size={10} className="mt-0.5 shrink-0" />
+            <span className="line-clamp-1" title={info.address}>{info.address}</span>
+          </p>
+        )}
+        <div className="flex items-center gap-3 text-[11px]">
+          {info?.rating != null && (
+            <span className="inline-flex items-center gap-0.5 text-gray-700 dark:text-gray-300">
+              <Star size={10} className="fill-amber-400 text-amber-400" />
+              <span className="tabular-nums font-medium">{info.rating.toFixed(1)}</span>
+              {info.reviewCount != null && info.reviewCount > 0 && (
+                <span className="text-gray-400 ml-0.5">
+                  ({info.reviewCount.toLocaleString()})
+                </span>
+              )}
+            </span>
+          )}
+          {info?.website && (
+            <a
+              href={info.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 text-[var(--trip-base)] hover:underline ml-auto"
+            >
+              Website <ExternalLink size={9} />
+            </a>
+          )}
+        </div>
+      </div>
+    </li>
   )
 }
