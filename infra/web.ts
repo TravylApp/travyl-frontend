@@ -24,6 +24,12 @@ import {
 
 export const site = new sst.aws.Nextjs('TravylWeb', {
   path: 'apps/web',
+  // /api/trips/plan and /api/trips/extract proxy to FastAPI for AI trip
+  // generation, which routinely takes 30-60s. SST's default Lambda timeout
+  // of 20s would kill these requests and surface as 504 to the user.
+  server: {
+    timeout: '5 minutes',
+  },
   domain: {
     name: 'dev.gotravyl.com',
     dns: false,
