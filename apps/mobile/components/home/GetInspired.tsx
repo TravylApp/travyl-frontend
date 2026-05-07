@@ -5,7 +5,7 @@ import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import { useAddToTrip } from '@/hooks/useAddToTrip';
 
 import { SectionHeader } from './SectionHeader';
-import { usePlacesBatch } from '@/hooks/usePlacesBatch';
+import { usePlacesBatch, ICONIC_DESTINATIONS } from '@/hooks/usePlacesBatch';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_W = SCREEN_WIDTH * 0.75;
@@ -13,7 +13,13 @@ const CARD_H = CARD_W * 1.4;
 const PREFETCH_THRESHOLD = 3;
 
 export function GetInspired() {
-  const { places, fetchBatch } = usePlacesBatch({ batchOffset: 5, limit: 6 });
+  const { places, fetchBatch } = usePlacesBatch({
+    batchOffset: 0,
+    limit: 6,
+    // Curated international list (Santorini, Tokyo, Bali, Barcelona, ...)
+    // — independent of /api/trending-destinations which leans US-only.
+    cities: ICONIC_DESTINATIONS,
+  });
   const { addToTrip, state: tripSheetState, selectTrip, selectDay, dismiss, createTrip } = useAddToTrip();
   const [favorites, setFavorites] = useState<string[]>([]);
 

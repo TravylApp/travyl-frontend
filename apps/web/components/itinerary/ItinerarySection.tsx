@@ -10,6 +10,7 @@ import {
   ItineraryEmpty, TimeGroupSection,
   FlightSection,
 } from '@/components/itinerary';
+import { GlanceView as NewGlanceView } from './GlanceView';
 import type { MapLocation } from '@/components/leaflet-map';
 import { ItineraryPinCard } from '@/components/itinerary/ItineraryPinCard';
 import { AnimatePresence } from 'motion/react';
@@ -17,29 +18,10 @@ import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 import { TripHistoryToggle } from '@/components/trip/TripHistoryPanel';
 import {
   ChevronDown, X, Search, Compass, LayoutList, Map, Calendar, RefreshCw,
-  Landmark, UtensilsCrossed, Footprints, TreePine, Theater, ShoppingBag,
-  Moon, MapPin, Bus, Heart, GripVertical, Star, Globe,
+  Landmark, UtensilsCrossed, Theater, Moon, MapPin,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
-
-const CATEGORY_ICON: Record<string, LucideIcon> = {
-  sightseeing: Landmark,
-  landmark: Landmark,
-  museum: Theater,
-  dining: UtensilsCrossed,
-  food: UtensilsCrossed,
-  tour: Footprints,
-  outdoor: TreePine,
-  cultural: Theater,
-  shopping: ShoppingBag,
-  nightlife: Moon,
-  wellness: Heart,
-  transport: Bus,
-  default: MapPin,
-};
-import { TIME_OF_DAY_CONFIG, getActivityTypeColor } from '@travyl/shared';
+import { getActivityTypeColor } from '@travyl/shared';
 import { PaperPlane } from '@/components/ui';
-import type { ItineraryDayViewModel } from '@travyl/shared';
 
 
 
@@ -77,445 +59,6 @@ function SkeletonItinerary() {
   );
 }
 
-// ─── Glance Search Input ────────────────────────────────────────
-
-function GlanceSearchInput({ query, onChange, onClose, onSelect, destination, lat, lng }: {
-  query: string;
-  onChange: (q: string) => void;
-  onClose: () => void;
-  onSelect: (place: import('@travyl/shared').PlaceItem) => void;
-  destination?: string;
-  lat?: number;
-  lng?: number;
-}) {
-  const [results, setResults] = useState<import('@travyl/shared').PlaceItem[]>([]);
-  useEffect(() => {
-    if (query.length < 2) { setResults([]); return; }
-    const timeout = setTimeout(async () => {
-      try {
-        const q = destination ? `${query} ${destination}` : query;
-        const coordParams = lat && lng ? `&lat=${lat}&lng=${lng}` : '';
-        const res = await fetch(`/api/places?q=${encodeURIComponent(q)}&limit=6${coordParams}`);
-        if (res.ok) setResults(await res.json());
-      } catch { /* ignore */ }
-    }, 300);
-    return () => clearTimeout(timeout);
-  }, [query, destination, lat, lng]);
-  return (
-    <div className="mt-1">
-      <div className="relative">
-        <Search size={9} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          autoFocus
-          type="text"
-          placeholder="Search places..."
-          value={query}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Escape') onClose(); }}
-          className="w-full pl-6 pr-6 py-1 text-[10px] bg-gray-50 border border-gray-200 rounded-md text-gray-900 placeholder-gray-400 focus:outline-none focus:border-gray-300"
-        />
-        <button onClick={onClose} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-          <X size={8} />
-        </button>
-      </div>
-      {results.length > 0 && (
-        <div className="mt-1 max-h-[80px] overflow-y-auto scrollbar-hide">
-          {results.map((place) => (
-            <button key={place.id} onClick={() => onSelect(place)}
-              className="w-full text-left flex items-center gap-2 py-1 px-1 rounded hover:bg-gray-100 transition-colors">
-              <MapPin size={8} className="shrink-0 text-gray-400" />
-              <span className="text-[10px] text-gray-700 truncate">{place.name}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      {query.length > 1 && results.length === 0 && (
-        <p className="text-[9px] text-gray-400 italic py-1 px-1">No results</p>
-      )}
-    </div>
-  );
-}
-
-// ─── Glance View ────────────────────────────────────────────────
-
-function useDayImages(destination?: string, count = 5) {
-  const [images, setImages] = useState<string[]>([]);
-  useEffect(() => {
-    if (!destination) return;
-    fetch(`/api/images?q=${encodeURIComponent(destination)}&per_page=${count}`)
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data?.images?.length) {
-          setImages(data.images.map((img: any) => img.url || img));
-        } else if (data?.url) {
-          setImages([data.url]);
-        }
-      })
-      .catch(() => {});
-  }, [destination, count]);
-  return images;
-}
-
-function GlanceView({
-  days,
-  selectedDayIndex,
-  onSelectDay,
-  arrivalFlight,
-  returnFlight,
-  hotel,
-  tripFlight,
-  tripId,
-  onActivityClick,
-  addActivity,
-  removeActivity,
-  updateActivity,
-  moveActivityBefore,
-  destination,
-  heroImages,
-  tripLat,
-  tripLng,
-}: {
-  days: ItineraryDayViewModel[];
-  selectedDayIndex: number;
-  onSelectDay: (i: number) => void;
-  arrivalFlight?: FlightDetail;
-  returnFlight?: FlightDetail;
-  hotel?: { name: string; image?: string; price?: number; price_per_night?: number; stars?: number };
-  tripFlight?: { destAirport: string; city: string } | null;
-  tripId?: string;
-  onActivityClick?: (activityId: string) => void;
-  addActivity?: (activity: import('@travyl/shared').CalendarActivity) => void;
-  removeActivity?: (id: string) => void;
-  updateActivity?: (id: string, updates: Partial<import('@travyl/shared').CalendarActivity>) => void;
-  moveActivityBefore?: (dragId: string, targetId: string) => void;
-  tripLat?: number;
-  tripLng?: number;
-  destination?: string;
-  heroImages?: string[];
-}) {
-  const [searchSlot, setSearchSlot] = useState<{ day: number; tod: string } | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [dragOverTarget, setDragOverTarget] = useState<{ id: string; position: 'above' | 'below' } | null>(null);
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-
-  // Fetch destination images for day banners
-  const destImages = useDayImages(destination, Math.max(days.length, 3));
-
-  const day = days[selectedDayIndex];
-  const isFirst = selectedDayIndex === 0;
-  const isLast = selectedDayIndex === days.length - 1;
-
-  // Pick image for the selected day: destination photo → trip hero → nothing
-  const dayImage = destImages[selectedDayIndex]
-    || heroImages?.[selectedDayIndex % (heroImages?.length || 1)];
-
-  if (!day) return null;
-
-  return (
-    <div data-no-page-swipe>
-      {/* Single day card — clean, light, flowing */}
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-        {/* Day banner image — clean, no gradient */}
-        {dayImage && (
-          <div className="relative w-full h-40 bg-gray-100">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={dayImage} alt={day.dayLabel} className="w-full h-full object-cover" />
-          </div>
-        )}
-
-        <div className="p-5">
-        {/* Day header */}
-        <div className="mb-4">
-          <p className="text-[10px] tracking-[0.2em] uppercase font-semibold text-gray-400 mb-0.5">
-            {day.dateLabel}
-          </p>
-          <div className="flex items-end justify-between">
-            <h3 className="text-lg font-normal text-gray-900 font-serif tracking-wide">{day.dayLabel}</h3>
-            <span className="text-[11px] text-gray-400">
-              {day.activityCount} {day.activityCount === 1 ? 'activity' : 'activities'}
-            </span>
-          </div>
-        </div>
-
-        {/* Flight / hotel banners — first day */}
-        {isFirst && arrivalFlight && (
-          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100">
-            <PaperPlane size={11} className="shrink-0 text-emerald-500" />
-            <span className="text-[11px] font-semibold text-gray-700">Arrive — {arrivalFlight.flightNumber}</span>
-            <span className="text-[10px] ml-auto text-gray-400">{arrivalFlight.arrivalTime}</span>
-          </div>
-        )}
-        {isFirst && !arrivalFlight && tripFlight && (
-          <a href={tripId ? `/trip/${tripId}/flights` : '#'} className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100 group hover:bg-gray-50 -mx-1 px-1 rounded transition-colors">
-            <PaperPlane size={11} className="shrink-0 text-blue-500" />
-            <span className="text-[11px] font-semibold text-gray-700 truncate">Flight → {tripFlight.destAirport}</span>
-            <span className="text-[10px] ml-auto text-blue-500 shrink-0 font-medium group-hover:text-blue-600">Search</span>
-          </a>
-        )}
-        {isFirst && hotel && (
-          <a href={tripId ? `/trip/${tripId}/hotels` : '#'} className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-100 group hover:bg-gray-50 -mx-1 px-1 rounded transition-colors">
-            <MapPin size={11} className="shrink-0 text-amber-500" />
-            <span className="text-[11px] font-semibold text-gray-700 truncate">Check-in — {hotel.name}</span>
-            <span className="text-[10px] ml-auto text-gray-400 shrink-0 font-medium">{hotel.price ? `$${hotel.price}/n` : ''}</span>
-          </a>
-        )}
-
-        {/* Time-of-day groups */}
-        {(['morning', 'afternoon', 'evening', 'latenight'] as const).map((tod) => {
-          const config = TIME_OF_DAY_CONFIG[tod];
-          const group = day.timeGroups.find((g) => g.timeOfDay === tod);
-          return (
-            <div key={tod}
-              className="mb-2 last:mb-0 rounded-lg transition-colors px-1 -mx-1"
-              onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('bg-gray-50'); }}
-              onDragLeave={(e) => { e.currentTarget.classList.remove('bg-gray-50'); }}
-              onDrop={(e) => {
-                e.preventDefault();
-                e.currentTarget.classList.remove('bg-gray-50');
-                try {
-                  const item = JSON.parse(e.dataTransfer.getData('application/json'));
-                  if (!item) return;
-                  if (item._isMove && updateActivity) {
-                    updateActivity(item.id, {
-                      day: selectedDayIndex,
-                      startHour: TOD_START_HOURS[tod] || 9,
-                    });
-                  } else if (addActivity) {
-                    addActivity({
-                      id: `drop-${Date.now()}`,
-                      title: item.title || item.name,
-                      type: item.category || '',
-                      day: selectedDayIndex,
-                      startHour: TOD_START_HOURS[tod] || 9,
-                      duration: 2,
-                      location: item.location || '',
-                      image: item.image,
-                      onCalendar: true,
-                    });
-                  }
-                } catch {}
-              }}
-            >
-              <p className="text-[10px] font-semibold tracking-[0.15em] uppercase mb-1.5 text-gray-400">
-                {config.label}
-              </p>
-              {group?.activities.map((activity) => {
-                const catColor = getActivityTypeColor(activity.category);
-                const CatIcon = CATEGORY_ICON[activity.category] || CATEGORY_ICON.default;
-                const isBeingDragged = draggingId === activity.id;
-                const isDropAbove = dragOverTarget?.id === activity.id && dragOverTarget.position === 'above';
-                const isDropBelow = dragOverTarget?.id === activity.id && dragOverTarget.position === 'below';
-                return (
-                  <div key={activity.id} className="relative">
-                    {/* Drop indicator line — above */}
-                    <div className={`absolute -top-[2px] left-0 right-0 h-[2px] rounded-full transition-all duration-150 ${isDropAbove ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'}`}
-                      style={{ backgroundColor: 'var(--trip-base, #1e3a5f)' }} />
-                    <div
-                      draggable
-                      onDragStart={(e) => {
-                        e.stopPropagation();
-                        setDraggingId(activity.id);
-                        e.dataTransfer.setData('application/json', JSON.stringify({
-                          id: activity.id, name: activity.name, title: activity.name,
-                          category: activity.category, location: activity.locationName || '',
-                          image: '', _isMove: true,
-                        }));
-                        e.dataTransfer.effectAllowed = 'move';
-                      }}
-                      onDragEnd={() => { setDraggingId(null); setDragOverTarget(null); }}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        const pos = e.clientY < rect.top + rect.height / 2 ? 'above' : 'below';
-                        setDragOverTarget({ id: activity.id, position: pos });
-                      }}
-                      onDragLeave={() => {
-                        setDragOverTarget((prev) => prev?.id === activity.id ? null : prev);
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setDragOverTarget(null);
-                        try {
-                          const item = JSON.parse(e.dataTransfer.getData('application/json'));
-                          if (item?._isMove && item.id !== activity.id && moveActivityBefore) {
-                            if (updateActivity) {
-                              updateActivity(item.id, { day: selectedDayIndex, startHour: TOD_START_HOURS[tod] || 9 });
-                            }
-                            moveActivityBefore(item.id, activity.id);
-                          }
-                        } catch {}
-                      }}
-                      className={`flex items-center gap-1.5 py-[4px] group/row rounded -mx-1 px-1 transition-all duration-150 ${
-                        isBeingDragged ? 'opacity-30 scale-95' : 'hover:bg-gray-50'
-                      }`}>
-                      {/* Drag handle */}
-                      <GripVertical size={9} className="shrink-0 text-gray-300 group-hover/row:text-gray-400 cursor-grab active:cursor-grabbing transition-colors" />
-                      <button
-                        onClick={(e) => { e.stopPropagation(); removeActivity?.(activity.id); }}
-                        className="shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover/row:opacity-100"
-                        title="Remove"
-                      >
-                        <X size={8} />
-                      </button>
-                      <CatIcon size={10} className="shrink-0" style={{ color: catColor.primary }} />
-                      {activity.image && (
-                        <div className="shrink-0 w-7 h-7 rounded-md overflow-hidden bg-gray-100">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={activity.image} alt="" className="w-full h-full object-cover" />
-                        </div>
-                      )}
-                      <span
-                        onClick={() => onActivityClick?.(activity.id)}
-                        className="text-[12px] flex-1 truncate font-medium text-gray-800 hover:text-gray-900 transition-colors cursor-pointer">
-                        {activity.name}
-                      </span>
-                      {activity.timeDisplay && (
-                        <span className="text-[10px] text-gray-400 shrink-0 tabular-nums font-medium">{activity.timeDisplay}</span>
-                      )}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const existingIds = days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities.map((a) => a.id)));
-                          const replacement = pickRandomActivity(activity.category, existingIds);
-                          if (replacement && removeActivity && addActivity) {
-                            removeActivity(activity.id);
-                            addActivity({
-                              id: `regen-${Date.now()}`,
-                              title: replacement.name,
-                              type: replacement.category || activity.category,
-                              day: selectedDayIndex,
-                              startHour: TOD_START_HOURS[tod] || 9,
-                              duration: 2,
-                              location: replacement.location || '',
-                              image: replacement.images?.[0],
-                              onCalendar: true,
-                            });
-                          }
-                        }}
-                        className="shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-gray-300 hover:text-amber-500 hover:bg-amber-50 transition-all opacity-0 group-hover/row:opacity-100"
-                        title="Regenerate — replace with similar activity"
-                      >
-                        <RefreshCw size={8} />
-                      </button>
-                    </div>
-                    {/* Drop indicator line — below */}
-                    <div className={`absolute -bottom-[2px] left-0 right-0 h-[2px] rounded-full transition-all duration-150 ${isDropBelow ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'}`}
-                      style={{ backgroundColor: 'var(--trip-base, #1e3a5f)' }} />
-                  </div>
-                );
-              })}
-              {searchSlot?.day === selectedDayIndex && searchSlot?.tod === tod ? (
-                <GlanceSearchInput
-                  query={searchQuery}
-                  onChange={setSearchQuery}
-                  onClose={() => { setSearchSlot(null); setSearchQuery(''); }}
-                  destination={destination}
-                  lat={tripLat}
-                  lng={tripLng}
-                  onSelect={(place) => {
-                    addActivity?.({
-                      id: `search-${Date.now()}`,
-                      title: place.name,
-                      type: place.type,
-                      day: selectedDayIndex,
-                      startHour: TOD_START_HOURS[tod] || 9,
-                      duration: 2,
-                      location: place.tagline,
-                      image: place.image,
-                      onCalendar: true,
-                    });
-                    setSearchSlot(null);
-                    setSearchQuery('');
-                  }}
-                />
-              ) : (
-                <div className="mt-1.5 space-y-1.5">
-                  {/* Quick-fill pills */}
-                  <div className="flex flex-wrap gap-1">
-                    {QUICK_FILL_CATEGORIES.slice(0, 4).map((cat) => (
-                      <button
-                        key={cat.label}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const existingIds = days.flatMap((d) => d.timeGroups.flatMap((g) => g.activities.map((a) => a.id)));
-                          const item = pickRandomActivity(cat.filter, existingIds);
-                          if (item && addActivity) {
-                            addActivity({
-                              id: `quick-${Date.now()}`,
-                              title: item.name,
-                              type: item.category || '',
-                              day: selectedDayIndex,
-                              startHour: TOD_START_HOURS[tod] || 9,
-                              duration: 2,
-                              location: item.location || '',
-                              image: item.images?.[0],
-                              onCalendar: true,
-                            });
-                          }
-                        }}
-                        className="text-[9px] px-2 py-0.5 rounded-full border border-gray-200 text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50 transition-all"
-                        title={`Add ${cat.label.toLowerCase()} activity`}
-                      >
-                        {cat.icon} {cat.label}
-                      </button>
-                    ))}
-                  </div>
-                  {/* Search link */}
-                  <button
-                    onClick={() => { setSearchSlot({ day: selectedDayIndex, tod }); setSearchQuery(''); }}
-                    className="flex items-center gap-1 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-                  >
-                    <Search size={8} />
-                    <span className="text-[9px] italic">Search</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Flight / hotel banners — last day */}
-        {isLast && hotel && (
-          <a href={tripId ? `/trip/${tripId}/hotels` : '#'} className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100 group hover:bg-gray-50 -mx-1 px-1 rounded transition-colors">
-            <MapPin size={11} className="shrink-0 text-blue-500" />
-            <span className="text-[11px] font-semibold text-gray-700 truncate">Check-out — {hotel.name}</span>
-            <span className="text-[10px] ml-auto text-gray-400 shrink-0 font-medium">11 AM</span>
-          </a>
-        )}
-        {isLast && returnFlight && (
-          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100">
-            <PaperPlane size={11} className="shrink-0 rotate-180 text-blue-400" />
-            <span className="text-[11px] font-semibold text-gray-700">Depart — {returnFlight.flightNumber}</span>
-            <span className="text-[10px] ml-auto text-gray-400 font-medium">{returnFlight.departureTime}</span>
-          </div>
-        )}
-        {isLast && !returnFlight && tripFlight && (
-          <a href={tripId ? `/trip/${tripId}/flights` : '#'} className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100 group hover:bg-gray-50 -mx-1 px-1 rounded transition-colors">
-            <PaperPlane size={11} className="shrink-0 rotate-180 text-blue-500" />
-            <span className="text-[11px] font-semibold text-gray-700 truncate">Flight home from {tripFlight.destAirport}</span>
-            <span className="text-[10px] ml-auto text-blue-500 shrink-0 font-medium group-hover:text-blue-600">Search</span>
-          </a>
-        )}
-        </div>{/* close p-5 */}
-
-        {/* Dot indicators — inside card, below content */}
-        <div className="flex items-center gap-1.5 pb-3 justify-center">
-          {days.map((_, i) => (
-            <button key={i} onClick={() => onSelectDay(i)}
-              className="rounded-full transition-all duration-300"
-              style={{
-                width: i === selectedDayIndex ? 16 : 5, height: 5,
-                backgroundColor: i === selectedDayIndex ? 'var(--trip-base, #1e3a5f)' : '#e5e7eb',
-              }} />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Main Component ──────────────────────────────────────────────────
 
 export default function ItinerarySection({ tripId }: { tripId: string }) {
@@ -548,6 +91,15 @@ export default function ItinerarySection({ tripId }: { tripId: string }) {
 
   const [regenMenuOpen, setRegenMenuOpen] = useState(false);
   const regenMenuRef = useRef<HTMLDivElement>(null);
+  const dayStripRef = useRef<HTMLDivElement>(null);
+
+  // Keep the active day-chip visible when paginating via the slide arrows
+  useEffect(() => {
+    const chip = dayStripRef.current?.querySelector<HTMLElement>(
+      `[data-day-index="${selectedDayIndex}"]`,
+    );
+    chip?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [selectedDayIndex]);
 
   // Close menu on outside click
   useEffect(() => {
@@ -1157,54 +709,21 @@ export default function ItinerarySection({ tripId }: { tripId: string }) {
   if (!isLoading && days.length === 0) return <ItineraryEmpty />;
 
   return (
-    <div className="relative overflow-hidden">
+    <div className="relative">
       <div className="relative z-10 pb-8">
 
-        {/* ── Day selector — draggable to reorder ── */}
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-2 mb-4">
-          {days.map((d, i) => (
-            <button
-              key={`day-${i}`}
-              draggable
-              onDragStart={() => { dragDayRef.current = i; }}
-              onDragOver={(e) => { e.preventDefault(); setDragOverIdx(i); }}
-              onDragLeave={() => setDragOverIdx(null)}
-              onDrop={() => {
-                if (dragDayRef.current !== null && dragDayRef.current !== i) {
-                  swapDays(dragDayRef.current, i);
-                  setSelectedDayIndex(i);
-                }
-                dragDayRef.current = null;
-                setDragOverIdx(null);
-              }}
-              onDragEnd={() => { dragDayRef.current = null; setDragOverIdx(null); }}
-              onClick={() => setSelectedDayIndex(i)}
-              className={`shrink-0 px-3 py-1.5 rounded-lg text-center transition-all cursor-grab active:cursor-grabbing border ${
-                dragOverIdx === i ? 'ring-2 ring-gray-400 dark:ring-white/40 scale-105' : ''
-              } ${
-                i === selectedDayIndex
-                  ? 'bg-gray-800 dark:bg-white/[0.15] border-gray-700 dark:border-white/[0.25] shadow-sm'
-                  : dragOverIdx === i
-                    ? 'bg-gray-100 dark:bg-white/[0.08] border-transparent'
-                    : 'bg-white/60 dark:bg-transparent border-gray-200 dark:border-transparent hover:bg-white/80 dark:hover:bg-white/[0.06]'
-              }`}
-            >
-              <span className={`block text-[10px] font-bold ${i === selectedDayIndex ? 'text-gray-300 dark:text-white/50' : 'text-gray-500 dark:text-white/50'}`}>{d.dayLabel.replace('Day ', 'D')}</span>
-              <span className={`block text-[11px] font-medium ${i === selectedDayIndex ? 'text-white dark:text-white/80' : 'text-gray-700 dark:text-white/80'}`}>{d.dateLabel.replace(/,.*/, '')}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* ── AT A GLANCE section ── */}
+        {/* ── AT A GLANCE — consolidated full-width header ── */}
         <section>
-          <div className="mb-4 flex items-end justify-between">
-            <div>
-              <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-gray-500 dark:text-white/70">Your Itinerary</p>
-              <h2 className="text-2xl sm:text-3xl font-normal text-gray-800 dark:text-white tracking-wide font-serif">At a Glance</h2>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <TripHistoryToggle tripId={tripId} variant="pill" />
-              <div className="relative shrink-0" ref={regenMenuRef}>
+          <div className="mb-6 flex flex-col gap-4">
+            {/* Row 1 — title + action cluster */}
+            <div className="flex items-end justify-between gap-4 flex-wrap">
+              <div>
+                <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-gray-500 dark:text-white/70">Your Itinerary</p>
+                <h2 className="text-2xl sm:text-3xl font-normal text-gray-800 dark:text-white tracking-wide font-serif">At a Glance</h2>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <TripHistoryToggle tripId={tripId} variant="pill" />
+                <div className="relative shrink-0" ref={regenMenuRef}>
               <button
                 onClick={() => !regenerating && setRegenMenuOpen(v => !v)}
                 disabled={regenerating}
@@ -1266,67 +785,114 @@ export default function ItinerarySection({ tripId }: { tripId: string }) {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-md bg-gray-100/80 dark:bg-black/30">
-              <span className="text-[11px] tabular-nums mr-1 text-gray-600 dark:text-white/70">
-                {selectedDayIndex + 1} / {days.length}
-              </span>
-              <button onClick={() => selectedDayIndex > 0 && setSelectedDayIndex(selectedDayIndex - 1)} disabled={selectedDayIndex === 0}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-300 dark:border-white/[0.25]">
-                <ChevronDown size={14} className="rotate-90 text-gray-600 dark:text-white/70" />
-              </button>
-              <button onClick={() => selectedDayIndex < days.length - 1 && setSelectedDayIndex(selectedDayIndex + 1)} disabled={selectedDayIndex === days.length - 1}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-300 dark:border-white/[0.25]">
-                <ChevronDown size={14} className="-rotate-90 text-gray-600 dark:text-white/70" />
-              </button>
-              <a
-                href={`/trip/${tripId}/calendar`}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-300 dark:border-white/[0.25]"
-                title="Calendar view"
-              >
-                <Calendar size={13} className="text-gray-600 dark:text-white/70" />
-              </a>
-              <button
-                onClick={() => setCompactOpen((v) => !v)}
-                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-300 dark:border-white/[0.25] ${
-                  compactOpen ? 'bg-gray-200 dark:bg-white/[0.2] text-gray-900 dark:text-white' : 'text-gray-600 dark:text-white/70'
-                }`}
-                title={compactOpen ? 'Hide day details' : 'Show day details'}
-              >
-                <LayoutList size={13} />
-              </button>
-              <div className="w-px h-4 mx-1 bg-gray-300 dark:bg-white/20" />
-              <button
-                onClick={() => setRequestMapOpen((v: boolean) => !v)}
-                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-300 dark:border-white/[0.25] ${
-                  requestMapOpen ? 'bg-gray-200 dark:bg-white/[0.2] text-gray-900 dark:text-white' : 'text-gray-600 dark:text-white/70'
-                }`}
-                title="Toggle map"
-              >
-                <Map size={13} />
-              </button>
+                {/* View toggles — calendar / compact / map */}
+                <div className="flex items-center gap-1.5 pl-1.5 ml-0.5 border-l border-gray-200 dark:border-white/10">
+                  <a
+                    href={`/trip/${tripId}/calendar`}
+                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all border border-gray-200 dark:border-white/[0.2] hover:border-[var(--trip-base)] hover:text-[var(--trip-base)] text-gray-600 dark:text-white/70"
+                    title="Calendar view"
+                  >
+                    <Calendar size={13} />
+                  </a>
+                  <button
+                    onClick={() => setCompactOpen((v) => !v)}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all border ${
+                      compactOpen
+                        ? 'bg-[var(--trip-base)] border-[var(--trip-base)] text-white'
+                        : 'border-gray-200 dark:border-white/[0.2] text-gray-600 dark:text-white/70 hover:border-[var(--trip-base)] hover:text-[var(--trip-base)]'
+                    }`}
+                    title={compactOpen ? 'Hide day details' : 'Show day details'}
+                  >
+                    <LayoutList size={13} />
+                  </button>
+                  <button
+                    onClick={() => setRequestMapOpen((v: boolean) => !v)}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all border ${
+                      requestMapOpen
+                        ? 'bg-[var(--trip-base)] border-[var(--trip-base)] text-white'
+                        : 'border-gray-200 dark:border-white/[0.2] text-gray-600 dark:text-white/70 hover:border-[var(--trip-base)] hover:text-[var(--trip-base)]'
+                    }`}
+                    title="Toggle map"
+                  >
+                    <Map size={13} />
+                  </button>
+                </div>
+              </div>
             </div>
+
+            {/* Row 2 — draggable day strip + page nav */}
+            <div className="flex items-center gap-3">
+              <div
+                ref={dayStripRef}
+                className="flex-1 min-w-0 flex items-center gap-2 sm:gap-2.5 overflow-x-auto scrollbar-hide py-1 px-1 [mask-image:linear-gradient(to_right,transparent_0,black_20px,black_calc(100%-20px),transparent_100%)] [-webkit-mask-image:linear-gradient(to_right,transparent_0,black_20px,black_calc(100%-20px),transparent_100%)]"
+              >
+                {days.map((d, i) => {
+                  // dateLabel is "Mon, Sep 5" — split into weekday + month-day
+                  const [weekday, monthDay] = d.dateLabel.split(',').map((s) => s.trim());
+                  const isActive = i === selectedDayIndex;
+                  const isHover = dragOverIdx === i;
+                  return (
+                    <button
+                      key={`day-${i}`}
+                      data-day-index={i}
+                      draggable
+                      onDragStart={() => { dragDayRef.current = i; }}
+                      onDragOver={(e) => { e.preventDefault(); setDragOverIdx(i); }}
+                      onDragLeave={() => setDragOverIdx(null)}
+                      onDrop={() => {
+                        if (dragDayRef.current !== null && dragDayRef.current !== i) {
+                          swapDays(dragDayRef.current, i);
+                          setSelectedDayIndex(i);
+                        }
+                        dragDayRef.current = null;
+                        setDragOverIdx(null);
+                      }}
+                      onDragEnd={() => { dragDayRef.current = null; setDragOverIdx(null); }}
+                      onClick={() => setSelectedDayIndex(i)}
+                      className={`shrink-0 min-w-[80px] sm:min-w-[92px] md:min-w-[100px] px-3 sm:px-4 py-2 rounded-xl text-center transition-all cursor-grab active:cursor-grabbing border ${
+                        isHover ? 'ring-2 ring-[var(--trip-base)]/40 scale-[1.04]' : ''
+                      } ${
+                        isActive
+                          ? 'bg-[var(--trip-base)] border-[var(--trip-base)] shadow-md'
+                          : isHover
+                            ? 'bg-gray-50 dark:bg-white/[0.08] border-gray-200 dark:border-white/10'
+                            : 'bg-white dark:bg-transparent border-gray-200 dark:border-white/10 hover:border-[var(--trip-base)]/40 hover:bg-gray-50 dark:hover:bg-white/[0.05]'
+                      }`}
+                    >
+                      <span className={`block font-serif text-[13px] sm:text-[14px] leading-tight ${isActive ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                        {d.dayLabel}
+                      </span>
+                      <span className={`block text-[9.5px] sm:text-[10px] font-medium uppercase tracking-[0.14em] mt-1 truncate ${isActive ? 'text-white/75' : 'text-gray-500 dark:text-white/50'}`}>
+                        {weekday}{monthDay ? ` · ${monthDay}` : ''}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full backdrop-blur-md bg-gray-100/80 dark:bg-black/30">
+                <span className="text-[11px] tabular-nums px-1 text-gray-600 dark:text-white/70">
+                  {selectedDayIndex + 1} / {days.length}
+                </span>
+                <button onClick={() => selectedDayIndex > 0 && setSelectedDayIndex(selectedDayIndex - 1)} disabled={selectedDayIndex === 0}
+                  className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-300 dark:border-white/[0.25] hover:border-[var(--trip-base)] hover:text-[var(--trip-base)]">
+                  <ChevronDown size={14} className="rotate-90" />
+                </button>
+                <button onClick={() => selectedDayIndex < days.length - 1 && setSelectedDayIndex(selectedDayIndex + 1)} disabled={selectedDayIndex === days.length - 1}
+                  className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-300 dark:border-white/[0.25] hover:border-[var(--trip-base)] hover:text-[var(--trip-base)]">
+                  <ChevronDown size={14} className="-rotate-90" />
+                </button>
+              </div>
             </div>
           </div>
 
       {/* Glance View — always visible, swipe through days */}
-        <GlanceView
+        <NewGlanceView
+          tripId={tripId}
           days={days}
           selectedDayIndex={selectedDayIndex}
           onSelectDay={setSelectedDayIndex}
-          arrivalFlight={arrivalFlight}
-          returnFlight={returnFlight}
-          hotel={firstHotel}
-          tripFlight={tripFlight}
-          tripId={tripId}
-          onActivityClick={handleActivityClick}
-          addActivity={addActivity}
-          removeActivity={removeActivity}
-          updateActivity={updateActivity}
-          moveActivityBefore={moveActivityBefore}
           destination={trip?.destination?.split(',')[0]?.trim()}
           heroImages={trip?.trip_context?.hero_images}
-          tripLat={trip?.trip_context?.lat}
-          tripLng={trip?.trip_context?.lng}
         />
 
       </section>

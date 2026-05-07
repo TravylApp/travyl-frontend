@@ -1,8 +1,9 @@
 export interface LoginDestination {
   id: number;
-  image: string;
   name: string;
   country: string;
+  /** Optional override for the destination-image API lookup. Falls back to `${name}, ${country}`. */
+  imageQuery?: string;
   tagline: string;
   highlights: string[];
   bestTime: string;
@@ -12,7 +13,6 @@ export interface LoginDestination {
 export const LOGIN_DESTINATIONS: LoginDestination[] = [
   {
     id: 1,
-    image: 'https://images.pexels.com/photos/33800139/pexels-photo-33800139.jpeg?auto=compress&cs=tinysrgb&w=1200',
     name: 'Paris',
     country: 'France',
     tagline: 'The city of light never stops inspiring.',
@@ -22,7 +22,6 @@ export const LOGIN_DESTINATIONS: LoginDestination[] = [
   },
   {
     id: 2,
-    image: 'https://images.pexels.com/photos/24995221/pexels-photo-24995221.jpeg?auto=compress&cs=tinysrgb&w=1200',
     name: 'Bali',
     country: 'Indonesia',
     tagline: 'Where spirituality meets paradise.',
@@ -32,7 +31,6 @@ export const LOGIN_DESTINATIONS: LoginDestination[] = [
   },
   {
     id: 3,
-    image: 'https://images.pexels.com/photos/31409369/pexels-photo-31409369.jpeg?auto=compress&cs=tinysrgb&w=1200',
     name: 'Tokyo',
     country: 'Japan',
     tagline: 'Ancient traditions meet neon-lit futures.',
@@ -42,7 +40,6 @@ export const LOGIN_DESTINATIONS: LoginDestination[] = [
   },
   {
     id: 4,
-    image: 'https://images.pexels.com/photos/29081769/pexels-photo-29081769.jpeg?auto=compress&cs=tinysrgb&w=1200',
     name: 'Santorini',
     country: 'Greece',
     tagline: 'Sunsets that paint the Aegean gold.',
@@ -52,9 +49,9 @@ export const LOGIN_DESTINATIONS: LoginDestination[] = [
   },
   {
     id: 5,
-    image: 'https://images.pexels.com/photos/30843624/pexels-photo-30843624.jpeg?auto=compress&cs=tinysrgb&w=1200',
     name: 'New York',
-    country: 'United States',
+    country: 'USA',
+    imageQuery: 'Manhattan',
     tagline: 'The city that never sleeps, always surprises.',
     highlights: ['Central Park strolls', 'Brooklyn Bridge walk', 'Broadway nights'],
     bestTime: 'Sep – Nov',

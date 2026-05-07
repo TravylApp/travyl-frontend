@@ -8,7 +8,7 @@ import { MapPin, Map, X } from 'lucide-react';
 import type { Trip } from '@travyl/shared';
 import { usePathname, useRouter } from 'next/navigation';
 import TripRail, { useRailCollapsed } from '@/components/trip-rail';
-import { useItineraryScreen, useAuthStore, canViewTrip, useDestinationImage, upscaleGoogleImage } from '@travyl/shared';
+import { useItineraryScreen, useAuthStore, canViewTrip, useCollaborators, useDestinationImage, upscaleGoogleImage } from '@travyl/shared';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
 import { CompactTripHeader } from '@/components/trip/CompactTripHeader';
@@ -346,13 +346,23 @@ function TripLayoutContent({
   const city = trip?.destination?.split(',')[0]?.trim();
   const { data: destImageData, isLoading: destImageLoading } = useDestinationImage(city || '');
 
-  // Redirect to login if the trip has loaded and the user can't view it
+  // Whether the viewer is an accepted collaborator — needed so private-trip
+  // collaborators don't fail canViewTrip's owner-only path.
+  const { collaborators: tripCollaborators } = useCollaborators(tripId);
+  const isAcceptedCollaborator = !!user?.id && tripCollaborators.some(
+    (c) => c.user_id === user.id && c.invite_status === 'accepted',
+  );
+
+  // If the viewer has lost access (e.g. owner flipped the link to private and
+  // they were a link-joined collaborator), bounce them to their trips list
+  // rather than /login. The session is still valid; sending them to the login
+  // page makes it look like they were signed out.
   useEffect(() => {
     if (isLoading || !trip) return;
-    if (!canViewTrip(trip, user?.id ?? null)) {
-      router.replace(`/login?next=/trip/${tripId}`);
+    if (!canViewTrip(trip, user?.id ?? null, isAcceptedCollaborator)) {
+      router.replace(user?.id ? '/trips' : `/login?next=/trip/${tripId}`);
     }
-  }, [trip, isLoading, user?.id, tripId, router]);
+  }, [trip, isLoading, user?.id, tripId, router, isAcceptedCollaborator]);
   const { mapMarkers, selectedMarkerId, requestMapOpen, setRequestMapOpen } = useItineraryContext();
 
   // Sync map open with context requests
@@ -412,16 +422,12 @@ function TripLayoutContent({
       {/* Header — magazine hero or compact (hidden on calendar for full-height view) */}
       {!isCalendar && (
         isMagazine ? (
-          <TripMagazineHero tripId={tripId} trip={trip} compact={!isOverview} onTripUpdate={refetch}
+          <TripMagazineHero trip={trip} compact={!isOverview}
             overrideImage={destImageData?.url ?? undefined} suppressFallback={destImageLoading} />
         ) : (
           <CompactTripHeader
-            tripId={tripId}
             trip={trip}
-            onTripUpdate={refetch}
             overrideImage={destImageData?.url ?? undefined}
-            mapOpen={mapOpen}
-            onToggleMap={() => setMapOpen(!mapOpen)}
           />
         )
       )}
@@ -529,20 +535,9 @@ function TripLayoutContent({
         </div>
       </div>
 
-      {/* Below-the-fold content — overview only, never calendar */}
-      {isOverview && !isCalendar && (
-        <div className="relative z-10">
-          {isMagazine ? (
-            <div className={`px-6 sm:px-10 ${railCollapsed ? 'md:pl-[96px]' : 'md:pl-[200px]'} md:pr-10 mt-4 pb-8 transition-[padding] duration-200 ease-out`}>
-              <TripExploreSection trip={trip} embedded />
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-background">
-              <TripExploreSection trip={trip} />
-            </div>
-          )}
-        </div>
-      )}
+      {/* Below-the-fold content — Explore section is now part of the
+       *  TripDashboard rendered inside the overview page itself, so the
+       *  legacy full-width grid is no longer rendered here. */}
 
       {/* Magazine footer — gradient floor so the page has a defined end */}
       {isMagazine && !isCalendar && (

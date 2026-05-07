@@ -4,8 +4,9 @@ import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core'
 import { useQuery } from '@tanstack/react-query'
 import { computeTimeRange, getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
-import { fetchCollaborators } from '@travyl/shared'
-import { DEFAULT_TIME_RANGE } from './constants'
+import { fetchCollaborators, usePlaceImages } from '@travyl/shared'
+import { DEFAULT_TIME_RANGE, HOUR_HEIGHT as DEFAULT_HOUR_HEIGHT } from './constants'
+import { HourHeightProvider } from './HourHeightContext'
 import { CalendarTopBar } from './CalendarTopBar'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
@@ -53,6 +54,44 @@ interface CalendarShellProps {
 }
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+// ── Persistent geocode cache ─────────────────────────────
+// Geocodes are keyed by trip activity id. Persisted in localStorage so a
+// reload (or switching trips and coming back) doesn't re-fire Nominatim.
+const GEOCODE_CACHE_KEY = 'travyl-cal-geocode-cache-v1'
+type GeocodeCacheEntry = { lat: number; lng: number }
+type GeocodeCacheShape = Record<string, GeocodeCacheEntry>
+
+function loadGeocodeCacheIntoMap(): Map<string, GeocodeCacheEntry> {
+  if (typeof window === 'undefined') return new Map()
+  try {
+    const raw = window.localStorage.getItem(GEOCODE_CACHE_KEY)
+    if (!raw) return new Map()
+    const parsed = JSON.parse(raw) as GeocodeCacheShape
+    const map = new Map<string, GeocodeCacheEntry>()
+    for (const [k, v] of Object.entries(parsed)) {
+      if (v && Number.isFinite(v.lat) && Number.isFinite(v.lng)) {
+        map.set(k, v)
+      }
+    }
+    return map
+  } catch {
+    return new Map()
+  }
+}
+
+function saveGeocodeMapToCache(map: Map<string, GeocodeCacheEntry>) {
+  if (typeof window === 'undefined') return
+  try {
+    const obj: GeocodeCacheShape = {}
+    map.forEach((v, k) => {
+      obj[k] = v
+    })
+    window.localStorage.setItem(GEOCODE_CACHE_KEY, JSON.stringify(obj))
+  } catch {
+    /* quota or disabled — fine, it's just a cache */
+  }
+}
 
 function buildDays(startDate: Date, tripDays: number) {
   const days: { dayIndex: number; label: string }[] = []
@@ -385,8 +424,41 @@ export function CalendarShell({
     setRegenerateDaySlots([])
   }, [])
 
-  // ── Right panel resize ───────────────────────────────────
+  // ── Right panel resize + collapse ────────────────────────
   const { width: panelWidth, handleDragStart: panelDragStart, handleDrag: panelDrag, handleDragEnd: panelDragEnd, isDragging } = useResizablePanel()
+  const [panelCollapsed, setPanelCollapsed] = useState(false)
+  const togglePanelCollapsed = useCallback(() => setPanelCollapsed((v) => !v), [])
+  const effectivePanelWidth = panelCollapsed ? 0 : panelWidth
+
+  // ── Dynamic hour height ──────────────────────────────────
+  // The calendar grid stretches to fill the available viewport height; the
+  // per-hour pixel size grows or shrinks with the window. Floored at the
+  // static default so rows never get smaller than their canonical size on
+  // short viewports (just adds a scrollbar instead).
+  //
+  // We anchor to `window.innerHeight` minus a fixed chrome offset rather than
+  // measuring the scroll container's clientHeight. The DashboardLayout uses
+  // `min-h-screen` (not `h-screen`), which lets the page grow with content —
+  // so a flex-based measurement comes back undersized and the rows collapse
+  // to the 60px floor. Viewport math is deterministic regardless of the
+  // surrounding flex chain.
+  const DAY_HEADER_HEIGHT = 28
+  const SHELL_CHROME_HEIGHT = 48 /* dashboard navbar */ + 50 /* CalendarTopBar */
+  const [viewportHeight, setViewportHeight] = useState(() =>
+    typeof window !== 'undefined' ? window.innerHeight : 900,
+  )
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const update = () => setViewportHeight(window.innerHeight)
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
+  const hourCount = timeRange.endHour - timeRange.startHour
+  const dynamicHourHeight = useMemo(() => {
+    if (hourCount <= 0) return DEFAULT_HOUR_HEIGHT
+    const available = viewportHeight - SHELL_CHROME_HEIGHT - DAY_HEADER_HEIGHT
+    return Math.max(DEFAULT_HOUR_HEIGHT, available / hourCount)
+  }, [viewportHeight, hourCount])
 
   // Prevent text selection while resizing panel
   useEffect(() => {
@@ -404,13 +476,190 @@ export function CalendarShell({
 
   // ── Week navigation ──────────────────────────────────────
   const handleWeekChange = useCallback((direction: -1 | 1) => {
-    selectDay(selectedDayIndex + direction * 7)
-  }, [selectedDayIndex, selectDay])
+    const next = selectedDayIndex + direction * 7
+    const clamped = Math.max(0, Math.min(next, Math.max(0, tripTotalDays - 1)))
+    selectDay(clamped)
+  }, [selectedDayIndex, selectDay, tripTotalDays])
 
   const handleToday = useCallback(() => {
     const diffDays = Math.floor((Date.now() - parsedStartDate.getTime()) / 86400000)
-    selectDay(Math.max(0, diffDays))
-  }, [parsedStartDate, selectDay])
+    const clamped = Math.max(0, Math.min(diffDays, Math.max(0, tripTotalDays - 1)))
+    selectDay(clamped)
+  }, [parsedStartDate, selectDay, tripTotalDays])
+
+  // Week view shows up to 7 days, aligned to trip-week blocks starting at day 0.
+  // The last week of a trip whose length is not a multiple of 7 will be partial.
+  const weekStartIndex = useMemo(
+    () => Math.floor(Math.max(0, selectedDayIndex) / 7) * 7,
+    [selectedDayIndex],
+  )
+
+  const visibleWeekDays = useMemo(
+    () => allDays.slice(weekStartIndex, weekStartIndex + 7),
+    [allDays, weekStartIndex],
+  )
+
+  // ── Top-bar context label ────────────────────────────────
+  const viewLabel = useMemo(() => {
+    if (!trip) return ''
+    const dateForIndex = (idx: number) =>
+      new Date(parsedStartDate.getTime() + idx * 86400000)
+    if (viewMode === 'day') {
+      const d = dateForIndex(selectedDayIndex)
+      return d.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC',
+      })
+    }
+    const last = Math.min(weekStartIndex + 6, tripTotalDays - 1)
+    const start = dateForIndex(weekStartIndex)
+    const end = dateForIndex(last)
+    const startMonth = start.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })
+    const endMonth = end.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })
+    const startDay = start.getUTCDate()
+    const endDay = end.getUTCDate()
+    if (startMonth === endMonth) return `${startMonth} ${startDay} – ${endDay}`
+    return `${startMonth} ${startDay} – ${endMonth} ${endDay}`
+  }, [trip, parsedStartDate, viewMode, selectedDayIndex, weekStartIndex, tripTotalDays])
+
+  const visibleActivityCount = useMemo(() => {
+    if (viewMode === 'day') {
+      return scheduledActivities.filter((a) => a.day === selectedDayIndex).length
+    }
+    const end = weekStartIndex + 7
+    return scheduledActivities.filter((a) => a.day >= weekStartIndex && a.day < end).length
+  }, [scheduledActivities, viewMode, selectedDayIndex, weekStartIndex])
+
+  // ── Enrich activities with images for the map popup ─────
+  // /api/images is fronted by Pexels/Unsplash and is permissive — calling it
+  // in parallel for missing-image activities is fine. usePlaceImages is the
+  // same hook the For-You panel uses, so React Query caches results and
+  // shares them across the app.
+  const activitiesNeedingImage = useMemo(
+    () => scheduledActivities.filter((a) => !a.image && !!a.title),
+    [scheduledActivities],
+  )
+  const imageQueries = useMemo(
+    () => activitiesNeedingImage.map((a) =>
+      `${a.title} ${trip?.destination ?? ''}`.trim(),
+    ),
+    [activitiesNeedingImage, trip?.destination],
+  )
+  const imageResults = usePlaceImages(imageQueries)
+  const enrichedImageMap = useMemo(() => {
+    const map = new Map<string, string>()
+    activitiesNeedingImage.forEach((a, i) => {
+      const url = imageResults[i]?.data?.url
+      if (url) map.set(a.id, url)
+    })
+    return map
+  }, [activitiesNeedingImage, imageResults])
+
+  // ── Geocode missing activity coordinates ─────────────────
+  // Activities created via paths that don't carry geo (AI itinerary, manual
+  // entry, /api/places where the backend omitted lat/lng) end up with 0,0
+  // and the map silently drops them. We backfill by geocoding the title
+  // paired with the trip destination, with three layers:
+  //   1. Persistent localStorage cache so revisits / reloads are instant.
+  //   2. Sequential dispatch (~1 req/s) so Nominatim's rate limit doesn't
+  //      eat the queue.
+  //   3. A second fallback attempt against just the destination so titles
+  //      Nominatim can't resolve still get *some* pin (centered on the
+  //      trip's city) instead of disappearing forever.
+  const [geocodedCoords, setGeocodedCoords] = useState<Map<string, { lat: number; lng: number }>>(
+    () => loadGeocodeCacheIntoMap(),
+  )
+  const geocodeAttempted = useRef<Set<string>>(new Set())
+  // Throttle persistence — every successful geocode triggers a state update
+  // that re-renders the panel; we don't want to hit localStorage that often.
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (persistTimerRef.current) clearTimeout(persistTimerRef.current)
+    persistTimerRef.current = setTimeout(() => {
+      saveGeocodeMapToCache(geocodedCoords)
+    }, 500)
+    return () => {
+      if (persistTimerRef.current) clearTimeout(persistTimerRef.current)
+    }
+  }, [geocodedCoords])
+
+  useEffect(() => {
+    const destination = trip?.destination ?? ''
+    if (!destination) return
+    const queue = scheduledActivities.filter(
+      (a) =>
+        (!a.latitude || a.latitude === 0) &&
+        (!a.longitude || a.longitude === 0) &&
+        !!a.title &&
+        !geocodedCoords.has(a.id) &&
+        !geocodeAttempted.current.has(a.id),
+    )
+    if (queue.length === 0) return
+
+    let cancelled = false
+    ;(async () => {
+      // Pre-resolve the trip-destination centroid so unresolvable titles can
+      // fall back to it instantly. Block the workers on this so we don't have
+      // 10 activities all firing destination lookups in parallel later.
+      let destinationFallback: { lat: number; lng: number } | null = null
+      const tryQuery = async (q: string): Promise<{ lat: number; lng: number } | null> => {
+        try {
+          const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}&limit=1`)
+          if (!res.ok) return null
+          const data = await res.json()
+          const hit = Array.isArray(data) ? data?.[0] : null
+          if (!hit?.lat || !hit?.lon) return null
+          const lat = parseFloat(hit.lat)
+          const lng = parseFloat(hit.lon)
+          return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null
+        } catch {
+          return null
+        }
+      }
+      destinationFallback = await tryQuery(destination)
+      if (cancelled) return
+
+      // Two-worker pool. Each worker paces ~1.1s between its own requests so
+      // the *total* request rate stays around 2 req/sec — Nominatim tolerates
+      // short bursts at that rate while the strict 1/sec policy applies to
+      // sustained heavy usage. For 10 activities this drops wall time from
+      // ~11s to ~5s.
+      const remaining = [...queue]
+      const CONCURRENCY = 2
+      const workers = Array.from({ length: CONCURRENCY }, async () => {
+        while (remaining.length > 0 && !cancelled) {
+          const a = remaining.shift()
+          if (!a) break
+          geocodeAttempted.current.add(a.id)
+
+          let coords = await tryQuery(`${a.title}, ${destination}`)
+          if (!coords && destinationFallback) coords = destinationFallback
+
+          if (coords && !cancelled) {
+            setGeocodedCoords((prev) => {
+              if (prev.has(a.id)) return prev
+              const next = new Map(prev)
+              next.set(a.id, coords!)
+              return next
+            })
+          }
+          // Pacing — each worker holds for 1.1s so combined rate ≈ 2/sec.
+          await new Promise((resolve) => setTimeout(resolve, 1100))
+        }
+      })
+      await Promise.all(workers)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+    // Intentionally NOT including `geocodedCoords` — that would re-run the
+    // effect every time we add a coord, restarting the queue and replaying
+    // already-attempted lookups. We track attempts in a ref instead.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scheduledActivities, trip?.destination])
 
   // ── Drag-and-drop ────────────────────────────────────────
   const weekGridRef = useRef<HTMLDivElement>(null)
@@ -419,6 +668,7 @@ export function CalendarShell({
     onAddFromSuggestion: (activity) => addActivity(activity),
     scrollRef: weekGridRef,
     timeRangeStartHour: timeRange.startHour,
+    hourHeight: dynamicHourHeight,
   })
 
   const handleSelectEvent = useCallback((id: string) => {
@@ -461,24 +711,54 @@ export function CalendarShell({
   const darkClass = theme === 'dark' ? 'dark' : ''
 
   // ── Computed map activities ──────────────────────────────
-  const currentDayMapActivities = useMemo(
-    () => scheduledActivities
-      .filter((a) => a.day === selectedDayIndex && a.latitude != null && a.longitude != null)
-      .sort((a, b) => a.startHour - b.startHour)
-      .map((a) => ({ id: a.id, title: a.title, latitude: a.latitude!, longitude: a.longitude!, startHour: a.startHour })),
-    [scheduledActivities, selectedDayIndex],
-  )
+  // Day view: just the selected day. Week view: every activity in the visible
+  // 7-day window — otherwise the map is silently empty whenever the user
+  // hasn't explicitly clicked a day with pinned activities yet.
+  // Coords come from the activity itself when present, otherwise from the
+  // background geocoder (`geocodedCoords`).
+  const currentDayMapActivities = useMemo(() => {
+    const dayInWindow = (day: number) =>
+      viewMode === 'day' ? day === selectedDayIndex : day >= weekStartIndex && day < weekStartIndex + 7
+
+    const result: { id: string; title: string; latitude: number; longitude: number; startHour: number; image?: string | null; day: number }[] = []
+    for (const a of scheduledActivities) {
+      if (!dayInWindow(a.day)) continue
+      let lat = a.latitude ?? 0
+      let lng = a.longitude ?? 0
+      if (!lat || !lng || (lat === 0 && lng === 0)) {
+        const fallback = geocodedCoords.get(a.id)
+        if (!fallback) continue
+        lat = fallback.lat
+        lng = fallback.lng
+      }
+      result.push({
+        id: a.id,
+        title: a.title,
+        latitude: lat,
+        longitude: lng,
+        startHour: a.startHour,
+        image: a.image ?? enrichedImageMap.get(a.id) ?? null,
+        day: a.day,
+      })
+    }
+    // Day-then-hour sort so the numbered pins (and the route line connecting
+    // them) traverse the trip chronologically — Day 1 morning → Day 1 evening
+    // → Day 2 morning → … — rather than interleaving days by hour-of-day.
+    return result
+      .sort((a, b) => a.day - b.day || a.startHour - b.startHour)
+      .map(({ day: _day, ...rest }) => rest)
+  }, [scheduledActivities, viewMode, selectedDayIndex, weekStartIndex, geocodedCoords, enrichedImageMap])
 
   // ── Loading / error states ───────────────────────────────
   if (isLoading) return <CalendarSkeleton />
   if (errorMsg || !trip) return <CalendarError message={errorMsg ?? 'Failed to load trip'} />
 
   // ── Render ────────────────────────────────────────────────
-  const days = allDays
-  const selectedDayLabel = days[selectedDayIndex]?.label ?? ''
+  const selectedDayLabel = allDays[selectedDayIndex]?.label ?? ''
 
   return (
     <CalendarThemeContext.Provider value={{ isDark: theme === 'dark' }}>
+      <HourHeightProvider value={dynamicHourHeight}>
       <DndContext
         sensors={sensors}
         collisionDetection={pointerWithin}
@@ -490,24 +770,24 @@ export function CalendarShell({
         <div className={`flex flex-col h-full bg-[var(--cal-bg)] ${darkClass}`}>
           {/* Top Bar */}
           <CalendarTopBar
-            tripName={trip.title ?? 'Untitled Trip'}
-            dateRange={`${trip.start_date} – ${trip.end_date}`}
+            viewLabel={viewLabel}
+            activityCount={visibleActivityCount}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             onWeekChange={handleWeekChange}
             onToday={handleToday}
-            onNewActivity={() => {}}
-            onShare={() => {}}
+            panelCollapsed={panelCollapsed}
+            onTogglePanel={togglePanelCollapsed}
           />
 
           {/* Two-column layout (left date nav hidden) */}
           <div className="flex flex-1 min-h-0 overflow-hidden">
 
             {/* Center: Calendar Grid */}
-            <div ref={weekGridRef} className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
+            <div ref={weekGridRef} className="flex flex-col flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
               {viewMode === 'week' ? (
                 <WeekView
-                  days={days}
+                  days={visibleWeekDays}
                   activities={scheduledActivities}
                   viewers={collaboratorsWithProfiles}
                   selectedEventId={selectedEventId}
@@ -545,8 +825,13 @@ export function CalendarShell({
 
             {/* Right: Context Panel */}
             <div
-              className="flex-shrink-0 border-l border-[var(--cal-border)] bg-[var(--cal-bg)] relative"
-              style={{ width: panelWidth }}
+              aria-hidden={panelCollapsed}
+              className={[
+                'flex-shrink-0 bg-[var(--cal-bg)] relative overflow-hidden',
+                panelCollapsed ? 'border-l-0 pointer-events-none' : 'border-l border-[var(--cal-border)]',
+                isDragging ? '' : 'transition-[width] duration-200 ease-out',
+              ].join(' ')}
+              style={{ width: effectivePanelWidth }}
             >
               {/* Resize handle */}
               <div
@@ -577,7 +862,7 @@ export function CalendarShell({
               {regeneratingDayIndex !== null ? (
                 <RegenerateDayModal
                   dayIndex={regeneratingDayIndex}
-                  dayLabel={days[regeneratingDayIndex]?.label ?? ''}
+                  dayLabel={allDays[regeneratingDayIndex]?.label ?? ''}
                   slots={regenerateDaySlots}
                   originalActivities={activities.filter((a) => a.day === regeneratingDayIndex && !a.unscheduled)}
                   onApply={handleRegenerateDayApply}
@@ -604,14 +889,43 @@ export function CalendarShell({
                       onRetry={eventsError ? refetchEvents : undefined}
                     />
                   }
-                  mapContent={
-                    <DayMap
-                      activities={currentDayMapActivities}
-                      selectedActivityId={selectedEventId}
-                      onSelectActivity={(id) => handleSelectEvent(id)}
-                      className="h-full"
-                    />
-                  }
+                  mapContent={(() => {
+                    // Count activities in the visible window so we can tell
+                    // the user how many pins are still locating themselves.
+                    const dayInWindow = (day: number) =>
+                      viewMode === 'day' ? day === selectedDayIndex : day >= weekStartIndex && day < weekStartIndex + 7
+                    const totalInWindow = scheduledActivities.filter((a) => dayInWindow(a.day)).length
+                    const pinned = currentDayMapActivities.length
+                    const stillLocating = Math.max(0, totalInWindow - pinned)
+
+                    const headerLabel = viewMode === 'day'
+                      ? `${viewLabel || selectedDayLabel}`
+                      : `Week of ${viewLabel || 'this trip'}`
+                    const subtext = totalInWindow === 0
+                      ? viewMode === 'day'
+                        ? 'No activities on this day yet'
+                        : 'No activities this week yet'
+                      : pinned === 0
+                        ? `Locating ${stillLocating} ${stillLocating === 1 ? 'stop' : 'stops'}…`
+                        : `${pinned} of ${totalInWindow} ${totalInWindow === 1 ? 'stop' : 'stops'} mapped${stillLocating > 0 ? ` · locating ${stillLocating} more…` : ''}`
+
+                    return (
+                      <div className="flex flex-col h-full">
+                        <div className="px-3.5 pt-3.5 pb-2.5 border-b border-cal-border">
+                          <h2 className="text-sm font-semibold text-cal-text">{headerLabel}</h2>
+                          <p className="text-[11px] text-cal-text-tertiary mt-0.5">{subtext}</p>
+                        </div>
+                        <div className="flex-1 min-h-0">
+                          <DayMap
+                            activities={currentDayMapActivities}
+                            selectedActivityId={selectedEventId}
+                            onSelectActivity={(id) => handleSelectEvent(id)}
+                            className="h-full"
+                          />
+                        </div>
+                      </div>
+                    )
+                  })()}
                 />
               )}
             </div>
@@ -668,6 +982,7 @@ export function CalendarShell({
           />
         )}
       </DndContext>
+      </HourHeightProvider>
     </CalendarThemeContext.Provider>
   )
 }

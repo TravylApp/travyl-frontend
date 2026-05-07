@@ -1,5 +1,5 @@
 'use client'
-import { HOUR_HEIGHT } from './constants'
+import { useHourHeight } from './HourHeightContext'
 import type { BlockedRange } from './utils/travelConstraints'
 
 interface TravelConstraintBlockProps {
@@ -11,6 +11,7 @@ export function TravelConstraintBlock({
   range,
   timeRangeStartHour,
 }: TravelConstraintBlockProps) {
+  const HOUR_HEIGHT = useHourHeight()
   const top = (range.startHour - timeRangeStartHour) * HOUR_HEIGHT
   const height = (range.endHour - range.startHour) * HOUR_HEIGHT
   const minHeight = 12

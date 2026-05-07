@@ -1,5 +1,5 @@
 'use client'
-import { HOUR_HEIGHT } from './constants'
+import { useHourHeight } from './HourHeightContext'
 import type { CalendarActivity } from './types'
 
 interface GhostEventBlockProps {
@@ -15,6 +15,7 @@ export function GhostEventBlock({
   onConfirm,
   onDismiss,
 }: GhostEventBlockProps) {
+  const HOUR_HEIGHT = useHourHeight()
   const top = (activity.startHour - timeRangeStartHour) * HOUR_HEIGHT
   const height = activity.duration * HOUR_HEIGHT
 

@@ -19,10 +19,17 @@ import {
   predicthqApiKey,
   openExchangeRatesAppId,
   openchargeApiKey,
+  elevenLabsApiKey,
 } from './secrets'
 
 export const site = new sst.aws.Nextjs('TravylWeb', {
   path: 'apps/web',
+  // /api/trips/plan and /api/trips/extract proxy to FastAPI for AI trip
+  // generation, which routinely takes 30-60s. SST's default Lambda timeout
+  // of 20s would kill these requests and surface as 504 to the user.
+  server: {
+    timeout: '5 minutes',
+  },
   domain: {
     name: 'dev.gotravyl.com',
     dns: false,
@@ -69,6 +76,9 @@ export const site = new sst.aws.Nextjs('TravylWeb', {
     // Server-only — Misc
     OPEN_EXCHANGE_RATES_APP_ID: openExchangeRatesAppId.value,
     OPENCHARGE_API_KEY: openchargeApiKey.value,
+
+    // Server-only — TTS
+    ELEVENLABS_API_KEY: elevenLabsApiKey.value,
   },
 })
 
@@ -114,5 +124,8 @@ export const web = new sst.x.DevCommand('TravylWebDev', {
     // Server-only — Misc
     OPEN_EXCHANGE_RATES_APP_ID: openExchangeRatesAppId.value,
     OPENCHARGE_API_KEY: openchargeApiKey.value,
+
+    // Server-only — TTS
+    ELEVENLABS_API_KEY: elevenLabsApiKey.value,
   },
 })

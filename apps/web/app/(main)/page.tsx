@@ -432,8 +432,8 @@ export default function Home() {
     target: heroSectionRef,
     offset: ["start start", "end start"],
   });
-  const heroTextY = useTransform(heroScroll, [0, 0.6], [0, 150]);
-  const heroTextOpacity = useTransform(heroScroll, [0, 0.4], [1, 0]);
+  const heroTextY = useTransform(heroScroll, [0, 0.3], [0, -40]);
+  const heroTextOpacity = useTransform(heroScroll, [0, 0.22], [1, 0]);
   const heroBgY = useTransform(heroScroll, [0, 1], [0, -120]);
   const heroBgScale = useTransform(heroScroll, [0, 1], [1, 1.15]);
 

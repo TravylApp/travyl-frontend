@@ -54,7 +54,7 @@ export function DayView({
   const dayActivities = activities.filter((a) => a.day === dayIndex)
 
   return (
-    <div role="grid" className="flex flex-1 overflow-auto">
+    <div role="grid" className="flex flex-1 h-full overflow-auto">
       <TimeGutter timeRange={timeRange} />
       <div className="flex flex-1 min-w-0">
         <DayColumn

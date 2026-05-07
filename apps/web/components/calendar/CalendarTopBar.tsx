@@ -1,40 +1,45 @@
 'use client'
 
-import { Plus, ShareAndroid } from 'iconoir-react'
+import { PanelRight, PanelRightClose } from 'lucide-react'
 import { Tooltip } from '@/components/ui/tooltip'
 
 interface CalendarTopBarProps {
-  tripName: string
-  dateRange: string
+  /** What the calendar is currently showing — e.g. "Jun 1 – 7" or "Wed, Jun 5". */
+  viewLabel: string
+  /** Number of scheduled activities in the visible range. */
+  activityCount: number
   viewMode: 'week' | 'day'
   onViewModeChange: (mode: 'week' | 'day') => void
   onWeekChange: (direction: -1 | 1) => void
   onToday: () => void
-  onNewActivity: () => void
-  onShare: () => void
+  panelCollapsed: boolean
+  onTogglePanel: () => void
 }
 
 export function CalendarTopBar({
-  tripName,
-  dateRange,
+  viewLabel,
+  activityCount,
   viewMode,
   onViewModeChange,
   onWeekChange,
   onToday,
-  onNewActivity,
-  onShare,
+  panelCollapsed,
+  onTogglePanel,
 }: CalendarTopBarProps) {
   return (
-    <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--cal-border)] bg-[var(--cal-surface)]">
-      {/* Left: Trip name + date range */}
-      <div className="flex items-center gap-2 min-w-0">
-        <h2 className="text-sm font-semibold text-[var(--cal-text)] truncate">{tripName}</h2>
-        <span className="text-xs text-[var(--cal-text-tertiary)] hidden sm:inline">·</span>
-        <span className="text-xs text-[var(--cal-text-tertiary)] hidden sm:inline truncate">{dateRange}</span>
+    <div className="flex items-center px-4 py-2 border-b border-[var(--cal-border)] bg-[var(--cal-surface)]">
+      {/* Left: Current view context (date range + activity density) */}
+      <div className="flex items-baseline gap-2 min-w-0">
+        <h2 className="text-sm font-semibold text-[var(--cal-text)] truncate">{viewLabel}</h2>
+        <span className="text-xs text-[var(--cal-text-tertiary)] hidden sm:inline truncate">
+          {activityCount === 0
+            ? 'Nothing scheduled'
+            : `${activityCount} ${activityCount === 1 ? 'activity' : 'activities'}`}
+        </span>
       </div>
 
-      {/* Center: Week navigation + view toggle */}
-      <div className="flex items-center gap-3">
+      {/* Right: Week navigation + view toggle + panel collapse */}
+      <div className="ml-auto flex items-center gap-3">
         <div className="flex items-center gap-1">
           <Tooltip content="Previous week">
             <button
@@ -85,24 +90,18 @@ export function CalendarTopBar({
             Day
           </button>
         </div>
-      </div>
 
-      {/* Right: Actions */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={onNewActivity}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#003594] text-white text-xs font-medium rounded-lg hover:bg-[#002B7A] transition-colors"
-        >
-          <Plus width={14} height={14} />
-          <span className="hidden sm:inline">New</span>
-        </button>
-        <Tooltip content="Share trip">
+        {/* Panel collapse toggle */}
+        <Tooltip content={panelCollapsed ? 'Show side panel' : 'Hide side panel'}>
           <button
-            onClick={onShare}
-            className="p-1.5 rounded-md hover:bg-[var(--cal-accent-bg)] text-[var(--cal-text-secondary)] transition-colors"
-            aria-label="Share"
+            onClick={onTogglePanel}
+            aria-label={panelCollapsed ? 'Show side panel' : 'Hide side panel'}
+            aria-expanded={!panelCollapsed}
+            className="p-1.5 rounded-md hover:bg-[var(--cal-accent-bg)] text-[var(--cal-text-secondary)] hover:text-[var(--cal-text)] transition-colors"
           >
-            <ShareAndroid width={16} height={16} />
+            {panelCollapsed
+              ? <PanelRight width={16} height={16} />
+              : <PanelRightClose width={16} height={16} />}
           </button>
         </Tooltip>
       </div>

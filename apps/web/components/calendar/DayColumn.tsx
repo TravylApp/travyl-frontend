@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import { Sparks } from 'iconoir-react'
 import { Tooltip } from '@/components/ui/tooltip'
 import { useDroppable } from '@dnd-kit/core'
-import { HOUR_HEIGHT } from './constants'
+import { useHourHeight } from './HourHeightContext'
 import { EventBlock } from './EventBlock'
 import { PostItNote } from './PostItNote'
 import type { CalendarActivity, UserAwareness, TimeRange } from './types'
@@ -61,6 +61,7 @@ function CurrentTimeIndicator({
   tripStartDate: Date
   timeRange: TimeRange
 }) {
+  const HOUR_HEIGHT = useHourHeight()
   const now = new Date()
   // Compute the UTC date for this column
   const columnDate = new Date(tripStartDate.getTime() + dayIndex * 24 * 60 * 60 * 1000)
@@ -122,6 +123,7 @@ export function DayColumn({
   onDismissGhost,
   onRegenerateDay,
 }: DayColumnProps) {
+  const HOUR_HEIGHT = useHourHeight()
   const date = useMemo(() => {
     const d = new Date(tripStartDate.getTime() + dayIndex * 24 * 60 * 60 * 1000)
     return d.toISOString().slice(0, 10)

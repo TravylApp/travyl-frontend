@@ -96,16 +96,57 @@ export default function LoginScreen() {
     setOAuthLoading(provider);
     setError('');
     try {
-      const redirectTo = Linking.createURL('login-callback');
+      // In Expo Go dev, Linking.createURL returns exp://<LAN_IP>:<PORT>/... which
+      // Supabase's auth service rejects because of an IP-detection bug
+      // (https://github.com/supabase/auth/issues/2039). Swap the LAN IP for
+      // `localhost` for the OAuth round-trip — Supabase accepts it, and the in-app
+      // browser only string-matches the URL to know when to close, so iOS never
+      // needs to actually navigate to exp://localhost.
+      const native = Linking.createURL('login-callback');
+      const redirectTo = __DEV__
+        ? native.replace(/exp:\/\/\d+\.\d+\.\d+\.\d+(:\d+)?/, 'exp://localhost$1')
+        : native;
+      if (__DEV__) console.log('[OAUTH-DEBUG] native =', native, 'redirectTo =', redirectTo);
       const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
         provider,
         options: { redirectTo, skipBrowserRedirect: true },
       });
+      if (__DEV__) console.log('[OAUTH-DEBUG] supabase.url =', data?.url);
       if (oauthError) throw oauthError;
       if (data?.url) {
         // Open the OAuth URL in the system browser
         const WebBrowser = await import('expo-web-browser');
-        await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+        const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+        if (__DEV__) console.log('[OAUTH-DEBUG] webBrowser result =', JSON.stringify(res));
+        if (res.type === 'success' && res.url) {
+          // Supabase can return either:
+          //   - Implicit flow: exp://...#access_token=...&refresh_token=...
+          //   - PKCE flow:     exp://...?code=...
+          // Normalize the fragment to a query string so a single parser handles both.
+          const normalized = res.url.includes('#') ? res.url.replace('#', '?') : res.url;
+          const q = normalized.split('?')[1] ?? '';
+          const params = new URLSearchParams(q);
+          const access_token = params.get('access_token');
+          const refresh_token = params.get('refresh_token');
+          const code = params.get('code');
+          if (__DEV__) console.log('[OAUTH-DEBUG] parsed', {
+            access_token: access_token ? '(present)' : '(missing)',
+            refresh_token: refresh_token ? '(present)' : '(missing)',
+            code: code ? '(present)' : '(missing)',
+          });
+          if (access_token && refresh_token) {
+            const { error: setErr } = await supabase.auth.setSession({ access_token, refresh_token });
+            if (setErr) throw setErr;
+          } else if (code) {
+            const { error: exErr } = await supabase.auth.exchangeCodeForSession(code);
+            if (exErr) throw exErr;
+          } else {
+            throw new Error('OAuth callback URL missing access_token and code');
+          }
+          // Mirror email/password path — explicitly navigate home. authStore's
+          // onAuthStateChange updates the session state but doesn't navigate.
+          router.replace('/');
+        }
       }
     } catch (err: any) {
       const msg = err.message?.includes('not configured') || err.message?.includes('not enabled')

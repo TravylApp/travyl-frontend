@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
 import type { SuggestionCard } from './types'
 
@@ -10,12 +9,23 @@ interface SuggestionDetailDrawerProps {
   suggestion: SuggestionCard
   isClosing: boolean
   onClose: () => void
+  /** Optional muted line under the title — used by events to surface
+   * "Thu May 7 · 7:00 PM at Cova Santa". */
+  subtitle?: string
+  /** Optional CTA button rendered at the bottom of the body. Used by events
+   * to surface "Get tickets" without us having to bake event-specific fields
+   * into SuggestionCard. */
+  ctaLabel?: string
+  ctaUrl?: string
 }
 
 export function SuggestionDetailDrawer({
   suggestion,
   isClosing,
   onClose,
+  subtitle,
+  ctaLabel,
+  ctaUrl,
 }: SuggestionDetailDrawerProps) {
   const [isVisible, setIsVisible] = useState(false)
   const [activeIdx, setActiveIdx] = useState(0)
@@ -163,6 +173,10 @@ export function SuggestionDetailDrawer({
           {suggestion.name}
         </h3>
 
+        {subtitle && (
+          <p className="text-[12px] text-cal-text-secondary -mt-1">{subtitle}</p>
+        )}
+
         {/* Meta row */}
         <div className="flex flex-wrap items-center gap-1.5">
           {suggestion.rating != null && (
@@ -205,16 +219,17 @@ export function SuggestionDetailDrawer({
           </p>
         )}
 
-        {/* View full details link */}
-        <div className="pt-1">
-          <Link
-            href={`/activity/${suggestion.id}`}
+        {ctaLabel && ctaUrl && (
+          <a
+            href={ctaUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg border border-cal-border text-[12px] font-medium text-cal-text-secondary hover:bg-cal-border-light hover:text-cal-text transition-colors"
+            className="mt-2 inline-flex items-center justify-center w-full py-2 rounded-lg bg-primary text-white text-[12.5px] font-semibold hover:bg-primary/90 transition-colors shadow-sm"
           >
-            View full details
-          </Link>
-        </div>
+            {ctaLabel}
+          </a>
+        )}
       </div>
     </div>
   )

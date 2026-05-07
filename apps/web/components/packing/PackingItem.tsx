@@ -4,7 +4,7 @@ import { useState, useRef } from 'react'
 import { motion } from 'motion/react'
 import { Xmark } from 'iconoir-react'
 import type { DbPackingItem } from '@travyl/shared'
-import { stringToColor } from './utils'
+import { PlaceholderAvatar } from '@/components/ui/PlaceholderAvatar'
 
 interface PackingItemProps {
   item: DbPackingItem
@@ -19,7 +19,7 @@ interface PackingItemProps {
 
 export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantity, onRemove, onClaim, onRelease, currentUserId }: PackingItemProps) {
   const displayName = item.user_display_name ?? 'User'
-  const avatarColor = stringToColor(displayName)
+  const avatarUrl = item.user_avatar_url ?? null
   const [qtyHover, setQtyHover] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState('')
@@ -154,14 +154,14 @@ export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantit
         {pillLabel}
       </span>
 
-      {/* User avatar — preserved per-user color via stringToColor */}
-      <span
-        className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white"
-        style={{ backgroundColor: avatarColor }}
-        title={displayName}
-      >
-        {displayName[0].toUpperCase()}
-      </span>
+      {/* User avatar — shows actual profile photo when available */}
+      <PlaceholderAvatar
+        userId={item.user_id}
+        name={displayName}
+        avatarUrl={avatarUrl}
+        size={20}
+        className="shrink-0"
+      />
 
       {/* Claim/Release buttons — appear on hover */}
       {!item.owner_id && !item.group_tag && onClaim && (

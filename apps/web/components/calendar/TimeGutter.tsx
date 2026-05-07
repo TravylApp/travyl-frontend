@@ -1,11 +1,12 @@
 'use client'
-import { HOUR_HEIGHT } from './constants'
+import { useHourHeight } from './HourHeightContext'
 import { formatHourGutter } from './utils'
 import type { TimeRange } from './types'
 
 interface TimeGutterProps { timeRange: TimeRange }
 
 export function TimeGutter({ timeRange }: TimeGutterProps) {
+  const HOUR_HEIGHT = useHourHeight()
   const hours: number[] = []
   for (let h = timeRange.startHour; h <= timeRange.endHour; h++) hours.push(h)
   return (
