@@ -225,8 +225,9 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
               <button
                 onClick={handleAdd}
                 disabled={busy || alreadySaved}
-                className="inline-flex items-center gap-1.5 px-4 h-10 rounded-lg text-[13px] font-semibold text-white shadow-sm hover:shadow-md transition disabled:opacity-50"
-                style={{ backgroundColor: alreadySaved ? 'rgb(107 114 128)' : 'var(--trip-base)' }}
+                className={`inline-flex items-center gap-1.5 px-4 h-10 rounded-lg text-[13px] font-semibold text-white shadow-sm hover:shadow-md transition disabled:opacity-50 shrink-0 ${
+                  alreadySaved ? 'bg-gray-500' : 'bg-[#1e3a5f] hover:bg-[#162d4a]'
+                }`}
               >
                 {alreadySaved ? <><Check size={14} /> Added to trip</> : <><Plus size={14} /> Add to trip</>}
               </button>
@@ -263,32 +264,39 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                      <div className="grid grid-cols-[auto_1fr_auto] items-start gap-4">
                         <div>
-                          <div className="font-serif text-[24px] text-[var(--trip-base)] tabular-nums leading-none">
+                          <div className="font-serif text-[24px] text-[#1e3a5f] dark:text-white tabular-nums leading-none">
                             {formatTime(leg.departure.time)}
                           </div>
-                          <div className="font-mono text-[12px] font-semibold text-gray-700 dark:text-gray-300 mt-1">
+                          <div className="font-mono text-[12px] font-semibold text-gray-700 dark:text-gray-300 mt-1.5">
                             {leg.departure.id}
                           </div>
-                          <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                          <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 max-w-[180px]">
                             {leg.departure.airport}
                           </div>
                           <div className="text-[10px] text-gray-400 mt-0.5">
                             {formatDate(leg.departure.time)}
                           </div>
                         </div>
-                        <div className="flex flex-col items-center text-gray-300 dark:text-gray-600">
-                          <Plane size={14} className="rotate-90" />
+                        {/* Horizontal flight connector with a plane in the middle */}
+                        <div className="flex items-center pt-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#1e3a5f]" />
+                          <span className="flex-1 h-px bg-gray-200 dark:bg-white/[0.10]" />
+                          <span className="px-1 text-gray-400 dark:text-gray-500">
+                            <Plane size={12} className="rotate-90" />
+                          </span>
+                          <span className="flex-1 h-px bg-gray-200 dark:bg-white/[0.10]" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#1e3a5f]" />
                         </div>
                         <div className="text-right">
-                          <div className="font-serif text-[24px] text-[var(--trip-base)] tabular-nums leading-none">
+                          <div className="font-serif text-[24px] text-[#1e3a5f] dark:text-white tabular-nums leading-none">
                             {formatTime(leg.arrival.time)}
                           </div>
-                          <div className="font-mono text-[12px] font-semibold text-gray-700 dark:text-gray-300 mt-1">
+                          <div className="font-mono text-[12px] font-semibold text-gray-700 dark:text-gray-300 mt-1.5">
                             {leg.arrival.id}
                           </div>
-                          <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">
+                          <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 max-w-[180px] ml-auto">
                             {leg.arrival.airport}
                           </div>
                           <div className="text-[10px] text-gray-400 mt-0.5">
@@ -314,9 +322,16 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
                     </div>
 
                     {layover && i < flight.legs.length - 1 && (
-                      <div className="ml-4 px-3 py-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 text-[11px] text-amber-700 dark:text-amber-400 inline-flex items-center gap-2">
-                        <Clock size={11} />
-                        Layover at {layover.airport} ({layover.id}) · {formatDuration(layover.duration)}
+                      <div className="relative flex items-center justify-center py-1">
+                        <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-px bg-gradient-to-r from-transparent via-amber-200 dark:via-amber-500/30 to-transparent" />
+                        <div className="relative inline-flex items-center gap-1.5 px-3 h-7 rounded-full border border-amber-200 dark:border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 text-[11px] font-medium text-amber-800 dark:text-amber-300 shadow-sm">
+                          <Clock size={11} />
+                          <span>
+                            <span className="font-semibold">{formatDuration(layover.duration)}</span>
+                            <span className="opacity-70"> layover at </span>
+                            <span className="font-mono font-semibold">{layover.id}</span>
+                          </span>
+                        </div>
                       </div>
                     )}
                   </li>
