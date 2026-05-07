@@ -91,6 +91,15 @@ export default function ItinerarySection({ tripId }: { tripId: string }) {
 
   const [regenMenuOpen, setRegenMenuOpen] = useState(false);
   const regenMenuRef = useRef<HTMLDivElement>(null);
+  const dayStripRef = useRef<HTMLDivElement>(null);
+
+  // Keep the active day-chip visible when paginating via the slide arrows
+  useEffect(() => {
+    const chip = dayStripRef.current?.querySelector<HTMLElement>(
+      `[data-day-index="${selectedDayIndex}"]`,
+    );
+    chip?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [selectedDayIndex]);
 
   // Close menu on outside click
   useEffect(() => {
@@ -813,7 +822,10 @@ export default function ItinerarySection({ tripId }: { tripId: string }) {
 
             {/* Row 2 — draggable day strip + page nav */}
             <div className="flex items-center gap-3">
-              <div className="flex-1 min-w-0 flex items-center gap-2.5 overflow-x-auto scrollbar-hide py-1">
+              <div
+                ref={dayStripRef}
+                className="flex-1 min-w-0 flex items-center gap-2 sm:gap-2.5 overflow-x-auto scrollbar-hide py-1 px-1 [mask-image:linear-gradient(to_right,transparent_0,black_20px,black_calc(100%-20px),transparent_100%)] [-webkit-mask-image:linear-gradient(to_right,transparent_0,black_20px,black_calc(100%-20px),transparent_100%)]"
+              >
                 {days.map((d, i) => {
                   // dateLabel is "Mon, Sep 5" — split into weekday + month-day
                   const [weekday, monthDay] = d.dateLabel.split(',').map((s) => s.trim());
@@ -822,6 +834,7 @@ export default function ItinerarySection({ tripId }: { tripId: string }) {
                   return (
                     <button
                       key={`day-${i}`}
+                      data-day-index={i}
                       draggable
                       onDragStart={() => { dragDayRef.current = i; }}
                       onDragOver={(e) => { e.preventDefault(); setDragOverIdx(i); }}
@@ -836,7 +849,7 @@ export default function ItinerarySection({ tripId }: { tripId: string }) {
                       }}
                       onDragEnd={() => { dragDayRef.current = null; setDragOverIdx(null); }}
                       onClick={() => setSelectedDayIndex(i)}
-                      className={`shrink-0 min-w-[96px] px-4 py-2 rounded-xl text-center transition-all cursor-grab active:cursor-grabbing border ${
+                      className={`shrink-0 min-w-[80px] sm:min-w-[92px] md:min-w-[100px] px-3 sm:px-4 py-2 rounded-xl text-center transition-all cursor-grab active:cursor-grabbing border ${
                         isHover ? 'ring-2 ring-[var(--trip-base)]/40 scale-[1.04]' : ''
                       } ${
                         isActive
@@ -846,10 +859,10 @@ export default function ItinerarySection({ tripId }: { tripId: string }) {
                             : 'bg-white dark:bg-transparent border-gray-200 dark:border-white/10 hover:border-[var(--trip-base)]/40 hover:bg-gray-50 dark:hover:bg-white/[0.05]'
                       }`}
                     >
-                      <span className={`block font-serif text-[14px] leading-tight ${isActive ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                      <span className={`block font-serif text-[13px] sm:text-[14px] leading-tight ${isActive ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
                         {d.dayLabel}
                       </span>
-                      <span className={`block text-[10px] font-medium uppercase tracking-[0.14em] mt-1 ${isActive ? 'text-white/75' : 'text-gray-500 dark:text-white/50'}`}>
+                      <span className={`block text-[9.5px] sm:text-[10px] font-medium uppercase tracking-[0.14em] mt-1 truncate ${isActive ? 'text-white/75' : 'text-gray-500 dark:text-white/50'}`}>
                         {weekday}{monthDay ? ` · ${monthDay}` : ''}
                       </span>
                     </button>
