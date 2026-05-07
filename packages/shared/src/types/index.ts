@@ -1174,4 +1174,7 @@ export interface DocumentParseResult {
   data: DocumentParseData
 }
 
-export type { TransitData, TransitSegment, VehicleType } from './transit';
+export type {
+  TransitData, TransitSegment, VehicleType, TransitMode,
+  TransitDirectionStep, TransitDirectionResult, CreateTransitInput, CreateTransitBookingInput,
+} from './transit';
