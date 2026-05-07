@@ -36,6 +36,12 @@ export const site = new sst.aws.Nextjs('TravylWeb', {
   server: {
     timeout: '60 seconds',
   },
+  permissions: [
+    {
+      actions: ['bedrock:InvokeModel'],
+      resources: ['*'],
+    },
+  ],
   domain: {
     name: 'dev.gotravyl.com',
     dns: false,
