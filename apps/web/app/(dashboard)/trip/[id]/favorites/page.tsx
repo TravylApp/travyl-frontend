@@ -1,13 +1,13 @@
 'use client';
 
-import { use, useState, useCallback, useMemo } from 'react';
+import { use, useState, useMemo } from 'react';
 import {
   Heart, MapPin, Star, Camera, UtensilsCrossed, Building2, Compass,
   Image as ImageIcon,
 } from 'lucide-react';
 import { useItineraryScreen } from '@travyl/shared';
-import type { DiscoverItem } from '@travyl/shared';
-import { SplitScreenModal } from '@/components/itinerary';
+import type { DiscoverItem, PlaceItem } from '@travyl/shared';
+import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 
 function Skeleton({ className = '', style }: { className?: string; style?: React.CSSProperties }) {
   return <div className={`rounded bg-gray-200 dark:bg-white/[0.08] ${className}`} style={style} />;
@@ -169,7 +169,7 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
   }, [trip]);
 
   const [favorites, setFavorites] = useState<string[]>(INITIAL_FAVORITES);
-  const [selectedModal, setSelectedModal] = useState<{ items: DiscoverItem[]; index: number; accentColor: string } | null>(null);
+  const [selectedFavorite, setSelectedFavorite] = useState<{ place: PlaceItem; accentColor: string } | null>(null);
 
   const favoritedActivities = allItems.filter((a) => favorites.includes(a.id) && !a.category?.toLowerCase().includes('restaurant'));
   const favoritedRestaurants = allItems.filter((r) => favorites.includes(r.id) && (r.category?.toLowerCase().includes('restaurant') || r.category?.toLowerCase().includes('culinary')));
@@ -185,11 +185,21 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
   const removeRestaurantFavorite = removeFavorite;
   const removeDestinationFavorite = removeFavorite;
 
-  const toggleFavoriteFromModal = useCallback((itemId: string) => {
-    setFavorites((prev) => prev.includes(itemId) ? prev.filter((f) => f !== itemId) : [...prev, itemId]);
-  }, []);
-
-  const allFavoriteIds = favorites;
+  const toPlaceItem = (item: DiscoverItem, fallbackLat?: number, fallbackLng?: number): PlaceItem => ({
+    id: item.id,
+    name: item.name,
+    image: item.images?.[0] || '',
+    images: item.images,
+    type: /restaurant|food|culinary|dining/i.test(item.category || '') ? 'restaurant' : 'attraction',
+    rating: item.rating || 0,
+    tagline: item.category || '',
+    category: item.category || '',
+    description: item.description,
+    tags: item.tags,
+    latitude: item.lat ?? fallbackLat,
+    longitude: item.lng ?? fallbackLng,
+    address: item.location,
+  });
 
   if (isLoading) return <FavoritesSkeleton />;
 
@@ -226,7 +236,10 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
                 item={item}
                 accentColor="#0d9488"
                 onRemove={removeActivityFavorite}
-                onClick={() => setSelectedModal({ items: favoritedActivities, index: favoritedActivities.indexOf(item), accentColor: '#0d9488' })}
+                onClick={() => setSelectedFavorite({
+                  place: toPlaceItem(item, trip?.trip_context?.lat, trip?.trip_context?.lng),
+                  accentColor: '#0d9488',
+                })}
               />
             ))}
           </div>
@@ -253,7 +266,10 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
                 item={item}
                 accentColor="#f97316"
                 onRemove={removeRestaurantFavorite}
-                onClick={() => setSelectedModal({ items: favoritedRestaurants, index: favoritedRestaurants.indexOf(item), accentColor: '#f97316' })}
+                onClick={() => setSelectedFavorite({
+                  place: toPlaceItem(item, trip?.trip_context?.lat, trip?.trip_context?.lng),
+                  accentColor: '#f97316',
+                })}
               />
             ))}
           </div>
@@ -280,7 +296,10 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
                 item={item}
                 accentColor="#f59e0b"
                 onRemove={removeDestinationFavorite}
-                onClick={() => setSelectedModal({ items: favoritedDestinations, index: favoritedDestinations.indexOf(item), accentColor: '#f59e0b' })}
+                onClick={() => setSelectedFavorite({
+                  place: toPlaceItem(item, trip?.trip_context?.lat, trip?.trip_context?.lng),
+                  accentColor: '#f59e0b',
+                })}
               />
             ))}
           </div>
@@ -303,15 +322,12 @@ export default function TripFavorites({ params }: { params: Promise<{ id: string
         </div>
       </div>
 
-      {/* Split Screen Modal */}
-      {selectedModal && (
-        <SplitScreenModal
-          items={selectedModal.items}
-          initialIndex={selectedModal.index}
-          accentColor={selectedModal.accentColor}
-          favorites={allFavoriteIds}
-          onClose={() => setSelectedModal(null)}
-          onFavorite={toggleFavoriteFromModal}
+      {/* Detail overlay */}
+      {selectedFavorite && (
+        <PlaceDetailOverlay
+          place={selectedFavorite.place}
+          onClose={() => setSelectedFavorite(null)}
+          minimal
         />
       )}
     </div>
