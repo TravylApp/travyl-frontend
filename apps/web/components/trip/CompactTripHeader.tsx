@@ -68,8 +68,15 @@ export function CompactTripHeader({
     : rawCover;
 
   const destination = trip?.destination;
-  const cityName = destination ? destination.split(',')[0].trim() : '';
-  const countryName = destination ? destination.split(',').slice(1).join(',').trim() : '';
+  // Parse "City, [Region/State,] Country" — preserves region when present so
+  // we can surface it next to the country tag (e.g. "California · United States").
+  const destParts = destination ? destination.split(',').map((s) => s.trim()).filter(Boolean) : [];
+  const cityName = destParts[0] || '';
+  const regionName = destParts.length >= 3 ? destParts[1] : '';
+  const countryName = destParts.length >= 3
+    ? destParts.slice(2).join(', ')
+    : (destParts[1] || '');
+  const locationTagParts = [regionName, countryName].filter(Boolean);
   const dateStr = trip?.start_date && trip?.end_date ? formatDateRange(trip.start_date, trip.end_date) : null;
   const travelersCount = trip?.travelers || 1;
 
@@ -151,9 +158,14 @@ export function CompactTripHeader({
           <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900" />
         )}
 
-        {/* Gradient overlay */}
-        <div className="absolute inset-0" style={{
-          background: 'linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.15) 40%, rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.8) 100%)',
+        {/* Gradient overlay — layered for readable text on bright/hazy hero photos.
+            Vertical scrim provides bottom contrast; left side gets a horizontal
+            wash so the country tag + city title remain crisp even on light skies. */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.15) 30%, rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.85) 100%)',
+        }} />
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'linear-gradient(to right, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.1) 45%, transparent 70%)',
         }} />
 
         {/* Floating action buttons — circular Share + Map, overlaid on hero */}
@@ -186,45 +198,60 @@ export function CompactTripHeader({
 
         {/* Content — all on the hero image */}
         <div className={`relative z-10 flex flex-col justify-end max-w-7xl mx-auto px-6 sm:px-10 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} pb-5 transition-[padding] duration-200 ease-out`} style={{ minHeight: 300 }}>
-          {/* Country tag */}
-          <p className="flex items-center gap-2 text-[10px] tracking-[0.3em] uppercase font-semibold mb-1.5 text-white/70">
+          {/* Country tag — flag + region/state · country (when both present) */}
+          <p
+            className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] tracking-[0.28em] uppercase font-semibold mb-2 text-white/85"
+            style={{ textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             {flagUrl && <img src={flagUrl} alt="flag" width={20} height={15} className="rounded-[2px] shadow-sm" />}
-            <span>{countryName || ''}</span>
+            {locationTagParts.map((part, i) => (
+              <span key={i} className="inline-flex items-center">
+                {i > 0 && <span aria-hidden className="mr-2 text-white/40">·</span>}
+                <span>{part}</span>
+              </span>
+            ))}
           </p>
 
           {/* Title + expand toggle */}
           <div className="flex items-center gap-2">
-            <h1 className="text-3xl sm:text-4xl font-normal text-white leading-tight tracking-wide font-serif">
+            <h1
+              className="text-3xl sm:text-4xl md:text-5xl font-normal text-white leading-[1.05] tracking-tight font-serif"
+              style={{ textShadow: '0 2px 18px rgba(0,0,0,0.45)' }}
+            >
               {cityName || trip?.title || 'Untitled Trip'}
             </h1>
             {hasExpandContent && (
               <button
                 onClick={() => setExpanded(v => !v)}
-                className="text-white/40 hover:text-white/70 transition-colors mt-1"
+                className="text-white/50 hover:text-white/85 transition-colors mt-1"
                 title={expanded ? 'Show less' : 'Show more'}
               >
-                <ChevronDown size={16} className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
+                <ChevronDown size={18} className={`transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} />
               </button>
             )}
           </div>
 
-          {/* Meta row */}
+          {/* Meta row — dates + travelers + edit */}
           {!editing && (
-            <div className="flex items-center gap-3 mt-1.5 text-[13px] text-white/80">
+            <div
+              className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-3 text-[13px] text-white/90"
+              style={{ textShadow: '0 1px 6px rgba(0,0,0,0.45)' }}
+            >
               {dateStr && (
                 <span className="flex items-center gap-1.5">
-                  <Calendar size={12} className="text-white/50" />
-                  {dateStr}
+                  <Calendar size={13} className="text-white/65" />
+                  <span className="tabular-nums">{dateStr}</span>
                 </span>
               )}
+              <span aria-hidden className="text-white/30">·</span>
               <span className="flex items-center gap-1.5">
-                <Users size={12} className="text-white/50" />
+                <Users size={13} className="text-white/65" />
                 {travelersCount} {travelersCount === 1 ? 'traveler' : 'travelers'}
               </span>
               <button
                 onClick={openEditor}
-                className="ml-1 p-1 rounded-full hover:bg-white/15 text-white/50 hover:text-white transition-colors"
+                className="ml-0.5 p-1.5 rounded-full hover:bg-white/15 text-white/55 hover:text-white transition-colors"
                 title="Edit trip details"
               >
                 <Pencil size={12} />
@@ -232,42 +259,56 @@ export function CompactTripHeader({
             </div>
           )}
 
-          {/* Quick info — inline text */}
+          {/* Quick info — glass-effect pills for readability */}
           {infoPills.length > 0 && !editing && (
-            <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-2 text-[11px] text-white/70">
+            <div className="flex flex-wrap items-center gap-1.5 mt-3">
               {infoPills.map((pill, i) => (
-                <span key={i} className="inline-flex items-center">
-                  {i > 0 && <span className="mr-1.5 text-white/30">·</span>}
-                  <span style={pill.color ? { color: pill.color } : undefined}>{pill.label}</span>
+                <span
+                  key={i}
+                  className="inline-flex items-center text-[11px] font-medium px-2.5 py-1 rounded-full bg-black/35 backdrop-blur-md border border-white/15 text-white/95"
+                  style={pill.color ? { color: pill.color, borderColor: `${pill.color}55` } : undefined}
+                >
+                  {pill.label}
                 </span>
               ))}
             </div>
           )}
 
-          {/* Expanded details — on the hero image, matching magazine style */}
+          {/* Expanded details — forecast chips + wiki */}
           {hasExpandContent && (
             <div className={`overflow-hidden transition-all duration-300 ease-out ${expanded ? 'max-h-[400px] opacity-100 mt-4' : 'max-h-0 opacity-0'}`}>
-              <div className="flex flex-col gap-2.5">
-                {/* Forecast row */}
+              <div className="flex flex-col gap-3">
+                {/* Forecast — glass chips per day */}
                 {forecast && forecast.length > 0 && !isNaN(forecast[0]?.high) && (
-                  <div className="flex flex-wrap items-center gap-3 text-white" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+                  <div className="flex flex-wrap items-center gap-2 text-white">
                     {temp != null && (
-                      <span className="text-xl font-semibold tabular-nums">{Math.round(temp)}°</span>
+                      <span
+                        className="text-2xl font-semibold tabular-nums"
+                        style={{ textShadow: '0 2px 12px rgba(0,0,0,0.5)' }}
+                      >
+                        {Math.round(temp)}°
+                      </span>
                     )}
-                    <span className="text-white/20">|</span>
                     {forecast.slice(0, 5).map((day) => (
-                      <span key={day.date} className="text-[12px] tabular-nums">
-                        <span className="text-white/60">{new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })}</span>{' '}
+                      <span
+                        key={day.date}
+                        className="inline-flex items-baseline gap-1 text-[12px] tabular-nums px-2.5 py-1 rounded-full bg-black/35 backdrop-blur-md border border-white/15"
+                      >
+                        <span className="text-white/70 font-medium">
+                          {new Date(day.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' })}
+                        </span>
                         <span className="font-semibold text-white">{Math.round(day.high)}°</span>
-                        <span className="text-white/50">/{Math.round(day.low)}°</span>
+                        <span className="text-white/55">/{Math.round(day.low)}°</span>
                       </span>
                     ))}
                   </div>
                 )}
                 {/* Wiki */}
                 {wiki && (
-                  <p className="text-[13px] leading-relaxed text-white/80 font-sans line-clamp-4 backdrop-blur-sm bg-black/25 rounded-lg px-4 py-3"
-                    style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}>
+                  <p
+                    className="text-[13px] leading-relaxed text-white/90 font-sans line-clamp-4 backdrop-blur-md bg-black/40 border border-white/10 rounded-xl px-4 py-3"
+                    style={{ textShadow: '0 1px 6px rgba(0,0,0,0.4)' }}
+                  >
                     {wiki}
                   </p>
                 )}
