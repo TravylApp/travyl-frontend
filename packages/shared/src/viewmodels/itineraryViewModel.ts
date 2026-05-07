@@ -8,7 +8,7 @@
  * Used by the web ItineraryTab and the mobile trip overview screens.
  */
 
-import type { ItineraryDayWithActivities, Activity, Flight, Hotel } from '../types';
+import type { ItineraryDayWithActivities, Activity, Flight, Hotel, Car } from '../types';
 import { formatCurrency, upscaleGoogleImage } from '../utils';
 
 // ─── Time helpers ──────────────────────────────────────────────
@@ -223,6 +223,8 @@ export interface FlightViewModel {
   id: string;
   /** Airline name (e.g. "Delta") */
   airline: string;
+  /** Airline carrier logo URL (e.g. SerpAPI Google Flights image), or null */
+  airlineLogo: string | null;
   /** Flight number (e.g. "DL 123"), or null */
   flightNumber: string | null;
   /** Route string (e.g. "JFK → CDG") */
@@ -239,6 +241,10 @@ export interface FlightViewModel {
   departureDisplay: string | null;
   /** Formatted arrival datetime, or null */
   arrivalDisplay: string | null;
+  /** Raw ISO departure timestamp from the DB record, or null. Used for sorting. */
+  departureAt: string | null;
+  /** Raw ISO arrival timestamp from the DB record, or null. */
+  arrivalAt: string | null;
   /** Formatted price string (e.g. "$450"), or null if no price */
   priceDisplay: string | null;
   /** Raw price number for budget calculations, or null */
@@ -281,6 +287,7 @@ export function buildFlightViewModel(flight: Flight): FlightViewModel {
   return {
     id: flight.id,
     airline: d.airline,
+    airlineLogo: d.airline_logo ?? null,
     flightNumber: d.flight_number,
     route: `${d.origin_iata} → ${d.dest_iata}`,
     originIata: d.origin_iata,
@@ -289,6 +296,8 @@ export function buildFlightViewModel(flight: Flight): FlightViewModel {
     destName: d.dest_name,
     departureDisplay: formatDatetime(d.departure_at),
     arrivalDisplay: formatDatetime(d.arrival_at),
+    departureAt: d.departure_at,
+    arrivalAt: d.arrival_at,
     priceDisplay: d.price != null && d.currency ? formatCurrency(d.price, d.currency) : null,
     price: d.price ?? null,
     priceCurrency: d.price != null ? d.currency ?? null : null,
@@ -393,5 +402,44 @@ export function buildHotelViewModel(hotel: Hotel): HotelViewModel {
     starRating: d.star_rating,
     imageUrl: d.image_url,
     bookingRef: d.booking_ref,
+  };
+}
+
+// ─── Car rental view model ──────────────────────────────────────
+
+export interface CarViewModel {
+  id: string;
+  company: string;
+  model: string | null;
+  pickupLocation: string | null;
+  dropoffLocation: string | null;
+  pickupDisplay: string | null;
+  dropoffDisplay: string | null;
+  pickupAt: string | null;
+  dropoffAt: string | null;
+  priceDisplay: string | null;
+  price: number | null;
+  priceCurrency: string | null;
+  bookingRef: string | null;
+  imageUrl: string | null;
+}
+
+export function buildCarViewModel(car: Car): CarViewModel {
+  const d = car.data;
+  return {
+    id: car.id,
+    company: d.company,
+    model: d.model,
+    pickupLocation: d.pickup_location,
+    dropoffLocation: d.dropoff_location,
+    pickupDisplay: formatDatetime(d.pickup_at),
+    dropoffDisplay: formatDatetime(d.dropoff_at),
+    pickupAt: d.pickup_at,
+    dropoffAt: d.dropoff_at,
+    priceDisplay: d.price != null && d.currency ? formatCurrency(d.price, d.currency) : null,
+    price: d.price ?? null,
+    priceCurrency: d.price != null ? d.currency ?? null : null,
+    bookingRef: d.booking_ref,
+    imageUrl: d.image_url,
   };
 }

@@ -366,7 +366,11 @@ async function pickAndUploadImage(field: 'avatar' | 'cover', userId?: string): P
 // "didn't persist" when really it was a `file://` from a failed upload.
 function isPersistedImageUrl(url: string | null | undefined): boolean {
   if (!url) return false;
-  return url.startsWith('http://') || url.startsWith('https://');
+  const ok = url.startsWith('http://') || url.startsWith('https://');
+  if (!ok && url.startsWith('file://') && __DEV__) {
+    console.warn('[profile] dropping non-persisted image URL (likely from a failed upload):', url.slice(0, 80));
+  }
+  return ok;
 }
 
 
@@ -715,15 +719,36 @@ function PassportCountryModal({
     [trips, group],
   );
 
-  // Filter the user's favorited places to ones in this country. We match
-  // by address substring (cheapest test) or fall back to lat/lng overlap
-  // with the visited bounding box.
+  // Filter the user's favorited places to ones in this country.
+  // Strategy stack (each stage shipped a place to the country if matched):
+  //   1. Address substring contains the country name (e.g. "..., Japan").
+  //   2. Address substring contains a city the user visited in this country.
+  //   3. The trailing comma-segment of the address matches a list of common
+  //      country aliases (e.g. "USA" → "United States"). Catches places
+  //      where the address says "Honolulu, HI 96813, USA" but the trip
+  //      destination was "Honolulu, United States".
+  //   4. Lat/lng bounding box derived from the user's *visited* places —
+  //      only useful when at least one visited place has coords. For
+  //      Japan/Spain trips with no coords, this stage is empty.
+  const COUNTRY_ALIASES: Record<string, string[]> = {
+    'united states': ['usa', 'us', 'u.s.', 'u.s.a.', 'america'],
+    'united kingdom': ['uk', 'u.k.', 'britain', 'england', 'scotland', 'wales'],
+    'united arab emirates': ['uae', 'u.a.e.'],
+    japan: ['日本', 'jp'],
+    spain: ['españa', 'es'],
+    france: ['fr'],
+    germany: ['deutschland', 'de'],
+    italy: ['italia', 'it'],
+    china: ['中国', 'cn'],
+    'south korea': ['korea', '한국', 'kr'],
+  };
   const favorites = useMemo<VisitedPlace[]>(() => {
     if (!group) return [];
     const idSet = new Set(favoriteIds);
     const candidates = favoritePool.filter((p) => idSet.has(p.id));
     if (candidates.length === 0) return [];
     const targetLower = group.country.toLowerCase();
+    const aliases = COUNTRY_ALIASES[targetLower] ?? [];
     const cityLower = group.cities.map((c) => c.toLowerCase());
     let visBounds: { minLat: number; maxLat: number; minLng: number; maxLng: number } | null = null;
     const visitedWithCoords = visited.filter(
@@ -741,7 +766,11 @@ function PassportCountryModal({
       .filter((p) => {
         const addr = (p.address || '').toLowerCase();
         if (addr.includes(targetLower)) return true;
+        if (aliases.some((alias) => alias && addr.includes(alias))) return true;
         if (cityLower.some((c) => c && addr.includes(c))) return true;
+        // Trailing-segment fallback: address tail matches country or alias.
+        const tail = addr.split(',').slice(-1)[0]?.trim();
+        if (tail && (tail === targetLower || aliases.includes(tail))) return true;
         if (visBounds && p.latitude != null && p.longitude != null) {
           if (
             p.latitude >= visBounds.minLat && p.latitude <= visBounds.maxLat &&
@@ -846,16 +875,29 @@ function PassportCountryModal({
     }).join('||'),
     [places],
   );
-  // SerpAPI google_maps results include coordinates alongside photos —
-  // for older trips that stored places without lat/lng (Japan, Spain,
-  // etc.), we pull both image AND coords from the same call so the map
-  // can populate. Keyed by VisitedPlace.id.
-  type PlaceEnrichment = { image?: string; lat?: number; lng?: number };
+  // SerpAPI google_maps results include coordinates, address, rating,
+  // category, description and a photo alongside the name. For older
+  // trips that stored places with just a name, we pull all of it from
+  // the same call so the visited cards aren't blank. Keyed by
+  // VisitedPlace.id.
+  type PlaceEnrichment = {
+    image?: string;
+    lat?: number;
+    lng?: number;
+    address?: string;
+    rating?: number;
+    reviewCount?: number;
+    category?: string;
+    description?: string;
+    phone?: string;
+    website?: string;
+    hours?: string;
+  };
 
   const { data: imageMapData, isLoading: imagesLoading, isError: imagesError, error: imagesErrorObj } = useQuery<Record<string, PlaceEnrichment>>({
     // Bumping the version string in the queryKey invalidates anything
     // cached from earlier (broken) attempts at this fetch.
-    queryKey: ['passport-place-enrichment-v4', group?.country, placeKeys],
+    queryKey: ['passport-place-enrichment-v5', group?.country, placeKeys],
     queryFn: async () => {
       if (!places.length) return {};
       const base = getWebApiBase();
@@ -901,23 +943,45 @@ function PassportCountryModal({
             if (!Array.isArray(data)) continue;
             const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
             const target = norm(p.name);
+            // Build a full enrichment payload from the matched row.
+            const buildEnrichment = (it: any): PlaceEnrichment | undefined => {
+              const img = pickAnyImage(it);
+              const lat = pickCoord(it, 'lat');
+              const lng = pickCoord(it, 'lng');
+              const enrichment: PlaceEnrichment = {
+                image: img,
+                lat,
+                lng,
+                address: it?.address || it?.formatted_address || it?.vicinity || undefined,
+                rating: typeof it?.rating === 'number' ? it.rating : (typeof it?.rating === 'string' ? parseFloat(it.rating) : undefined),
+                reviewCount: it?.reviews ?? it?.review_count ?? it?.reviewCount ?? it?.user_ratings_total ?? undefined,
+                category: it?.category || it?.type || (Array.isArray(it?.types) ? it.types[0] : undefined),
+                description: it?.description || it?.about || it?.summary || it?.tagline || undefined,
+                phone: it?.phone || it?.phone_number || it?.formatted_phone_number || undefined,
+                website: it?.website || it?.link || undefined,
+                hours: it?.hours || it?.opening_hours_summary || undefined,
+              };
+              const hasContent =
+                enrichment.image ||
+                (enrichment.lat != null && enrichment.lng != null) ||
+                enrichment.address ||
+                enrichment.rating != null ||
+                enrichment.description;
+              return hasContent ? enrichment : undefined;
+            };
             // First pass: exact-ish name match.
             for (const it of data) {
               const candidateName = norm(String(it?.name || ''));
               if (!target || !candidateName) continue;
               if (target.includes(candidateName) || candidateName.includes(target)) {
-                const img = pickAnyImage(it);
-                const lat = pickCoord(it, 'lat');
-                const lng = pickCoord(it, 'lng');
-                if (img || (lat != null && lng != null)) return { image: img, lat, lng };
+                const enrichment = buildEnrichment(it);
+                if (enrichment) return enrichment;
               }
             }
-            // Fallback: first result with an image OR coords, even if name doesn't overlap.
+            // Fallback: first result with any usable content, even if name doesn't overlap.
             for (const it of data) {
-              const img = pickAnyImage(it);
-              const lat = pickCoord(it, 'lat');
-              const lng = pickCoord(it, 'lng');
-              if (img || (lat != null && lng != null)) return { image: img, lat, lng };
+              const enrichment = buildEnrichment(it);
+              if (enrichment) return enrichment;
             }
           } catch {}
         }
@@ -1044,7 +1108,13 @@ function PassportCountryModal({
 
   const placeItems = useMemo<PlaceItem[]>(() => places.map((p) => {
     const enriched = enrichedByName.get(p.name.trim().toLowerCase());
-    const fallback = lookupImage(p.id);
+    // SerpAPI enrichment record for THIS specific place (by id), built
+    // by the passport-place-enrichment query above. For older trips
+    // that stored only a name, this is where rating, address,
+    // description, hours etc. come from — without it the magazine card
+    // flip is blank.
+    const serp = imageMapData?.[p.id];
+    const fallback = serp?.image;
     // Merge order: trip_context (latest, what the user actually saved) →
     // enriched discover record (richer fields) → SerpAPI fallback image.
     const tcImgs = p.images?.length ? p.images : (p.image ? [p.image] : []);
@@ -1061,20 +1131,20 @@ function PassportCountryModal({
       image: primary,
       images: merged,
       type: enriched?.type ?? 'attraction' as const,
-      rating: p.rating ?? enriched?.rating ?? 0,
-      reviewCount: p.reviewCount ?? enriched?.reviewCount,
+      rating: p.rating ?? enriched?.rating ?? serp?.rating ?? 0,
+      reviewCount: p.reviewCount ?? enriched?.reviewCount ?? serp?.reviewCount,
       tagline: p.city || enriched?.tagline || '',
-      category: p.category || enriched?.category || '',
-      description: p.description ?? enriched?.description,
-      address: p.address ?? enriched?.address,
-      phone: p.phone ?? enriched?.phone,
-      website: p.website ?? enriched?.website,
-      hours: p.hours ?? enriched?.hours,
+      category: p.category || enriched?.category || serp?.category || '',
+      description: p.description ?? enriched?.description ?? serp?.description,
+      address: p.address ?? enriched?.address ?? serp?.address,
+      phone: p.phone ?? enriched?.phone ?? serp?.phone,
+      website: p.website ?? enriched?.website ?? serp?.website,
+      hours: p.hours ?? enriched?.hours ?? serp?.hours,
       priceLevel: p.priceLevel ?? enriched?.priceLevel,
-      latitude: p.lat ?? undefined,
-      longitude: p.lng ?? undefined,
+      latitude: (p.lat ?? serp?.lat) ?? undefined,
+      longitude: (p.lng ?? serp?.lng) ?? undefined,
     } as PlaceItem;
-  }), [places, lookupImage, enrichedByName]);
+  }), [places, lookupImage, enrichedByName, imageMapData]);
 
   if (!group) return null;
   const sheetHeight = Dimensions.get('window').height * 0.5;
@@ -1667,7 +1737,7 @@ export default function ProfileScreen() {
     isFetchingNextPage: isFetchingDiscoverNext,
     isLoading: discoverLoading,
   } = useInfiniteQuery({
-    queryKey: ['mobile-places-discover', userLocation?.lat],
+    queryKey: ['mobile-places-discover', userLocation?.lat, userLocation?.lng],
     queryFn: ({ pageParam }) => fetchDiscoverPage(pageParam, userLocation),
     initialPageParam: 0,
     getNextPageParam: (lastPage: DiscoverPageResult) =>
@@ -2136,7 +2206,13 @@ export default function ProfileScreen() {
     if (user?.id) {
       try {
         const merged = { ...((profile?.preferences ?? {}) as Record<string, any>), ...nextLocalPrefs };
-        await updateProfile(user.id, { preferences: merged });
+        // Also mirror the avatar to the canonical `profiles.avatar_url`
+        // column so web (which reads that field directly) stays in sync.
+        // Without this, mobile-uploaded avatars only landed in
+        // `profiles.preferences.avatar_url` and web would never see them.
+        const updates: Parameters<typeof updateProfile>[1] = { preferences: merged };
+        if (pendingAvatar) updates.avatar_url = pendingAvatar;
+        await updateProfile(user.id, updates);
         queryClient.invalidateQueries({ queryKey: ['profile', user.id] });
       } catch {}
     }

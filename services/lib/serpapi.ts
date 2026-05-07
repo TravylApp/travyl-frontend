@@ -46,7 +46,11 @@ function mapPrice(price: string | undefined): number | null {
  * Transforms e.g. =w288-h288-n-k-no → =w1024-h1024-n-k-no
  */
 function upscaleImage(url: string): string {
-  return url.replace(/w\d+-h\d+/, 'w1024-h1024')
+  if (!url) return ''
+  return url
+    .replace(/=w\d+-h\d+[^&\s]*/, '=w1200-h800-k-no')
+    .replace(/=s\d+-w\d+-h\d+[^&\s]*/, '=w1200-h800-k-no')
+    .replace(/(?<!=)w\d+-h\d+(?![^&\s]*=)/, 'w1200-h800')
 }
 
 function toSuggestionCard(place: SerpLocalResult, category: string, index: number): SuggestionCard {
@@ -64,7 +68,7 @@ function toSuggestionCard(place: SerpLocalResult, category: string, index: numbe
     longitude: place.gps_coordinates?.longitude ?? 0,
     description: place.description ?? '',
     source: 'ai',
-    relevanceScore: Math.max(0, 1 - index * 0.05),
+    relevanceScore: Math.round(Math.max(0, 1 - index * 0.05) * 100) / 100,
   }
 }
 
@@ -76,9 +80,10 @@ function toSuggestionCard(place: SerpLocalResult, category: string, index: numbe
 export async function searchPlaces(
   destination: string,
   category: string,
-  options?: { limit?: number },
+  options?: { limit?: number; queryModifier?: string },
 ): Promise<SuggestionCard[]> {
-  const query = CATEGORY_QUERIES[category] ?? CATEGORY_QUERIES.all
+  const baseQuery = CATEGORY_QUERIES[category] ?? CATEGORY_QUERIES.all
+  const query = options?.queryModifier ? `${baseQuery} ${options.queryModifier}` : baseQuery
   const limit = options?.limit ?? 10
 
   // SerpAPI google_local only accepts simple locations like "Paris, France".
@@ -98,7 +103,7 @@ export async function searchPlaces(
   try {
     const res = await fetch(url.toString(), {
       headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(5000),
     })
 
     if (!res.ok) {

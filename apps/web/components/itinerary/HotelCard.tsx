@@ -17,7 +17,7 @@ export function HotelCard({ hotel }: HotelCardProps) {
   const [imgError, setImgError] = useState(false);
 
   return (
-    <Link href={`/trip/${tripId}/hotels/${hotel.id}`} className="block">
+    <Link href={`/trip/${tripId}/hotels?expand=${hotel.id}`} className="block">
     <div className="rounded-xl bg-white overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow mb-3">
       {/* Navy gradient header band */}
       <div

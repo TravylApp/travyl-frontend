@@ -67,8 +67,10 @@ export function hoursBetween(start: string, end: string): number {
  * @example daysBetween("2024-06-01", "2024-06-05") // → 4
  */
 export function daysBetween(start: string, end: string): number {
+  if (!start || !end) return 0
   const a = new Date(start + 'T00:00:00Z')
   const b = new Date(end + 'T00:00:00Z')
+  if (isNaN(a.getTime()) || isNaN(b.getTime())) return 0
   return Math.round((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24))
 }
 
@@ -81,7 +83,9 @@ export function daysBetween(start: string, end: string): number {
  * @example addDays("2024-06-01", 5) // → "2024-06-06"
  */
 export function addDays(dateStr: string, days: number): string {
+  if (!dateStr) return '1970-01-01'
   const d = new Date(dateStr + 'T00:00:00Z')
+  if (isNaN(d.getTime())) return dateStr || '1970-01-01'
   d.setUTCDate(d.getUTCDate() + days)
   return d.toISOString().slice(0, 10)
 }
@@ -193,6 +197,7 @@ export function toCalendarActivity(row: ActivityRow, tripStartDate: string): Cal
     checkIn: row.activity_data?.check_in,
     checkOut: row.activity_data?.check_out,
     bookingRef: row.activity_data?.booking_ref,
+    transitVehicleType: row.activity_data?.transit_vehicle_type as CalendarActivity['transitVehicleType'],
   }
 }
 
@@ -237,6 +242,7 @@ export function toActivityRow(
       check_in: cal.checkIn,
       check_out: cal.checkOut,
       booking_ref: cal.bookingRef,
+      ...(cal.transitVehicleType !== undefined && { transit_vehicle_type: cal.transitVehicleType }),
       ...(cal.unscheduled !== undefined && { unscheduled: cal.unscheduled }),
     },
   }

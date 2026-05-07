@@ -1,12 +1,12 @@
 'use client'
 
-import type { DbPackingItem, PackingSuggestion } from '@travyl/shared'
+import { motion, AnimatePresence } from 'motion/react'
+import type { DbPackingItem } from '@travyl/shared'
 import { PackingCategory } from './PackingCategory'
 
 interface PackingCategoryListProps {
   orderedCategories: string[]
   itemsByCategory: Record<string, DbPackingItem[]>
-  suggestionsByCategory?: Record<string, PackingSuggestion[]>
   onToggle: (id: string) => void
   onIncrementPacked: (id: string) => void
   onUpdateQuantity: (id: string, quantity: number) => void
@@ -14,15 +14,11 @@ interface PackingCategoryListProps {
   onClaim?: (id: string) => void
   onRelease?: (id: string) => void
   currentUserId?: string
-  onAcceptSuggestion?: (id: string) => void
-  onDismissSuggestion?: (id: string) => void
-  isGenerating?: boolean
 }
 
 export function PackingCategoryList({
   orderedCategories,
   itemsByCategory,
-  suggestionsByCategory = {},
   onToggle,
   onIncrementPacked,
   onUpdateQuantity,
@@ -30,57 +26,37 @@ export function PackingCategoryList({
   onClaim,
   onRelease,
   currentUserId,
-  onAcceptSuggestion,
-  onDismissSuggestion,
-  isGenerating = false,
 }: PackingCategoryListProps) {
-  const hasAnyVisible = orderedCategories.some(
-    (cat) => (itemsByCategory[cat]?.length ?? 0) > 0 || (suggestionsByCategory[cat]?.length ?? 0) > 0
-  )
-
-  if (!hasAnyVisible) {
-    if (isGenerating) {
-      return (
-        <div className="flex flex-col gap-3 py-6 px-2">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-10 rounded-lg bg-gray-100 dark:bg-white/[0.06] animate-pulse" />
-          ))}
-        </div>
-      )
-    }
+  if (orderedCategories.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-10 gap-2">
-        <span className="text-3xl">🧳</span>
-        <p className="text-sm text-gray-600 dark:text-gray-400">No items yet — search above to add</p>
+      <div className="py-8 text-center text-sm text-gray-400">
+        No items yet — add one above.
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col">
-      {orderedCategories.map((category) => {
-        const categoryItems = itemsByCategory[category] || []
-        const categorySuggestions = suggestionsByCategory?.[category] || []
-        if (categoryItems.length === 0 && categorySuggestions.length === 0) return null
-        return (
-          <PackingCategory
-            key={category}
-            category={category}
-            items={categoryItems}
-            suggestions={categorySuggestions}
-            onToggle={onToggle}
-            onIncrementPacked={onIncrementPacked}
-            onUpdateQuantity={onUpdateQuantity}
-            onRemove={onRemove}
-            onClaim={onClaim}
-            onRelease={onRelease}
-            currentUserId={currentUserId}
-            onAcceptSuggestion={onAcceptSuggestion}
-            onDismissSuggestion={onDismissSuggestion}
-            defaultExpanded
-          />
-        )
-      })}
-    </div>
+    <motion.div layout className="flex flex-col gap-1">
+      <AnimatePresence>
+        {orderedCategories.map((category) => {
+          const items = itemsByCategory[category] ?? []
+          if (items.length === 0) return null
+          return (
+            <PackingCategory
+              key={category}
+              category={category}
+              items={items}
+              onToggle={onToggle}
+              onIncrementPacked={onIncrementPacked}
+              onUpdateQuantity={onUpdateQuantity}
+              onRemove={onRemove}
+              onClaim={onClaim}
+              onRelease={onRelease}
+              currentUserId={currentUserId}
+            />
+          )
+        })}
+      </AnimatePresence>
+    </motion.div>
   )
 }

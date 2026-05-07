@@ -30,7 +30,7 @@ export function ListActivityCard({
 
   return (
     <div
-      className="flex gap-3 rounded-xl bg-white dark:bg-[var(--muted)] border border-gray-100 dark:border-white/[0.08] overflow-hidden cursor-pointer group transition-all hover:shadow-md hover:border-gray-200 dark:hover:border-white/[0.15]"
+      className="flex gap-3 rounded-xl bg-white dark:bg-muted border border-gray-100 dark:border-white/[0.08] overflow-hidden cursor-pointer group transition-all hover:shadow-md hover:border-gray-200 dark:hover:border-white/[0.15]"
       onClick={onClick}
     >
       {/* Image — fixed square */}

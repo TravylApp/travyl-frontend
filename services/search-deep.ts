@@ -6,6 +6,7 @@ import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dyn
 import { createClient } from '@supabase/supabase-js'
 import { validateAuth } from './lib/auth'
 import { searchPlaces } from './lib/serpapi'
+import type { SuggestionCard } from './lib/types'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,31 +21,6 @@ interface ParsedIntent {
   entityType: EntityType
 }
 
-interface FsqCategory {
-  id: number
-  name: string
-}
-
-interface FsqSearchResult {
-  fsq_id: string
-  name: string
-  location: {
-    address?: string
-    locality?: string
-    region?: string
-    country?: string
-    formatted_address?: string
-  }
-  categories?: FsqCategory[]
-  rating?: number
-  stats?: { total_ratings?: number }
-  price?: number
-}
-
-interface FsqApiResponse {
-  results?: FsqSearchResult[]
-}
-
 export interface FsqResult {
   id: string
   type: 'restaurant' | 'hotel' | 'activity'
@@ -55,7 +31,7 @@ export interface FsqResult {
   metadata: {
     rating?: number
     priceLevel?: number
-    source: 'foursquare'
+    source: 'serpapi'
   }
 }
 
@@ -95,22 +71,11 @@ interface DeepSearchResponse {
 // Constants
 // ---------------------------------------------------------------------------
 
-const FSQ_FIELDS = 'fsq_id,name,location,categories,rating,stats,price'
 const MODEL_ID = 'anthropic.claude-3-haiku-20240307-v1:0'
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** Fisher-Yates shuffle — returns a new array */
-function shuffleArray<T>(arr: T[]): T[] {
-  const out = [...arr]
-  for (let i = out.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[out[i], out[j]] = [out[j], out[i]]
-  }
-  return out
-}
 
 const HAIKU_PROMPT = `You are a travel search intent parser. Extract structured intent from a search query.
 Return ONLY valid JSON — no explanation, no markdown, no code fences.
@@ -210,74 +175,83 @@ async function setCachedDiscover(location: string, q: string, data: DiscoverResu
 }
 
 // ---------------------------------------------------------------------------
-// Foursquare helpers
+// SerpAPI Google-local helpers (replaces deprecated Foursquare)
 // ---------------------------------------------------------------------------
 
-function inferType(categories: FsqCategory[] = []): 'restaurant' | 'hotel' | 'activity' {
-  for (const cat of categories) {
-    const name = cat.name.toLowerCase()
-    if (/hotel|motel|hostel|inn|lodge|resort/.test(name)) return 'hotel'
-    if (/restaurant|cafe|bar|pub|diner|bistro|bakery|food|dining|eatery|drink/.test(name))
-      return 'restaurant'
-  }
-  return 'activity'
-}
-
-function buildSubtitle(loc: FsqSearchResult['location']): string {
-  return (
-    loc.formatted_address ??
-    [loc.address, loc.locality, loc.region, loc.country].filter(Boolean).join(', ')
-  )
-}
-
-async function fetchFoursquare(
-  q: string,
-  near: string | null,
-): Promise<{ restaurant: FsqResult[]; hotel: FsqResult[]; activity: FsqResult[] }> {
-  const params = new URLSearchParams({ query: q, fields: FSQ_FIELDS, limit: '10' })
-  if (near) params.set('near', near)
-
-  const res = await fetch(`https://api.foursquare.com/v3/places/search?${params}`, {
-    headers: {
-      Authorization: Resource.FoursquareApiKey.value,
-      Accept: 'application/json',
+/**
+ * Map a SuggestionCard from SerpAPI's google_local engine into FsqResult
+ * so downstream consumers don't break.
+ */
+function cardToFsqResult(card: SuggestionCard, type: 'restaurant' | 'hotel' | 'activity', score: number): FsqResult {
+  return {
+    id: card.id,
+    type,
+    title: card.name,
+    subtitle: card.location,
+    href: `/search?q=${encodeURIComponent(card.name)}`,
+    score,
+    metadata: {
+      rating: card.rating ?? undefined,
+      priceLevel: card.price ?? undefined,
+      source: 'serpapi',
     },
-    signal: AbortSignal.timeout(5000),
-  })
-
-  if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    console.error(`[search-deep] foursquare ${res.status}: ${body}`)
-    throw new Error(`Foursquare error ${res.status}`)
   }
+}
 
-  const data = (await res.json()) as FsqApiResponse
-  const places = shuffleArray(data.results ?? [])
+/**
+ * Search for places using SerpAPI's google_local engine.
+ * Makes targeted calls per entity type rather than one catch-all call.
+ */
+async function fetchPlaces(
+  q: string,
+  location: string | null,
+  entityType: EntityType,
+): Promise<{ restaurant: FsqResult[]; hotel: FsqResult[]; activity: FsqResult[] }> {
+  if (!location) return { restaurant: [], hotel: [], activity: [] }
 
-  const grouped: { restaurant: FsqResult[]; hotel: FsqResult[]; activity: FsqResult[] } = {
+  const results: { restaurant: FsqResult[]; hotel: FsqResult[]; activity: FsqResult[] } = {
     restaurant: [],
     hotel: [],
     activity: [],
   }
 
-  places.forEach((place, i) => {
-    const type = inferType(place.categories)
-    grouped[type].push({
-      id: place.fsq_id,
-      type,
-      title: place.name,
-      subtitle: buildSubtitle(place.location),
-      href: `https://foursquare.com/v/${place.fsq_id}`,
-      score: Math.max(0, 1 - i * 0.05),
-      metadata: {
-        rating: place.rating,
-        priceLevel: place.price,
-        source: 'foursquare',
-      },
-    })
-  })
+  // Determine which SerpAPI categories to hit based on requested entity type
+  const searches: Array<{ category: string; targetType: 'restaurant' | 'activity' }> = []
 
-  return grouped
+  if (entityType === 'restaurant') {
+    searches.push({ category: 'dining', targetType: 'restaurant' })
+  } else if (entityType === 'activity') {
+    searches.push({ category: 'sightseeing', targetType: 'activity' })
+    searches.push({ category: 'outdoor', targetType: 'activity' })
+  } else {
+    // entityType === null (discover/unknown) — try a broad mix
+    searches.push(
+      { category: 'dining', targetType: 'restaurant' },
+      { category: 'sightseeing', targetType: 'activity' },
+      { category: 'outdoor', targetType: 'activity' },
+    )
+  }
+
+  let globalIndex = 0
+  const seenNames = new Set<string>()
+
+  for (const { category, targetType } of searches) {
+    const cards = await searchPlaces(location, category, { queryModifier: q, limit: 5 }).catch((err) => {
+      console.error(`[search-deep] serpapi ${category} failed:`, err)
+      return [] as SuggestionCard[]
+    })
+
+    for (const card of cards) {
+      const key = card.name.toLowerCase()
+      if (seenNames.has(key)) continue
+      seenNames.add(key)
+
+      results[targetType].push(cardToFsqResult(card, targetType, Math.max(0, 1 - globalIndex * 0.05)))
+      globalIndex++
+    }
+  }
+
+  return results
 }
 
 // ---------------------------------------------------------------------------
@@ -289,7 +263,7 @@ async function fetchDiscover(location: string, q: string): Promise<DiscoverResul
   const cached = await getCachedDiscover(location, q)
   if (cached) {
     console.log('[search-deep] discover cache hit for', location, q)
-    return shuffleArray(cached)
+    return cached
   }
 
   console.log('[search-deep] discover cache miss, firing 3 SerpAPI calls for', location, q)
@@ -324,7 +298,7 @@ async function fetchDiscover(location: string, q: string): Promise<DiscoverResul
     await setCachedDiscover(location, q, discoverResults)
   }
 
-  return shuffleArray(discoverResults)
+  return discoverResults
 }
 
 // ---------------------------------------------------------------------------
@@ -419,11 +393,11 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     // Step 4: parallel fan-out
     const failedSources: string[] = []
 
-    const fsqPromise: Promise<{ restaurant: FsqResult[]; hotel: FsqResult[]; activity: FsqResult[] }> =
+    const placePromise: Promise<{ restaurant: FsqResult[]; hotel: FsqResult[]; activity: FsqResult[] }> =
       intent === 'entity-search' || intent === 'discover' || intent === 'unknown'
-        ? fetchFoursquare(q, location).catch((err) => {
-            console.error('[search-deep] foursquare failed:', err)
-            failedSources.push('foursquare')
+        ? fetchPlaces(q, location, entityType).catch((err) => {
+            console.error('[search-deep] serpapi places failed:', err)
+            failedSources.push('serpapi-places')
             return { restaurant: [], hotel: [], activity: [] }
           })
         : Promise.resolve({ restaurant: [], hotel: [], activity: [] })
@@ -446,8 +420,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
           })
         : Promise.resolve([])
 
-    const [fsqResults, discoverResults, collaboratorResults] = await Promise.all([
-      fsqPromise,
+    const [placeResults, discoverResults, collaboratorResults] = await Promise.all([
+      placePromise,
       discoverPromise,
       collaboratorsPromise,
     ])
@@ -455,9 +429,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     // Step 5+6: merge and return
     const response: DeepSearchResponse = {
       results: {
-        restaurant: fsqResults.restaurant,
-        activity: fsqResults.activity,
-        hotel: fsqResults.hotel,
+        restaurant: placeResults.restaurant,
+        activity: placeResults.activity,
+        hotel: placeResults.hotel,
         destination: discoverResults,
         user: collaboratorResults,
       },

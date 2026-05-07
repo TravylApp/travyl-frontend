@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type React from "react";
 import { motion } from "motion/react";
 import {
@@ -9,6 +9,7 @@ import {
 } from "@travyl/shared";
 import type { TileCategory, MosaicTile } from "@travyl/shared";
 import { useQuery } from "@tanstack/react-query";
+import { MapPin } from "lucide-react";
 
 const ALL_MOSAIC_CITIES = [
   { lat: '48.8566', lng: '2.3522' },   // Paris
@@ -116,6 +117,15 @@ export function TravelMosaic({ onTileClick }: { onTileClick?: (place: any) => vo
   });
   const tiles = fetchedTiles;
   const [isDesktop, setIsDesktop] = useState(false);
+  const [erroredImages, setErroredImages] = useState<Set<string>>(new Set());
+
+  const handleImageError = useCallback((id: string) => {
+    setErroredImages((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
@@ -143,6 +153,7 @@ export function TravelMosaic({ onTileClick }: { onTileClick?: (place: any) => vo
             const grad = TILE_CATEGORY_GRADIENTS[tile.category as TileCategory];
             const colSpan = spanMap[i] ?? 6;
             const height = heightMap[i] ?? 200;
+            const imageFailed = erroredImages.has(tile.id);
             return (
               <motion.div
                 key={tile.id}
@@ -152,24 +163,32 @@ export function TravelMosaic({ onTileClick }: { onTileClick?: (place: any) => vo
                 transition={{ duration: 0.3, delay: i * 0.05, ease: EASE_OUT_EXPO }}
                 whileHover={{ scale: 1.02 }}
                 onClick={() => onTileClick?.((tile as any).placeData)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onTileClick?.((tile as any).placeData); } }}
+                role="button"
+                tabIndex={0}
+                aria-label={`View ${tile.name}`}
                 className="rounded-2xl overflow-hidden relative cursor-pointer group"
                 style={{
                   gridColumn: `span ${colSpan}`,
                   height,
-                  background: tile.image_url
+                  background: tile.image_url && !imageFailed
                     ? undefined
                     : `linear-gradient(135deg, ${grad.from}, ${grad.to})`,
                 }}
               >
-                {tile.image_url && (
-                  /* eslint-disable-next-line @next/next/no-img-element */
+                {tile.image_url && !imageFailed && (
                   <img
                     src={tile.image_url}
                     alt={tile.name}
                     loading="lazy"
-                                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    onError={() => handleImageError(tile.id)}
                     className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                   />
+                )}
+                {imageFailed && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <MapPin size={24} className="text-white/20" />
+                  </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />

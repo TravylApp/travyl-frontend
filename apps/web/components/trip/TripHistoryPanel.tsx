@@ -189,7 +189,7 @@ function useTripHistory(tripId: string, enabled: boolean) {
 
 // ── Panel Component ─────────────────────────────────────────
 
-function HistoryPanel({ tripId, isOpen, onClose }: { tripId: string; isOpen: boolean; onClose: () => void }) {
+export function HistoryPanel({ tripId, isOpen, onClose }: { tripId: string; isOpen: boolean; onClose: () => void }) {
   const { data: entries = [], isLoading } = useTripHistory(tripId, isOpen)
 
   if (!isOpen || typeof document === 'undefined') return null

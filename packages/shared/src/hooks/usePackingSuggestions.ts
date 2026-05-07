@@ -126,38 +126,50 @@ export function usePackingSuggestions(
   const generateSuggestions = useCallback(async (refresh = false) => {
     if (!tripId || isGenerating) return
     setIsGenerating(true)
+    hasAttemptedGeneration.current = true
     try {
       const apiUrl = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
-      if (!apiUrl) {
-        console.warn('[usePackingSuggestions] NEXT_PUBLIC_RECOMMENDATION_API_URL not set')
-        return
-      }
       const session = await supabase.auth.getSession()
       const token = session.data.session?.access_token
-      if (!token) return
 
-      await fetch(`${apiUrl}/packing-suggest`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ tripId, refresh }),
-      })
+      if (apiUrl && token) {
+        const response = await fetch(`${apiUrl}/packing-suggest`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ tripId, refresh }),
+        })
 
-      queryClient.invalidateQueries({ queryKey: ['packingSuggestions', tripId] })
+        if (response.ok) {
+          queryClient.invalidateQueries({ queryKey: ['packingSuggestions', tripId] })
+          return
+        }
+      }
+
+      // Fall back to local catalog-based suggestions when the backend is
+      // unavailable, unauthenticated, or returns an error.
+      if (tripQuery.data) {
+        setLocalSuggestions(generateLocalSuggestions(tripQuery.data))
+      }
     } catch (err) {
       console.error('[usePackingSuggestions] generate error:', err)
+      // Fall back to local catalog-based suggestions.
+      if (tripQuery.data) {
+        setLocalSuggestions(generateLocalSuggestions(tripQuery.data))
+      }
     } finally {
       setIsGenerating(false)
     }
-  }, [tripId, isGenerating, queryClient])
+  }, [tripId, isGenerating, queryClient, tripQuery.data])
 
-  // Auto-generate on first visit when packing list is empty
+  // Auto-generate on first visit when no suggestions exist yet.
+  // Runs even when the packing list has items (auto-seeded or user-added),
+  // because suggestions are additive — they show items the user may have missed.
   useEffect(() => {
     if (!tripId) return
     if (suggestionsQuery.isLoading || tripQuery.isLoading) return
-    if (items.length > 0) return
     if (suggestions.length > 0) return
     if (hasAttemptedGeneration.current) return
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'motion/react'
+import Image from 'next/image'
 import { Xmark } from 'iconoir-react'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
 import type { CalendarActivity } from './types'
@@ -183,11 +184,19 @@ export function ActivityEditModal({
             className="relative flex flex-col justify-end shrink-0"
             style={{
               height: 140,
-              ...(hasImage
-                ? { backgroundImage: `url(${activity.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                : { background: `linear-gradient(135deg, ${color} 0%, ${color}99 100%)` }),
+              background: `linear-gradient(135deg, ${color} 0%, ${color}99 100%)`,
             }}
           >
+            {hasImage && (
+              <Image
+                src={activity.image!}
+                alt=""
+                fill
+                className="object-cover"
+                draggable={false}
+                sizes="500px"
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
             <button
               onClick={onClose}

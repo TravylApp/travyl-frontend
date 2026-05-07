@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
+import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapPin, Map, Share2, X } from 'lucide-react';
+import { MapPin, Map, X } from 'lucide-react';
 import type { Trip } from '@travyl/shared';
 import { usePathname, useRouter } from 'next/navigation';
-import TripTabs, { getTabMeta } from '@/components/trip-tabs';
-import { useItineraryScreen, useAuthStore, canViewTrip, useDestinationImage, upscaleGoogleImage, ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
+import TripRail, { useRailCollapsed } from '@/components/trip-rail';
+import { useItineraryScreen, useAuthStore, canViewTrip, useDestinationImage, upscaleGoogleImage } from '@travyl/shared';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
 import { CompactTripHeader } from '@/components/trip/CompactTripHeader';
@@ -19,83 +20,6 @@ import { useQuery } from '@tanstack/react-query';
 import type { PlaceItem } from '@travyl/shared';
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
-
-// ─── Content Header Bar (per-tab) ───────────────────────────
-
-function ContentHeader({ tripId, trip, mapOpen, onToggleMap }: {
-  tripId: string;
-  trip: Trip | null | undefined;
-  mapOpen: boolean;
-  onToggleMap: () => void;
-}) {
-  const pathname = usePathname();
-  const basePath = `/trip/${tripId}`;
-  const segment = pathname.replace(basePath, '').replace(/^\//, '') || '';
-  const tab = getTabMeta(segment);
-  const [shareBusy, setShareBusy] = useState(false);
-
-  // Share the trip from any subpage. Generates the same `/trip/<id>/share/<token>`
-  // URL the Settings → Sharing tab and the Trips list card both produce, so a
-  // link from here is interchangeable with one shared from anywhere else.
-  const handleShare = useCallback(async () => {
-    if (!trip?.id || shareBusy) return;
-    setShareBusy(true);
-    try {
-      const token = await ensureShareLinkToken(trip.id);
-      if (trip.visibility === 'private') {
-        try { await updateTripVisibility(trip.id, 'link'); } catch {}
-      }
-      const url = `${window.location.origin}/trip/${trip.id}/share/${token}`;
-      const message = `Join me planning my trip to ${trip.destination} on Travyl: ${url}`;
-      const title = trip.title ?? `Trip to ${trip.destination}`;
-      if (typeof navigator !== 'undefined' && (navigator as any).share) {
-        try { await (navigator as any).share({ title, text: message, url }); return; } catch {}
-      }
-      try {
-        await navigator.clipboard.writeText(url);
-        window.alert(`Link copied to clipboard:\n${url}`);
-      } catch {
-        window.alert(`Share link:\n${url}`);
-      }
-    } catch (e: any) {
-      window.alert(`Share failed: ${e?.message ?? 'unknown error'}`);
-    } finally {
-      setShareBusy(false);
-    }
-  }, [trip?.id, trip?.destination, trip?.title, trip?.visibility, shareBusy]);
-
-  if (!tab) return null;
-  const Icon = tab.icon;
-
-  return (
-    <div className="shrink-0 border-b bg-white dark:bg-[var(--background)] border-gray-100 dark:border-white/[0.06] px-5 md:pl-[100px] pt-4 pb-3 sticky top-12 z-20">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0" style={{ backgroundColor: `${tab.color}18`, color: tab.color }}>
-          <Icon size={15} />
-        </div>
-        <div className="flex-1">
-          <h2 className="text-[17px] tracking-wide font-normal text-gray-900 dark:text-white font-serif">{tab.label}</h2>
-          <p className="text-[12px] text-gray-500 dark:text-gray-400">{tab.subtitle}</p>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={handleShare}
-            disabled={!trip?.id || shareBusy}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 border-gray-200 dark:border-white/[0.12] hover:bg-gray-50 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300 disabled:opacity-50"
-            title="Share this trip"
-          >
-            <Share2 size={13} />
-            <span className="text-[12px] font-medium">{shareBusy ? '...' : 'Share'}</span>
-          </button>
-          <button onClick={onToggleMap} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 ${mapOpen ? 'text-white shadow-md' : 'border-gray-200 dark:border-white/[0.12] hover:bg-gray-50 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300'}`} style={mapOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined} title={mapOpen ? 'Hide map' : 'Show map'}>
-            <Map size={13} />
-            <span className="text-[12px] font-medium">Map</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Trip Explore Section (overview page — shows trip_context data) ──
 
@@ -110,6 +34,7 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
   const loadingRef = useRef<Record<string, boolean>>({});
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
   const exploreRef = useRef<HTMLDivElement>(null);
+  const [railCollapsed] = useRailCollapsed();
 
   // Scan page for place names rendered above the explore section
   const getAboveNames = useCallback(() => {
@@ -127,11 +52,13 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
     return names;
   }, []);
 
-  // Strip items with no real image URL or known broken ones
+  // Strip items with no real image URL, known broken ones, or low-res thumbnails
   const hasValidImage = (item: ExploreItem) => {
     const url = item.image;
     if (!url || url.length < 10) return false;
     if (brokenImages.has(item.id)) return false;
+    // Skip tiny Google proxy thumbnails (gstatic) that can't be upscaled
+    if (url.includes('encrypted-tbn')) return false;
     return true;
   };
   const onImgError = (id: string) => {
@@ -258,8 +185,11 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
       for (const item of items) {
         const key = item.id || item.title || item.name;
         if (!key || seen.has(key) || !item.image) continue;
+        const upscaled = upscaleGoogleImage(item.image);
+        // Skip gstatic thumbnails that can't be upscaled
+        if (!upscaled || upscaled.includes('encrypted-tbn')) continue;
         seen.add(key);
-        allItems.push({ ...item, title: item.title || item.name, image: upscaleGoogleImage(item.image) || item.image, category: item.category || fallbackCat || 'Attraction' });
+        allItems.push({ ...item, title: item.title || item.name, image: upscaled, category: item.category || fallbackCat || 'Attraction' });
       }
     };
     add(ctx?.explore_items || []);
@@ -287,7 +217,7 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
   if (categories.length === 0 && !liveFetching) return null;
 
   return (
-    <div ref={exploreRef} className={embedded ? 'py-2' : 'max-w-7xl mx-auto px-4 sm:px-6 md:pl-[100px] py-8'}>
+    <div ref={exploreRef} className={embedded ? 'py-2' : `max-w-7xl mx-auto px-4 sm:px-6 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[180px]'} py-8 transition-[padding] duration-200 ease-out`}>
       <h2 className={`text-xl font-normal tracking-wide mb-6 font-serif ${embedded ? 'text-white' : 'text-gray-900 dark:text-white'}`}
         style={embedded ? { textShadow: '0 2px 10px rgba(0,0,0,0.5)' } : undefined}>
         Explore {city || 'Destination'}
@@ -327,8 +257,7 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
               {merged.map((item: ExploreItem, idx: number) => (
                 <div key={`${item.id}-${idx}`} onClick={() => setSelectedPlace(toPlaceItem(item))}
                   className="relative flex-shrink-0 w-[220px] rounded-2xl overflow-hidden shadow-lg group cursor-pointer hover:shadow-xl transition-shadow" style={{ height: 280 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={item.image!} alt={item.title || item.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={() => onImgError(item.id)} referrerPolicy="no-referrer" />
+                  <Image src={item.image!} alt={item.title || item.name || ''} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="220px" onError={() => onImgError(item.id)} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   <button onClick={(e) => { e.stopPropagation(); setFavorites((prev) => prev.includes(item.id) ? prev.filter((f) => f !== item.id) : [...prev, item.id]); }}
                     className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 transition-transform z-10 ${favorites.includes(item.id) ? 'bg-red-500' : 'bg-black/30'}`}>
@@ -365,40 +294,6 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
   );
 }
 
-// ─── Bottom Photo Mosaic (full-bleed, auto-rotating) ───
-
-function TripPhotoMosaic({ photos, destination }: { photos: string[]; destination?: string }) {
-  const [current, setCurrent] = useState(0);
-
-  useEffect(() => {
-    setCurrent(0);
-    if (photos.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrent((c) => (c + 1) % photos.length);
-    }, 6000);
-    return () => clearInterval(interval);
-  }, [photos]);
-
-  return (
-    <div className="w-full relative overflow-hidden" style={{ height: 600 }}>
-      {photos.map((src, i) => (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={i}
-          src={src}
-          alt={destination || 'Trip photo'}
-          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[2000ms]"
-          style={{ opacity: i === current ? 1 : 0, objectPosition: 'center 40%' }}
-        />
-      ))}
-      <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{
-        height: '25%',
-        background: 'linear-gradient(to top, white 0%, transparent 100%)',
-      }} />
-    </div>
-  );
-}
-
 // ─── Main Layout ────────────────────────────────────────────
 
 export default function TripLayoutInner({
@@ -431,6 +326,7 @@ function TripLayoutContent({
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
   useTripSettingsRegistration(tripId);
+  const [railCollapsed] = useRailCollapsed();
 
   // Layout mode toggle — persisted in localStorage
   const [layoutMode, setLayoutMode] = useState<'magazine' | 'compact'>('compact');
@@ -478,7 +374,7 @@ function TripLayoutContent({
   const isOverview = currentSegment === '';
   const isCalendar = currentSegment === 'calendar';
 
-  const tabOrder = ['', 'itinerary', 'calendar', 'hotels', 'flights', 'restaurants', 'activities', 'packing', 'budget', 'cars', 'favorites'];
+  const tabOrder = ['', 'calendar', 'hotels', 'flights', 'transit', 'restaurants', 'activities', 'packing', 'budget', 'cars'];
   const prevSegmentRef = useRef(currentSegment);
   const directionRef = useRef<1 | -1>(1);
 
@@ -494,106 +390,52 @@ function TripLayoutContent({
   const hasMarkers = mapMarkers.length > 0;
   const dir = directionRef.current;
 
-  // Track if we just came from/going to calendar to suppress the inner tab animation
-  // (the outer layout crossfade already handles the transition)
-  const wasCalendarRef = useRef(isCalendar);
-  useEffect(() => { wasCalendarRef.current = isCalendar; }, [isCalendar]);
-  const fromCalendar = wasCalendarRef.current && !isCalendar;
-
-  const pageVariants = fromCalendar ? {
-    initial: { opacity: 1, y: 0 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0 },
-  } : {
+  const pageVariants = {
     initial: { opacity: 0, y: dir > 0 ? 14 : -14 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: dir > 0 ? -8 : 8 },
   };
 
-  // Layout toggle button (floating, bottom-right)
-  const layoutToggle = (
-    <button
-      onClick={toggleLayout}
-      className="fixed bottom-20 md:bottom-6 right-4 z-50 flex items-center gap-2 px-3 py-2 rounded-full shadow-lg border text-xs font-medium transition-all hover:scale-105"
-      style={{
-        backgroundColor: isMagazine ? 'rgba(30,58,95,0.9)' : 'rgba(255,255,255,0.95)',
-        borderColor: isMagazine ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
-        color: isMagazine ? 'white' : '#1e3a5f',
-        backdropFilter: 'blur(12px)',
-      }}
-      title={`Switch to ${isMagazine ? 'compact' : 'magazine'} layout`}
-    >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        {isMagazine ? (
-          <><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></>
-        ) : (
-          <><rect x="2" y="2" width="20" height="20" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></>
-        )}
-      </svg>
-      {isMagazine ? 'Compact' : 'Magazine'}
-    </button>
-  );
-
   return (
     <AnimatePresence mode="sync">
-    {isCalendar ? (
-      <motion.div
-        key="calendar-layout"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="w-screen overflow-hidden relative"
-        style={{ height: 'calc(100vh - 48px)', marginTop: 48, position: 'fixed', inset: 0, top: 48, zIndex: 40 }}
-      >
-        {/* Hover-reveal sidebar — invisible strip on the left, expands on hover */}
-        <div className="fixed left-0 top-0 bottom-0 z-50 w-3 hover:w-auto group">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-16 rounded-r-full bg-white/10 group-hover:opacity-0 transition-opacity" />
-          <div className="h-full opacity-0 -translate-x-full group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 ease-out pointer-events-none group-hover:pointer-events-auto">
-            <TripTabs tripId={tripId} position="left" dark />
-          </div>
-        </div>
-        {children}
-      </motion.div>
-    ) : (
     <motion.div
-      key="standard-layout"
+      key="trip-layout"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className={`pb-14 md:pb-0 ${isMagazine ? 'relative' : 'bg-white dark:bg-[var(--background)]'}`}
+      className={`${isCalendar ? 'flex flex-col h-[calc(100vh-48px)] overflow-hidden' : 'pb-14 md:pb-0'} ${isMagazine ? 'relative' : 'bg-white dark:bg-background'}`}
     >
-      {layoutToggle}
-
       {/* Sidebar */}
-      <TripTabs tripId={tripId} position="left" dark={isMagazine} />
+      <TripRail tripId={tripId} variant={isMagazine ? 'dark' : 'light'} />
 
-      {/* Header — magazine hero or compact */}
-      {isMagazine ? (
-        <TripMagazineHero tripId={tripId} trip={trip} compact={!isOverview} onTripUpdate={refetch}
-          overrideImage={destImageData?.url ?? undefined} suppressFallback={destImageLoading} />
-      ) : (
-        <CompactTripHeader tripId={tripId} trip={trip} onTripUpdate={refetch} overrideImage={destImageData?.url ?? undefined} />
+      {/* Header — magazine hero or compact (hidden on calendar for full-height view) */}
+      {!isCalendar && (
+        isMagazine ? (
+          <TripMagazineHero trip={trip} compact={!isOverview}
+            overrideImage={destImageData?.url ?? undefined} suppressFallback={destImageLoading} />
+        ) : (
+          <CompactTripHeader
+            trip={trip}
+            overrideImage={destImageData?.url ?? undefined}
+          />
+        )
       )}
 
       {/* Content area */}
-      <div className="relative z-10">
-        <div className={isMagazine ? '' : 'mx-auto max-w-7xl'}>
-          {!isMagazine && (
-            <ContentHeader
-              tripId={tripId}
-              trip={trip}
-              mapOpen={mapOpen}
-              onToggleMap={() => setMapOpen(!mapOpen)}
-            />
-          )}
-
+      <div className={`relative z-10 ${isCalendar ? 'flex-1 flex flex-col min-h-0' : ''}`}>
+        <div className={isCalendar ? 'flex-1 flex flex-col min-h-0 w-full' : isMagazine ? '' : 'mx-auto max-w-[1800px]'}>
           {isOverview && <TripOnboardingBanner />}
 
-          <div className="flex">
+          <div className={`flex ${isCalendar ? 'flex-1 min-h-0' : ''}`}>
             {/* Main content */}
-            <div className={`flex-1 min-w-0 relative overflow-hidden ${isMagazine ? 'px-6 sm:px-10 md:pl-[120px] md:pr-10' : 'px-5 md:pl-[100px] pt-4 pb-5'}`}>
+            <div className={`flex-1 min-w-0 relative overflow-hidden transition-[padding] duration-200 ease-out ${
+              isCalendar
+                ? `${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[180px]'} flex flex-col`
+                : isMagazine
+                  ? `px-6 sm:px-10 ${railCollapsed ? 'md:pl-[96px]' : 'md:pl-[200px]'} md:pr-10`
+                  : `px-5 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[180px]'} pt-4 pb-5`
+            }`}>
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.div
                   key={`tab-${currentSegment}`}
@@ -601,14 +443,21 @@ function TripLayoutContent({
                   animate={pageVariants.animate}
                   exit={pageVariants.exit}
                   transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
-                  className={isMagazine ? (isOverview ? 'pt-2' : 'bg-white/85 backdrop-blur-xl rounded-2xl p-5 sm:p-6 mt-4 mb-8') : ''}
+                  className={
+                    isCalendar
+                      ? 'flex-1 min-h-0 flex flex-col'
+                      : isMagazine
+                        ? (isOverview ? 'pt-2' : 'bg-white/85 backdrop-blur-xl rounded-2xl p-5 sm:p-6 mt-4 mb-8')
+                        : ''
+                  }
                 >
                   {children}
                 </motion.div>
               </AnimatePresence>
             </div>
 
-            {/* Map side panel */}
+            {/* Map side panel — hidden on calendar (it has its own Map tab in the right panel) */}
+            {!isCalendar && (
             <AnimatePresence>
               {mapOpen && (
                 <motion.div
@@ -618,7 +467,7 @@ function TripLayoutContent({
                   transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
                   className="hidden md:block shrink-0 border-l border-gray-200 dark:border-white/[0.08] overflow-hidden"
                 >
-                  <div className="sticky top-0 h-[calc(100vh-80px)] flex flex-col bg-white dark:bg-[var(--background)]">
+                  <div className="sticky top-0 h-[calc(100vh-80px)] flex flex-col bg-white dark:bg-background">
                     <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 dark:border-white/[0.06] shrink-0">
                       <div className="flex items-center gap-2">
                         <Map size={13} className="text-[var(--trip-base)]" />
@@ -635,7 +484,7 @@ function TripLayoutContent({
                     </div>
                     <div className="flex-1 relative">
                       <Suspense fallback={
-                        <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-[var(--background)]">
+                        <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-background">
                           <span className="text-sm text-gray-400">Loading map...</span>
                         </div>
                       }>
@@ -671,35 +520,21 @@ function TripLayoutContent({
                 </motion.div>
               )}
             </AnimatePresence>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Below-the-fold content */}
-      {isOverview && (
-        <div className="relative z-10">
-          {!isMagazine && (destImageData?.images?.length ?? 0) > 0 && (
-            <TripPhotoMosaic photos={destImageData!.images} destination={trip?.destination} />
-          )}
-          {isMagazine ? (
-            <div className="px-6 sm:px-10 md:pl-[120px] md:pr-10 mt-4 pb-8">
-              <TripExploreSection trip={trip} embedded />
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-[var(--background)]">
-              <TripExploreSection trip={trip} />
-            </div>
-          )}
-        </div>
-      )}
+      {/* Below-the-fold content — Explore section is now part of the
+       *  TripDashboard rendered inside the overview page itself, so the
+       *  legacy full-width grid is no longer rendered here. */}
 
       {/* Magazine footer — gradient floor so the page has a defined end */}
-      {isMagazine && (
+      {isMagazine && !isCalendar && (
         <div className="relative z-10 h-40 pointer-events-none"
           style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.85) 100%)' }} />
       )}
     </motion.div>
-    )}
     </AnimatePresence>
   );
 }

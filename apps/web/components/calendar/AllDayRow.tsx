@@ -189,12 +189,12 @@ export function AllDayRow({
   if (flights.length === 0 && hotels.length === 0 && !hasEvents) return null
 
   return (
-    <div className="flex border-b border-cal-border min-h-[2rem]">
+    <div className="flex min-h-[2rem]">
       {/* Gutter spacer matching TimeGutter width */}
       <div className="flex-shrink-0 w-14" />
 
       {/* Per-day cells */}
-      <div className="flex flex-1 min-w-0">
+      <div className="flex flex-1 min-w-0 divide-x divide-cal-border-light">
         {days.map(({ dayIndex, isoDate }) => {
           const dayFlights = flights.filter(f => f.dayIndex === dayIndex)
           const dayHotels = hotels.filter(
@@ -207,7 +207,7 @@ export function AllDayRow({
           return (
             <div
               key={dayIndex}
-              className="flex-1 min-w-0 border-l border-cal-border-light px-1 py-0.5 flex flex-col gap-0.5"
+              className="flex-1 min-w-0 px-1 py-0.5 flex flex-col gap-0.5"
             >
               {/* Hotel banners */}
               {dayHotels.map(hotel => {

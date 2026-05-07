@@ -57,7 +57,8 @@ export function upscaleGoogleImage(url: string | null | undefined, width = 1200,
   if (url.includes('googleusercontent.com')) {
     return url
       .replace(/=w\d+-h\d+[^&\s]*/, `=w${width}-h${height}-k-no`)
-      .replace(/=s\d+-w\d+-h\d+[^&\s]*/, `=w${width}-h${height}-k-no`);
+      .replace(/=s\d+-w\d+-h\d+[^&\s]*/, `=w${width}-h${height}-k-no`)
+      .replace(/=s\d+/, `=w${width}-h${height}-k-no`);
   }
   // Foursquare — replace size tokens with 'original' for full res
   if (url.includes('4sqi.net') || url.includes('foursquare.com') || url.includes('fsq.com')) {
@@ -295,3 +296,12 @@ export * from './places'
 // Client-side search intent inference (Places page hint)
 export { inferSearchCategory, inferSearchHint } from './searchIntent'
 export type { InferredCategory } from './searchIntent'
+
+// Country-derived defaults (currency + measurement units).
+// DistanceUnits type already lives on the stores barrel — re-exporting it
+// from utils too would trip TS2308 (ambiguous re-export) in the root index.
+export { currencyForCountry, unitsForCountry } from './countryDefaults'
+
+// Transit estimation
+export { estimateTransit } from './transitEstimator'
+export type { TransitEstimate } from './transitEstimator'

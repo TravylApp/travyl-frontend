@@ -13,23 +13,28 @@
 
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTrip } from './useTrip';
 import { useItineraryDays } from './useItineraryDays';
 import { useFlights } from './useFlights';
 import { useHotels } from './useHotels';
+import { useCars } from './useCars';
+import { useTransit } from './useTransit';
+import { buildTransitViewModel } from '../viewmodels/transitViewModel';
+import type { TransitViewModel } from '../viewmodels/transitViewModel';
 import { useExchangeRates } from './useExchangeRates';
 import { useTripActivities, type TripActivityRow } from './useTripActivities';
 import {
   buildItineraryDayViewModel,
   buildFlightViewModel,
   buildHotelViewModel,
+  buildCarViewModel,
 } from '../viewmodels/itineraryViewModel';
 import type { ItineraryDayViewModel } from '../viewmodels/itineraryViewModel';
 import { buildBudgetSummary } from '../viewmodels/budgetViewModel';
 import { upscaleGoogleImage } from '../utils';
-import { useSettingsStore } from '../stores/settingsStore';
+import { useDisplayPrefs } from './useDisplayPrefs';
 import { supabase } from '../services/supabase';
 
 /**
@@ -339,12 +344,15 @@ function mergeUserActivities(
 export function useItineraryScreen(tripId: string | undefined) {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const queryClient = useQueryClient();
+  const channelRef = useRef<string | null>(null);
   const tripQuery = useTrip(tripId);
   const daysQuery = useItineraryDays(tripId);
   const activitiesQuery = useTripActivities(tripId);
   const flightsQuery = useFlights(tripId);
   const hotelsQuery = useHotels(tripId);
-  const homeCurrency = useSettingsStore((s) => s.currency);
+  const carsQuery = useCars(tripId);
+  const transitQuery = useTransit(tripId);
+  const homeCurrency = useDisplayPrefs().currency;
 
   // Realtime sync — listen for postgres_changes on the trip row + every
   // related table and invalidate the matching react-query cache so any
@@ -354,8 +362,14 @@ export function useItineraryScreen(tripId: string | undefined) {
   // before mounting trip screens) so we don't worry about that case.
   useEffect(() => {
     if (!tripId) return;
+    // Use a ref-stabilized unique ID so multiple instances of this hook
+    // don't clash (the component calls useItineraryScreen twice in the
+    // layout tree). The ref persists across StrictMode double-mount too.
+    if (!channelRef.current) {
+      channelRef.current = `${tripId}-${Math.random().toString(36).slice(2, 8)}`;
+    }
     const channel = supabase
-      .channel(`trip:${tripId}`)
+      .channel(`trip:${channelRef.current}`)
       // Trip row itself (title, dates, trip_context, settings, theme).
       .on(
         'postgres_changes' as any,
@@ -385,6 +399,11 @@ export function useItineraryScreen(tripId: string | undefined) {
         'postgres_changes' as any,
         { event: '*', schema: 'public', table: 'hotels', filter: `trip_id=eq.${tripId}` },
         () => queryClient.invalidateQueries({ queryKey: ['hotels', tripId] }),
+      )
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'transit', filter: `trip_id=eq.${tripId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['transit', tripId] }),
       )
       .subscribe();
     return () => {
@@ -420,6 +439,16 @@ export function useItineraryScreen(tripId: string | undefined) {
   const hotels = useMemo(
     () => (hotelsQuery.data ?? []).map(buildHotelViewModel),
     [hotelsQuery.data],
+  );
+
+  const cars = useMemo(
+    () => (carsQuery.data ?? []).map(buildCarViewModel),
+    [carsQuery.data],
+  );
+
+  const transit = useMemo(
+    () => (transitQuery.data ?? []).map(buildTransitViewModel),
+    [transitQuery.data],
   );
 
   // Build budget from DB data, or fall back to trip_context hotel prices
@@ -459,7 +488,7 @@ export function useItineraryScreen(tripId: string | undefined) {
 
   const trip = tripQuery.data ?? null;
   const hasContextItinerary = Array.isArray((trip?.trip_context as any)?.itinerary) && (trip?.trip_context as any).itinerary.length > 0;
-  const isEmpty = !isLoading && days.length === 0 && !hasContextItinerary && flights.length === 0 && hotels.length === 0;
+  const isEmpty = !isLoading && days.length === 0 && !hasContextItinerary && flights.length === 0 && hotels.length === 0 && cars.length === 0 && transit.length === 0;
 
   const refetch = useCallback(() => {
     tripQuery.refetch();
@@ -467,7 +496,9 @@ export function useItineraryScreen(tripId: string | undefined) {
     activitiesQuery.refetch();
     flightsQuery.refetch();
     hotelsQuery.refetch();
-  }, [tripQuery, daysQuery, activitiesQuery, flightsQuery, hotelsQuery]);
+    carsQuery.refetch();
+    transitQuery.refetch();
+  }, [tripQuery, daysQuery, activitiesQuery, flightsQuery, hotelsQuery, carsQuery, transitQuery]);
 
   return {
     trip,
@@ -477,6 +508,9 @@ export function useItineraryScreen(tripId: string | undefined) {
     selectedDay: days[selectedDayIndex] ?? null,
     flights,
     hotels,
+    cars,
+    transit,
+    transitLoading: transitQuery.isLoading,
     budget,
     isLoading,
     refetch,

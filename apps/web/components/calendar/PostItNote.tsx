@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import type { TripNote } from '@travyl/shared'
+import { useHourHeight } from './HourHeightContext'
 
 const NOTE_COLORS = ['#fef3c7', '#dbeafe', '#dcfce7', '#fce7f3', '#ede9fe']
-const HOUR_HEIGHT = 60
 
 function getRotation(id: string): number {
   let hash = 0
@@ -30,6 +30,7 @@ interface PostItNoteProps {
 }
 
 export function PostItNote({ note, authorInitials, canEdit, canDelete, timeRangeStartHour, onUpdate, onDelete }: PostItNoteProps) {
+  const HOUR_HEIGHT = useHourHeight()
   const [isEditing, setIsEditing] = useState(!note.text)
   const [isHovered, setIsHovered] = useState(false)
   const textRef = useRef<HTMLDivElement>(null)

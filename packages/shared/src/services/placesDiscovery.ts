@@ -166,17 +166,25 @@ async function resolveCoords(query: string): Promise<{ lat: string; lng: string 
   return null;
 }
 
-let _nearbyCityCache: string | null = null;
+// Keyed by coords (rounded to 2dp ≈ 1.1km buckets) so users who move
+// cities don't keep seeing the old city's "nearby" results. Previously
+// this was a single module-level string that latched the first city
+// the app ever saw and never invalidated.
+const _nearbyCityCache: Map<string, string | null> = new Map();
 
 async function getNearbyCityName(lat: number, lng: number): Promise<string | null> {
-  if (_nearbyCityCache) return _nearbyCityCache;
+  const key = `${lat.toFixed(2)},${lng.toFixed(2)}`;
+  if (_nearbyCityCache.has(key)) return _nearbyCityCache.get(key) ?? null;
+  let result: string | null = null;
   try {
     const res = await fetch(`${BASE()}/api/geocode?lat=${lat}&lng=${lng}&zoom=10`);
-    if (!res.ok) return null;
-    const data = await res.json() as any;
-    _nearbyCityCache = data.address?.city || data.address?.town || data.address?.county || null;
+    if (res.ok) {
+      const data = await res.json() as any;
+      result = data.address?.city || data.address?.town || data.address?.county || null;
+    }
   } catch {}
-  return _nearbyCityCache;
+  _nearbyCityCache.set(key, result);
+  return result;
 }
 
 // ─── Trending destinations (dynamic from API) ────────────────
@@ -237,10 +245,14 @@ async function fetchPlacesNlp(
     .catch(() => []);
 }
 
-async function fetchTripAdvisor(query: string, ssrc = 'a'): Promise<PlaceItem[]> {
+async function fetchTripAdvisor(query: string, ssrc = 'a', limit = 10): Promise<PlaceItem[]> {
+  // limit caps the slice we keep — the upstream API still returns ~30 but
+  // keeping the top-10 makes the per-page payload smaller and (more
+  // importantly) cuts the geocoding fanout from 30 → 10 when we eventually
+  // backfill coords.
   return fetchWithTimeout(`${BASE()}/api/search/tripadvisor?q=${encodeURIComponent(query)}&ssrc=${ssrc}`)
     .then(r => r.ok ? r.json() as Promise<any[]> : [])
-    .then((data) => (Array.isArray(data) ? data : []).map(p => mapApiPlace(p)))
+    .then((data) => (Array.isArray(data) ? data : []).slice(0, limit).map(p => mapApiPlace(p)))
     .catch(() => []);
 }
 
@@ -304,20 +316,35 @@ export async function fetchDiscoverPage(
   userLoc?: { lat: number; lng: number } | null,
 ): Promise<DiscoverPageResult> {
   try {
-    const trending = await getTrending();
+    const useNearby = !!(userLoc && page < NEARBY_PAGE_COUNT);
+
+    // Run trending + location resolution in parallel. Previously this was
+    // strictly sequential — getTrending then getNearbyCityName then 4
+    // place fetches — adding ~1-2s of dead time before the first card.
+    const [trending, locationInfo] = await Promise.all([
+      getTrending(),
+      (async () => {
+        if (useNearby) {
+          const cityName = await getNearbyCityName(userLoc!.lat, userLoc!.lng);
+          return {
+            destination: cityName || 'nearby',
+            coords: { lat: String(userLoc!.lat), lng: String(userLoc!.lng) },
+          };
+        }
+        return null;
+      })(),
+    ]);
+
     if (trending.length === 0 && !userLoc) {
       return { items: [], hasMore: false, nextPage: null };
     }
 
-    const useNearby = !!(userLoc && page < NEARBY_PAGE_COUNT);
-
     let destination: string;
     let coords: { lat: string; lng: string } | null;
 
-    if (useNearby) {
-      const cityName = await getNearbyCityName(userLoc!.lat, userLoc!.lng);
-      destination = cityName || 'nearby';
-      coords = { lat: String(userLoc!.lat), lng: String(userLoc!.lng) };
+    if (useNearby && locationInfo) {
+      destination = locationInfo.destination;
+      coords = locationInfo.coords;
     } else {
       destination = trending.length > 0 ? trending[page % trending.length].name : 'Popular';
       coords = await resolveCoords(destination);
@@ -329,16 +356,22 @@ export async function fetchDiscoverPage(
     const [mapsResults, taResults, events, nearbyResults] = await Promise.all([
       // Google Maps: "best of {destination}" — returns diverse mix
       fetchMapsSearch(`best places in ${destination}`),
-      // TripAdvisor: top things to do — returns 30 attractions/restaurants
-      fetchTripAdvisor(`${destination}`),
+      // TripAdvisor: top 10 — capped so we don't fan out 30 Nominatim
+      // geocodes per page on subsequent enrichment passes
+      fetchTripAdvisor(`${destination}`, 'a', 10),
       // Events happening in the destination
       fetchEvents(destination, `${slug}-p${page}`),
       // Foursquare: whatever is near the coordinates
       coords ? fetchFoursquare(coords.lat, coords.lng) : Promise.resolve([]),
     ]);
 
-    // Geocode any places missing coordinates so distance always works
-    let allPlaces = await enrichWithCoords([...mapsResults, ...taResults, ...nearbyResults]);
+    // SKIP enrichWithCoords on the critical path. Previously every page
+    // blocked on Nominatim geocoding ~30 places (mostly TripAdvisor results
+    // with no native coords) before returning — adding 5-10s of wall time.
+    // Cards render fine without coords; the distance label just falls
+    // back to NO_COORDS_DISTANCE so they sort to the bottom of nearby
+    // pages. Map markers are filtered downstream by `lat != null` already.
+    let allPlaces = [...mapsResults, ...taResults, ...nearbyResults];
 
     // Destination cards from trending API
     let destCards: PlaceItem[] = [];
@@ -471,7 +504,11 @@ export async function searchPlaces(
     }
 
     const results = await Promise.all(fetches);
-    let items = await enrichWithCoords(results.flat());
+    // Skip enrichWithCoords on the critical path (mirrors fetchDiscoverPage).
+    // Previously this fanned out 30+ Nominatim geocodes per search, blocking
+    // the first card by 5-10s. Cards render fine without coords; distance
+    // labels just fall back to NO_COORDS_DISTANCE.
+    let items = results.flat();
 
     // Add distance labels if user has location
     if (userLoc) {

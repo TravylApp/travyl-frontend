@@ -69,69 +69,98 @@ export function useCollaboratorPresence(
     }
 
     const tabId = tabIdRef.current
-    const channel = supabase.channel(`presence:trip:${tripId}`, {
-      config: { presence: { key: tabId } },
-    })
+    const topic = `presence:trip:${tripId}`
+    const realtimeTopic = `realtime:${topic}`
 
-    channelRef.current = channel
+    let cancelled = false
+    let activeChannel: RealtimeChannel | null = null
 
-    channel.on('presence', { event: 'sync' }, () => {
-      const state = channel.presenceState<{
-        userId: string
-        userName: string
-        userAvatarUrl?: string | null
-        color: string
-        selectedEventId: string | null
-        currentView: ViewMode
-        selectedDayIndex?: number
-      }>()
-
-      const users: UserAwareness[] = []
-      for (const key of Object.keys(state)) {
-        const entries = state[key]
-        if (!entries || entries.length === 0) continue
-        const entry = entries[entries.length - 1]
-        if (key === tabId) continue
-        users.push({
-          userId: entry.userId,
-          name: entry.userName,
-          avatarInitial: (entry.userName ?? '?').charAt(0).toUpperCase(),
-          avatarUrl: entry.userAvatarUrl ?? null,
-          color: entry.color,
-          isOnline: true,
-          selectedEventId: entry.selectedEventId ?? null,
-          currentView: entry.currentView ?? 'week',
-          selectedDayIndex: entry.selectedDayIndex ?? 0,
-        })
+    const setup = async () => {
+      // supabase.channel(topic) reuses any existing channel registered under
+      // the same topic, and supabase.removeChannel() finishes asynchronously
+      // (it awaits a phoenix LEAVE round-trip before _onClose removes the
+      // channel from the registry). Under React 19 strict-mode double-invoke,
+      // HMR, or fast navigation, the next mount runs before the previous
+      // cleanup completes and would reuse the still-subscribed channel —
+      // .on('presence', ...) then throws because the channel is already
+      // joined. Awaiting removal of any stale instance with this topic
+      // ensures the next channel() call creates a fresh one.
+      const stale = supabase.getChannels().find((c) => c.topic === realtimeTopic)
+      if (stale) {
+        await supabase.removeChannel(stale)
       }
-      setCollaborators(users)
-    })
+      if (cancelled) return
 
-    channel.subscribe(async (status) => {
-      if (status === 'SUBSCRIBED') {
-        await channel.track({
-          userId,
-          userName,
-          userAvatarUrl,
-          color,
-          selectedEventId: localStateRef.current.selectedEventId,
-          currentView: localStateRef.current.currentView,
-          selectedDayIndex: localStateRef.current.selectedDayIndex,
-        })
-      }
-      if (status === 'CHANNEL_ERROR') {
-        setCollaborators([])
-        if (!hasWarnedRef.current) {
-          hasWarnedRef.current = true
-          console.warn('[useCollaboratorPresence] Realtime presence unavailable; continuing without collaborator presence for trip:', tripId)
+      const channel = supabase.channel(topic, {
+        config: { presence: { key: tabId } },
+      })
+
+      activeChannel = channel
+      channelRef.current = channel
+
+      channel.on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState<{
+          userId: string
+          userName: string
+          userAvatarUrl?: string | null
+          color: string
+          selectedEventId: string | null
+          currentView: ViewMode
+          selectedDayIndex?: number
+        }>()
+
+        const users: UserAwareness[] = []
+        for (const key of Object.keys(state)) {
+          const entries = state[key]
+          if (!entries || entries.length === 0) continue
+          const entry = entries[entries.length - 1]
+          if (key === tabId) continue
+          users.push({
+            userId: entry.userId,
+            name: entry.userName,
+            avatarInitial: (entry.userName ?? '?').charAt(0).toUpperCase(),
+            avatarUrl: entry.userAvatarUrl ?? null,
+            color: entry.color,
+            isOnline: true,
+            selectedEventId: entry.selectedEventId ?? null,
+            currentView: entry.currentView ?? 'week',
+            selectedDayIndex: entry.selectedDayIndex ?? 0,
+          })
         }
-      }
-    })
+        setCollaborators(users)
+      })
+
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({
+            userId,
+            userName,
+            userAvatarUrl,
+            color,
+            selectedEventId: localStateRef.current.selectedEventId,
+            currentView: localStateRef.current.currentView,
+            selectedDayIndex: localStateRef.current.selectedDayIndex,
+          })
+        }
+        if (status === 'CHANNEL_ERROR') {
+          setCollaborators([])
+          if (!hasWarnedRef.current) {
+            hasWarnedRef.current = true
+            console.warn('[useCollaboratorPresence] Realtime presence unavailable; continuing without collaborator presence for trip:', tripId)
+          }
+        }
+      })
+    }
+
+    setup()
 
     return () => {
+      cancelled = true
       channelRef.current = null
       setCollaborators([])
-      channel.unsubscribe()
+      if (activeChannel) {
+        supabase.removeChannel(activeChannel)
+      }
     }
   }, [tripId, userId, userName, userAvatarUrl, color, disabled])
 

@@ -134,26 +134,90 @@ export default function BudgetScreen() {
   }, [displayCurrency, rates]);
   const fx = useCallback((usd: number) => fmtCurrency(cx(usd), displayCurrency), [cx, displayCurrency]);
 
-  // Build budget items from trip_context (cost_of_living + hotels + trip.budget)
+  // Build budget items from trip_context (cost_of_living + hotels + flights + trip.budget)
   const initialBudget = useMemo((): BudgetItem[] => {
     const ctx = trip?.trip_context as any;
     const cost = ctx?.cost_of_living;
     const hotel = (ctx?.hotels?.[0] || ctx?.all_hotels?.[0]) as any;
+    const flights: any[] = ctx?.flights ?? [];
     const days = trip?.start_date && trip?.end_date
       ? Math.max(1, Math.ceil((new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000))
       : 5;
 
     const items: BudgetItem[] = [];
 
-    // Accommodation
+    // Flights — sums every flight in trip_context.flights[]. Each flight
+    // has a `price` (set by savePlanToSupabase / SerpAPI). The expense
+    // description packs in route + airline + date + duration so the user
+    // sees the full booking, not just a price line.
+    const flightExpenses = flights
+      .map((f, i) => {
+        const price = typeof f?.price === 'number' ? f.price : parseFloat(String(f?.price ?? '').replace(/[^0-9.]/g, ''));
+        if (!price || !isFinite(price) || price <= 0) return null;
+        const route = [f?.origin_iata || f?.origin, f?.dest_iata || f?.destination].filter(Boolean).join('→');
+        const airline = f?.airline || f?.carrier || '';
+        const date = f?.depart_date || f?.date || '';
+        const duration = f?.duration ? ` · ${f.duration}` : '';
+        const stops = typeof f?.stops === 'number' ? (f.stops === 0 ? ' · nonstop' : ` · ${f.stops} stop${f.stops === 1 ? '' : 's'}`) : '';
+        const desc = [airline, route, date].filter(Boolean).join(' · ') + duration + stops || `Flight ${i + 1}`;
+        return { id: `flight-${i}`, description: desc, amount: price };
+      })
+      .filter((e): e is { id: string; description: string; amount: number } => e !== null);
+    const flightTotal = flightExpenses.reduce((s, e) => s + e.amount, 0);
+    if (flightTotal > 0 || flights.length > 0) {
+      items.push({
+        id: 'flights',
+        category: 'Flights',
+        budgeted: flightTotal,
+        actual: 0,
+        fixed: true,
+        expenses: flightExpenses,
+      });
+    }
+
+    // Accommodation. If hotel.price is missing, fall back to a
+    // cost-of-living estimate so the category isn't always $0 for
+    // older trips. mid_range_hotel is the typical SerpAPI field.
     const hotelPrice = hotel?.price ?? hotel?.price_per_night ?? 0;
+    const colHotel = cost?.mid_range_hotel
+      ? parseFloat(String(cost.mid_range_hotel).replace(/[^0-9.]/g, ''))
+      : (cost?.budget_hotel ? parseFloat(String(cost.budget_hotel).replace(/[^0-9.]/g, '')) : 0);
+    const effectiveNightly = hotelPrice > 0 ? hotelPrice : (colHotel > 0 ? colHotel : 0);
+    // Build a richer description that names the hotel + room type +
+    // check-in/out dates so the user sees their selection at a glance.
+    const hotelRoom = hotel?.roomTypes?.[0]?.type || hotel?.room_type || '';
+    const checkInLabel = trip?.start_date
+      ? new Date(trip.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : '';
+    const checkOutLabel = trip?.end_date
+      ? new Date(trip.end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : '';
+    const hotelDateRange = checkInLabel && checkOutLabel ? `${checkInLabel}–${checkOutLabel}` : '';
+    const hotelDescParts: string[] = [];
+    if (hotelPrice > 0) {
+      hotelDescParts.push(hotel?.name || 'Hotel');
+      if (hotelRoom) hotelDescParts.push(hotelRoom);
+      if (hotelDateRange) hotelDescParts.push(hotelDateRange);
+      hotelDescParts.push(`${days} night${days === 1 ? '' : 's'} × $${hotelPrice}`);
+    } else {
+      hotelDescParts.push(hotel?.name ? `${hotel.name} (estimated)` : 'Estimated lodging');
+      if (hotelDateRange) hotelDescParts.push(hotelDateRange);
+      hotelDescParts.push(`${days} night${days === 1 ? '' : 's'} × $${effectiveNightly}/nt`);
+      hotelDescParts.push('typical mid-range rate');
+    }
     items.push({
       id: 'accommodation',
       category: 'Accommodation',
-      budgeted: hotelPrice * days,
+      budgeted: effectiveNightly * days,
       actual: 0,
       fixed: true,
-      expenses: hotelPrice ? [{ id: 'hotel-1', description: `${hotel?.name || 'Hotel'} (${days} nights × $${hotelPrice})`, amount: hotelPrice * days }] : [],
+      expenses: effectiveNightly > 0
+        ? [{
+            id: 'hotel-1',
+            description: hotelDescParts.join(' · '),
+            amount: effectiveNightly * days,
+          }]
+        : [],
     });
 
     // Food & Dining
@@ -179,12 +243,40 @@ export default function BudgetScreen() {
   const [budgetData, setBudgetData] = useState<BudgetItem[]>(initialBudget);
   const seeded = useRef(false);
 
-  // Load saved budget from trip_context if available
+  // Load saved budget from trip_context if available. Merge with the
+  // freshly-computed initial budget so newly-added categories (e.g.
+  // Flights, which didn't exist in older snapshots) get picked up
+  // automatically. Saved categories keep their user-edited values;
+  // missing ones are appended; "fixed" categories (Flights,
+  // Accommodation) get refreshed from initialBudget every load so a
+  // re-saved hotel price or new flight is reflected immediately
+  // instead of being frozen at whatever was last persisted.
   useEffect(() => {
     if (trip && !seeded.current) {
       const saved = (trip.trip_context as any)?.budget_data;
       if (saved && Array.isArray(saved) && saved.length > 0) {
-        setBudgetData(saved);
+        const initialById = new Map(initialBudget.map((b) => [b.id, b]));
+        const savedById = new Map<string, BudgetItem>(saved.map((b: BudgetItem) => [b.id, b]));
+        const merged: BudgetItem[] = [];
+        // Refresh fixed categories from initial; preserve user edits on others.
+        for (const item of initialBudget) {
+          const savedItem = savedById.get(item.id);
+          if (item.fixed) {
+            merged.push(item);
+          } else if (savedItem) {
+            merged.push(savedItem);
+          } else {
+            merged.push(item);
+          }
+        }
+        // Append saved categories the user added that aren't in the
+        // freshly-built initial set (custom categories, etc.).
+        for (const savedItem of saved) {
+          if (!initialById.has((savedItem as BudgetItem).id)) {
+            merged.push(savedItem as BudgetItem);
+          }
+        }
+        setBudgetData(merged);
       } else {
         setBudgetData(initialBudget);
       }

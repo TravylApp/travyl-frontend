@@ -24,7 +24,15 @@ function mapPrice(price: string | undefined): number | null {
 }
 
 function upscaleImage(url: string): string {
-  return url.replace(/w\d+-h\d+/, 'w1024-h1024')
+  if (!url) return ''
+  // Replace Google usercontent size params with high-res — handles:
+  //   =w288-h288-k-no  →  =w1200-h800-k-no
+  //   =s100-w200-h200  →  =w1200-h800-k-no
+  //   w288-h288         →  w1200-h800
+  return url
+    .replace(/=w\d+-h\d+[^&\s]*/, '=w1200-h800-k-no')
+    .replace(/=s\d+-w\d+-h\d+[^&\s]*/, '=w1200-h800-k-no')
+    .replace(/(?<!=)w\d+-h\d+(?![^&\s]*=)/, 'w1200-h800')
 }
 
 function toSuggestionCard(place: SerpLocalResult, category: string, index: number): SuggestionCard {
@@ -65,6 +73,8 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const category = event.queryStringParameters?.category
     const limit = Math.min(parseInt(event.queryStringParameters?.limit ?? '20', 10), 40)
+    const lat = event.queryStringParameters?.lat
+    const lng = event.queryStringParameters?.lng
 
     // Build the search query — prepend category if provided and not already in the query
     const searchQuery = category && !q.toLowerCase().includes(category.toLowerCase())
@@ -74,6 +84,10 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const url = new URL(SERPAPI_BASE)
     url.searchParams.set('engine', 'google_local')
     url.searchParams.set('q', searchQuery)
+    // Restrict to destination coordinates when available so results are geographically relevant
+    if (lat && lng) {
+      url.searchParams.set('ll', `@${lat},${lng},14z`)
+    }
     url.searchParams.set('api_key', Resource.SerpApiKey.value)
 
     const res = await fetch(url.toString(), {

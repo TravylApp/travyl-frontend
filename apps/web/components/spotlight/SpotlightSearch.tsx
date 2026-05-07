@@ -2,9 +2,12 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { Loader2 } from 'lucide-react'
 import { AnimatePresence, motion, LayoutGroup } from 'motion/react'
 import type { SpotlightResult } from '@travyl/shared'
 import { useSpotlightSearch } from '@/hooks/useSpotlightSearch'
+import { useDocumentUpload } from '@/hooks/useDocumentUpload'
+import { DocumentReviewModal } from '@/components/documents/DocumentReviewModal'
 import { SpotlightInput } from './SpotlightInput'
 import { SpotlightResults } from './SpotlightResults'
 import { SpotlightEmptyState } from './SpotlightEmptyState'
@@ -52,6 +55,19 @@ export function SpotlightSearch() {
     unpinResult,
     isPinned,
   } = useSpotlightSearch()
+
+  const {
+    phase: uploadPhase,
+    error: uploadError,
+    result: parseResult,
+    triggerFilePicker,
+    handleFileInputChange,
+    handlePaste,
+    confirmPaste,
+    cancelPaste,
+    reparseWithHint,
+    reset: resetUpload,
+  } = useDocumentUpload(isInTripContext ? tripId ?? undefined : undefined)
 
   // Flatten results for keyboard navigation
   const flatResults = useMemo(() => {
@@ -285,6 +301,7 @@ export function SpotlightSearch() {
       {isOpen && (
         <>
           <motion.div
+            data-spotlight-open="true"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -334,11 +351,54 @@ export function SpotlightSearch() {
                       tripContextName={tripName}
                       onRemoveTripContext={removeTripScope}
                       showTripContext={showTripContext}
+                      onUploadClick={triggerFilePicker}
+                      onPaste={handlePaste}
                     />
                     <div className="flex">
-                      {/* Left: results / empty state / action menu */}
+                      {/* Left: results / empty state / action menu / upload states */}
                       <div className={showPreview ? 'w-[360px] flex-shrink-0' : 'flex-1'}>
-                        {actionMode ? (
+                        {uploadPhase === 'confirm-paste' ? (
+                          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                              Upload this pasted image as a travel document?
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={confirmPaste}
+                                className="px-3 py-1.5 text-xs font-medium text-white rounded-lg"
+                                style={{ backgroundColor: 'var(--trip-base, #1e3a5f)' }}
+                              >
+                                Upload
+                              </button>
+                              <button
+                                onClick={cancelPaste}
+                                className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 dark:bg-gray-800 rounded-lg"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : uploadPhase === 'uploading' ? (
+                          <div className="px-4 py-8 text-center">
+                            <Loader2 className="w-5 h-5 text-gray-400 animate-spin mx-auto mb-2" />
+                            <p className="text-sm text-gray-400">Uploading document...</p>
+                          </div>
+                        ) : uploadPhase === 'parsing' ? (
+                          <div className="px-4 py-8 text-center">
+                            <Loader2 className="w-5 h-5 text-gray-400 animate-spin mx-auto mb-2" />
+                            <p className="text-sm text-gray-400">Reading document with AI...</p>
+                          </div>
+                        ) : uploadPhase === 'error' ? (
+                          <div className="px-4 py-8 text-center">
+                            <p className="text-sm text-red-400 mb-2">{uploadError}</p>
+                            <button
+                              onClick={resetUpload}
+                              className="text-xs text-gray-400 hover:text-gray-600 underline"
+                            >
+                              Dismiss
+                            </button>
+                          </div>
+                        ) : actionMode ? (
                           <SpotlightActionMenu
                             result={actionMode.result}
                             actions={actionMode.actions}
@@ -411,6 +471,26 @@ export function SpotlightSearch() {
               </motion.div>
             </LayoutGroup>
           </motion.div>
+
+          {/* Hidden file input for document upload */}
+          <input
+            id="document-upload-input"
+            type="file"
+            accept="image/*,.pdf"
+            className="hidden"
+            onChange={handleFileInputChange}
+          />
+
+          {/* Document review modal */}
+          {uploadPhase === 'review' && parseResult && (
+            <DocumentReviewModal
+              result={parseResult}
+              tripId={isInTripContext ? tripId ?? undefined : undefined}
+              onClose={() => { resetUpload(); setIsOpen(false) }}
+              onConfirm={() => { resetUpload(); setIsOpen(false) }}
+              onReparse={reparseWithHint}
+            />
+          )}
         </>
       )}
     </AnimatePresence>

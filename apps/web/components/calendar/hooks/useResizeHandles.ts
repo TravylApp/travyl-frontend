@@ -1,13 +1,15 @@
 'use client'
 
 import { useRef, useState, useCallback } from 'react'
-import { HOUR_HEIGHT } from '../constants'
+import { HOUR_HEIGHT as DEFAULT_HOUR_HEIGHT } from '../constants'
 
 interface UseResizeHandlesOptions {
   startHour: number
   duration: number
   timeRangeStartHour: number
   timeRangeEndHour: number
+  /** Pixels per hour. Defaults to the static constant when omitted. */
+  hourHeight?: number
   onResize: (newStartHour: number, newDuration: number) => void
 }
 
@@ -37,8 +39,10 @@ export function useResizeHandles({
   duration,
   timeRangeStartHour,
   timeRangeEndHour,
+  hourHeight = DEFAULT_HOUR_HEIGHT,
   onResize,
 }: UseResizeHandlesOptions): UseResizeHandlesReturn {
+  const HOUR_HEIGHT = hourHeight
   const [isResizing, setIsResizing] = useState(false)
   const [previewStartHour, setPreviewStartHour] = useState<number | null>(null)
   const [previewDuration, setPreviewDuration] = useState<number | null>(null)
@@ -79,7 +83,7 @@ export function useResizeHandles({
         setPreviewDuration(newDuration)
       }
     },
-    [timeRangeStartHour, timeRangeEndHour],
+    [timeRangeStartHour, timeRangeEndHour, HOUR_HEIGHT],
   )
 
   const handlePointerDownTop = useCallback(
@@ -164,7 +168,7 @@ export function useResizeHandles({
       setPreviewDuration(null)
       setIsResizing(false)
     },
-    [isResizing, onResize, timeRangeStartHour, timeRangeEndHour],
+    [isResizing, onResize, timeRangeStartHour, timeRangeEndHour, HOUR_HEIGHT],
   )
 
   const handlePointerCancel = useCallback(

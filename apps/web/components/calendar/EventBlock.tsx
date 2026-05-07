@@ -1,4 +1,5 @@
 'use client'
+import Image from 'next/image'
 import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { useQueryClient } from '@tanstack/react-query'
@@ -7,8 +8,11 @@ import {
   getActivityColorDark,
   getActivityColorDarkBorder,
 } from '@travyl/shared/viewmodels/calendarViewModel'
-import { HOUR_HEIGHT, COLUMN_GAP, COLUMN_OUTER_PAD } from './constants'
+import { COLUMN_GAP, COLUMN_OUTER_PAD } from './constants'
+import { useHourHeight } from './HourHeightContext'
 import { formatTimeRange } from './utils'
+import { TrainFront, Bus, Train, CableCar, Ship } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { useCalendarThemeContext } from './CalendarThemeContext'
 import { useResizeHandles } from './hooks/useResizeHandles'
 import type { CalendarActivity, UserAwareness } from './types'
@@ -57,6 +61,7 @@ export function EventBlock({
   hiddenCount = 0,
   bookingStatus = null,
 }: EventBlockProps) {
+  const HOUR_HEIGHT = useHourHeight()
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: activity.id,
     data: { type: 'activity' as const, activity },
@@ -73,12 +78,17 @@ export function EventBlock({
     duration: activity.duration,
     timeRangeStartHour,
     timeRangeEndHour,
+    hourHeight: HOUR_HEIGHT,
     onResize: (newStart, newDuration) => {
       onResize?.(activity.id, newStart, newDuration)
     },
   })
 
   const { isDark } = useCalendarThemeContext()
+
+  const vehicleIcon = activity.type === 'transport' && activity.transitVehicleType
+    ? getVehicleIcon(activity.transitVehicleType)
+    : null
 
   const queryClient = useQueryClient()
   const cachedResults = queryClient.getQueriesData<ActivityIntelligence>({
@@ -123,6 +133,7 @@ export function EventBlock({
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 50 : isResizing ? 40 : isSelected ? 10 : 1,
     borderLeft: `3px solid ${borderColor}`,
+    touchAction: 'none',
     transition: isDragging || isResizing ? undefined : 'left 150ms ease, width 150ms ease',
     ...(hasImage ? {} : { backgroundColor: bgColor }),
   }
@@ -149,8 +160,8 @@ export function EventBlock({
       aria-label={`${activity.title}, ${formatTimeRange(activity)}`}
       aria-selected={isSelected}
       className={[
-        'group rounded-md cursor-grab active:cursor-grabbing select-none relative',
-        'text-white text-xs',
+        'group rounded-lg cursor-grab active:cursor-grabbing select-none relative',
+        'text-white text-xs shadow-sm',
         isMultiSelected
           ? 'ring-2 ring-blue-400 bg-blue-500/10'
           : 'ring-2 ring-transparent',
@@ -185,7 +196,7 @@ export function EventBlock({
       )}
 
       {/* Inner clip wrapper — provides overflow-hidden and rounded corners for card content */}
-      <div className="absolute inset-0 rounded-md overflow-hidden">
+      <div className="absolute inset-0 rounded-lg overflow-hidden">
         {/* Opening hours pill — top-left, only for activities >= 30 min */}
         {hoursLabel && activity.duration >= 0.5 && (
           <div
@@ -202,29 +213,44 @@ export function EventBlock({
         )}
         {hasImage ? (
           <>
+            <div className="absolute inset-0 rounded-lg" style={{ backgroundColor: bgColor }}>
+              <Image
+                src={activity.image!}
+                alt=""
+                fill
+                className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                sizes="(max-width: 768px) 50vw, 150px"
+                draggable={false}
+              />
+              {/* Very light scrim — lets the photo breathe while keeping enough
+                  contrast for the title pill below. */}
+              <div className="absolute inset-0 bg-black/8" />
+            </div>
             <div
-              className="absolute inset-0 bg-cover bg-center rounded-md"
-              style={{ backgroundImage: `url(${activity.image})` }}
-            />
-            <div
-              className="absolute bottom-0 left-0 right-0 px-2 pb-1.5 pt-6"
-              style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.7))' }}
+              className="absolute bottom-0 left-0 right-0 px-2 pb-1.5 pt-9"
+              style={{
+                // Softer multi-stop gradient — image stays visible up top, text
+                // stays legible at the bottom without a heavy black band.
+                background:
+                  'linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 45%, rgba(0,0,0,0) 100%)',
+              }}
             >
               <div
-                className="font-semibold truncate text-white"
-                style={{ textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}
+                className="font-bold truncate text-white flex items-center gap-1 text-[12px] tracking-tight"
+                style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}
               >
-                {activity.title}
+                {vehicleIcon && <span className="shrink-0">{vehicleIcon}</span>}
+                <span className="truncate">{activity.title}</span>
               </div>
               <div
-                className="text-[10px] text-white/85 truncate"
+                className="text-[10px] font-medium text-white/95 truncate"
                 style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
               >
                 {formatTimeRange(activity)}
               </div>
               {activity.location && (
                 <div
-                  className="text-[9px] text-white/70 truncate"
+                  className="text-[9px] text-white/85 truncate"
                   style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
                 >
                   {activity.location}
@@ -234,7 +260,10 @@ export function EventBlock({
           </>
         ) : (
           <div className="px-2 py-1 flex flex-col gap-0.5">
-            <span className="font-semibold truncate leading-tight text-white">{activity.title}</span>
+            <span className="font-semibold truncate leading-tight text-white flex items-center gap-1">
+              {vehicleIcon && <span className="shrink-0">{vehicleIcon}</span>}
+              <span className="truncate">{activity.title}</span>
+            </span>
             <span className="opacity-80 truncate text-white">{formatTimeRange(activity)}</span>
             {activity.location && (
               <span className="opacity-70 truncate text-[10px] text-white">{activity.location}</span>
@@ -325,4 +354,21 @@ export function EventBlock({
       )}
     </div>
   )
+}
+
+const VEHICLE_ICONS: Record<string, ReactNode> = {
+  bus: <Bus className="w-3 h-3" />,
+  subway: <TrainFront className="w-3 h-3" />,
+  train: <Train className="w-3 h-3" />,
+  tram: <TrainFront className="w-3 h-3" />,
+  light_rail: <TrainFront className="w-3 h-3" />,
+  ferry: <Ship className="w-3 h-3" />,
+  cable_car: <CableCar className="w-3 h-3" />,
+  funicular: <CableCar className="w-3 h-3" />,
+  rideshare: <Bus className="w-3 h-3" />,
+  shuttle: <Bus className="w-3 h-3" />,
+}
+
+function getVehicleIcon(vehicleType: string): ReactNode {
+  return VEHICLE_ICONS[vehicleType] ?? <TrainFront className="w-3 h-3" />
 }

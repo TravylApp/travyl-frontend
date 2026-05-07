@@ -140,7 +140,11 @@ async function setCachedDiscover(
 const SERPAPI_BASE = 'https://serpapi.com/search.json'
 
 function upscaleImage(url: string): string {
-  return url.replace(/w\d+-h\d+/, 'w1024-h1024')
+  if (!url) return ''
+  return url
+    .replace(/=w\d+-h\d+[^&\s]*/, '=w1200-h800-k-no')
+    .replace(/=s\d+-w\d+-h\d+[^&\s]*/, '=w1200-h800-k-no')
+    .replace(/(?<!=)w\d+-h\d+(?![^&\s]*=)/, 'w1200-h800')
 }
 
 function mapPrice(price: string | undefined): number | null {

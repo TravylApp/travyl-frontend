@@ -329,11 +329,17 @@ export default function SharedTripPage({ params }: { params: Promise<{ id: strin
   useEffect(() => {
     async function init() {
       try {
-        // Resolve session (anonymous sign-in for unauthenticated visitors)
+        // Resolve session. Try anonymous sign-in for unauthenticated visitors so
+        // they get a Supabase user (needed for presence + collab writes). If the
+        // project has anonymous sign-ins disabled, fall through as a logged-out
+        // viewer — read-only access via fetchTripByShareToken still works.
         const { data: { session } } = await supabase.auth.getSession()
         if (!session) {
           const { error: anonError } = await supabase.auth.signInAnonymously()
-          if (anonError) throw anonError
+          if (anonError) {
+            // eslint-disable-next-line no-console
+            console.warn('[SharePage] Anonymous sign-in unavailable; viewing as logged-out user', anonError.message)
+          }
         }
         const { data: { session: resolvedSession } } = await supabase.auth.getSession()
         const user = resolvedSession?.user ?? null

@@ -32,7 +32,7 @@ cd packages/shared && npm test  # Run shared package tests
 
 **Before starting any feature:**
 1. Create a Linear issue in the Travyl workspace
-2. Name the branch `feature/<issue-id>` (e.g. `feature/tra-200`)
+2. Name the branch `feature/TRA-XXX` (e.g. `feature/TRA-200`) — always capital TRA
 3. Claude will look up the issue via Linear MCP for context
 
 This applies before invoking `/brainstorm`. No Linear issue = no new branch.

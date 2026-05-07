@@ -13,7 +13,7 @@ export function DashboardTopBar({ onMobileMenuToggle }: DashboardTopBarProps) {
   const tripTabs = useDashboardTopBarSlot()
 
   return (
-    <header className="shrink-0 h-12 border-b border-gray-200 dark:border-white/[0.06] bg-white dark:bg-[var(--background)] flex items-center px-4 sticky top-0 z-20">
+    <header className="shrink-0 h-12 border-b border-gray-200 dark:border-white/[0.06] bg-white dark:bg-background flex items-center px-4 sticky top-0 z-20">
       {/* Mobile hamburger */}
       <button
         onClick={onMobileMenuToggle}

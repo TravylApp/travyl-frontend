@@ -28,7 +28,7 @@ export function MinimalActivityCard({
 
   return (
     <div
-      className="flex items-center gap-3 rounded-xl bg-white dark:bg-[var(--muted)] border border-gray-200 dark:border-white/[0.08] p-2.5 cursor-pointer group transition-all hover:shadow-md hover:border-gray-300 dark:hover:border-white/[0.15]"
+      className="flex items-center gap-3 rounded-xl bg-white dark:bg-muted border border-gray-200 dark:border-white/[0.08] p-2.5 cursor-pointer group transition-all hover:shadow-md hover:border-gray-300 dark:hover:border-white/[0.15]"
       onClick={onClick}
     >
       {/* Thumbnail */}

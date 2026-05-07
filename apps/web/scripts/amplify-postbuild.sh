@@ -98,7 +98,7 @@ cat > .amplify-hosting/deploy-manifest.json << MANIFEST
     "remotePatterns": [
       {
         "protocol": "https",
-        "hostname": "images.unsplash.com"
+        "hostname": "images.pexels.com"
       }
     ],
     "formats": ["image/webp"],

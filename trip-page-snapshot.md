@@ -1,0 +1,107 @@
+- generic [active] [ref=e1] [box=0,0,1611,970]:
+  - main [ref=e3] [box=0,0,1611,970]:
+    - generic [ref=e5] [box=0,0,1611,602]:
+      - button "Magazine" [ref=e6] [box=1495,912,100,34]:
+        - img [ref=e7] [box=1508,922,14,14]
+        - text: Magazine
+      - complementary "Trip navigation" [ref=e9] [box=0,0,220,970]:
+        - navigation [ref=e13] [box=0,65,219,790]:
+          - generic [ref=e14] [box=10,74,199,98]:
+            - link "Overview" [ref=e15] [cursor=pointer] [box=10,74,199,32]:
+              - /url: /trip/2568a0d3-c741-4b65-bb72-67086350c4ba
+              - img [ref=e17] [box=20,82,16,16]
+              - generic [ref=e20] [box=47,80,57,20]: Overview
+            - link "Itinerary" [ref=e21] [cursor=pointer] [box=10,107,199,32]:
+              - /url: /trip/2568a0d3-c741-4b65-bb72-67086350c4ba/itinerary
+              - img [ref=e22] [box=20,115,16,16]
+              - generic [ref=e24] [box=47,113,48,20]: Itinerary
+            - link "Calendar" [ref=e25] [cursor=pointer] [box=10,140,199,32]:
+              - /url: /trip/2568a0d3-c741-4b65-bb72-67086350c4ba/calendar
+              - img [ref=e26] [box=20,148,16,16]
+              - generic [ref=e28] [box=47,146,54,20]: Calendar
+          - generic [ref=e29] [box=10,178,199,105]:
+            - link "Hotels" [ref=e30] [cursor=pointer] [box=10,185,199,32]:
+              - /url: /trip/2568a0d3-c741-4b65-bb72-67086350c4ba/hotels
+              - img [ref=e31] [box=20,193,16,16]
+              - generic [ref=e35] [box=47,191,37,20]: Hotels
+            - link "Flights" [ref=e36] [cursor=pointer] [box=10,218,199,32]:
+              - /url: /trip/2568a0d3-c741-4b65-bb72-67086350c4ba/flights
+              - img [ref=e37] [box=20,226,16,16]
+              - generic [ref=e39] [box=47,224,38,20]: Flights
+            - link "Cars" [ref=e40] [cursor=pointer] [box=10,251,199,32]:
+              - /url: /trip/2568a0d3-c741-4b65-bb72-67086350c4ba/cars
+              - img [ref=e41] [box=20,259,16,16]
+              - generic [ref=e45] [box=47,257,27,20]: Cars
+          - generic [ref=e46] [box=10,289,199,138]:
+            - link "Explore" [ref=e47] [cursor=pointer] [box=10,296,199,32]:
+              - /url: /trip/2568a0d3-c741-4b65-bb72-67086350c4ba/activities
+              - img [ref=e48] [box=20,304,16,16]
+              - generic [ref=e51] [box=47,302,44,20]: Explore
+            - link "Packing" [ref=e52] [cursor=pointer] [box=10,329,199,32]:
+              - /url: /trip/2568a0d3-c741-4b65-bb72-67086350c4ba/packing
+              - img [ref=e53] [box=20,337,16,16]
+              - generic [ref=e58] [box=47,335,47,20]: Packing
+            - link "Budget" [ref=e59] [cursor=pointer] [box=10,362,199,32]:
+              - /url: /trip/2568a0d3-c741-4b65-bb72-67086350c4ba/budget
+              - img [ref=e60] [box=20,370,16,16]
+              - generic [ref=e63] [box=47,368,42,20]: Budget
+            - link "Favorites" [ref=e64] [cursor=pointer] [box=10,395,199,32]:
+              - /url: /trip/2568a0d3-c741-4b65-bb72-67086350c4ba/favorites
+              - img [ref=e65] [box=20,403,16,16]
+              - generic [ref=e67] [box=47,401,52,20]: Favorites
+        - generic [ref=e68] [box=0,855,219,115]:
+          - link "Settings" [ref=e69] [cursor=pointer] [box=10,863,199,32]:
+            - /url: /trip/2568a0d3-c741-4b65-bb72-67086350c4ba/settings
+            - img [ref=e70] [box=20,871,16,16]
+            - generic [ref=e73] [box=47,869,47,20]: Settings
+          - button "Trip History" [ref=e74] [box=10,896,199,32]:
+            - img [ref=e75] [box=20,904,16,16]
+            - generic [ref=e79] [box=47,902,67,20]: Trip History
+          - button "Collapse sidebar" [ref=e80] [box=10,934,199,28]:
+            - generic [ref=e81] [box=137,940,42,17]: Collapse
+            - img [ref=e82] [box=185,941,14,14]
+      - generic [ref=e88] [box=166,0,1280,300]:
+        - paragraph [box=406,203,1000,0]
+        - heading "Untitled Trip" [level=1] [ref=e90] [box=406,209,229,45]
+        - generic [ref=e91] [box=406,260,1000,20]:
+          - generic [ref=e92] [box=406,260,68,20]:
+            - img [ref=e93] [box=406,264,12,12]
+            - text: 1 traveler
+          - button "Edit trip details" [ref=e98] [box=489,260,20,20]:
+            - img [ref=e99] [box=493,264,12,12]
+      - generic [ref=e103] [box=166,300,1280,302]:
+        - generic [ref=e105] [box=406,316,1020,45]:
+          - img [ref=e107] [box=416,331,15,15]
+          - generic [ref=e110] [box=454,316,809,45]:
+            - heading "Overview" [level=2] [ref=e111] [box=454,316,809,26]
+            - paragraph [ref=e112] [box=454,342,809,20]: Trip overview & info
+          - generic [ref=e113] [box=1275,323,151,32]:
+            - button "Share" [disabled] [ref=e114] [box=1275,323,76,32]:
+              - img [ref=e115] [box=1288,332,13,13]
+              - generic [ref=e121] [box=1307,330,31,18]: Share
+            - button "Map" [ref=e122] [box=1357,323,69,32]:
+              - img [ref=e123] [box=1370,332,13,13]
+              - generic [ref=e125] [box=1389,330,24,18]: Map
+        - generic [ref=e142] [box=267,406,1134,94]:
+          - generic [ref=e143] [box=267,406,1094,94]:
+            - paragraph [ref=e144] [box=267,406,1094,25]: "Welcome to your trip! Here's what you can do:"
+            - generic [ref=e145] [box=267,439,1094,20]:
+              - generic [ref=e146] [box=267,439,125,20]:
+                - img [ref=e147] [box=267,442,14,14]
+                - text: View your itinerary
+              - generic [ref=e149] [box=411,439,102,20]:
+                - img [ref=e150] [box=411,442,14,14]
+                - text: Explore places
+              - generic [ref=e153] [box=534,439,146,20]:
+                - img [ref=e154] [box=534,442,14,14]
+                - text: Search flights & hotels
+              - generic [ref=e156] [box=700,439,123,20]:
+                - img [ref=e157] [box=700,442,14,14]
+                - text: Track your budget
+            - button "Got it" [ref=e160] [box=267,471,63,30]
+          - button [ref=e161] [box=1373,406,28,28]:
+            - img [ref=e162] [box=1380,413,14,14]
+  - region "Notifications alt+T" [box=0,970,1611,0]
+  - button "Open Next.js Dev Tools" [ref=e137] [cursor=pointer] [box=22,916,32,32]:
+    - img [ref=e138] [box=22,912,40,40]
+  - alert [ref=e165] [box=-1,969,1,1]

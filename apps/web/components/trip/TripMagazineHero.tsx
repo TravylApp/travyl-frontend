@@ -2,9 +2,10 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { Cloud, Droplets, Sun, ChevronDown, Shield, Pencil, Share2, X, Check } from 'lucide-react';
-import { formatDateRange, useExchangeRates, updateTripDetails, useSettingsStore, useWeather, ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
+import { Cloud, Droplets, Sun, ChevronDown, Shield } from 'lucide-react';
+import { formatDateRange, useExchangeRates, useDisplayPrefs, useWeather } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
+import { useRailCollapsed } from '@/components/trip-rail';
 
 function QuickFactRow({ facts, className }: { facts: (string | undefined)[]; className?: string }) {
   const valid = facts.filter(Boolean) as string[];
@@ -58,9 +59,10 @@ function useQuote() {
   return quote;
 }
 
-export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripUpdate, suppressFallback }: { tripId?: string; trip?: Trip | null; overrideImage?: string; compact?: boolean; onTripUpdate?: () => void; suppressFallback?: boolean }) {
+export function TripMagazineHero({ trip, overrideImage, compact, suppressFallback }: { trip?: Trip | null; overrideImage?: string; compact?: boolean; suppressFallback?: boolean }) {
   const bgRef = useRef<HTMLDivElement>(null);
   const [scrollY, setScrollY] = useState(0);
+  const [railCollapsed] = useRailCollapsed();
 
   useEffect(() => {
     const el = bgRef.current;
@@ -82,88 +84,12 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
     };
   }, [compact]);
 
-  const [editing, setEditing] = useState(false);
-  const [shareBusy, setShareBusy] = useState(false);
-  const [editStart, setEditStart] = useState('');
-  const [editEnd, setEditEnd] = useState('');
-  const [editTravelers, setEditTravelers] = useState(1);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDest, setEditDest] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  const openEditor = useCallback(() => {
-    setEditStart(trip?.start_date || '');
-    setEditEnd(trip?.end_date || '');
-    setEditTravelers(trip?.travelers || 1);
-    setEditTitle(trip?.title || '');
-    setEditDest(trip?.destination || '');
-    setEditing(true);
-  }, [trip]);
-
-  // Share the trip from the hero — same canonical /trip/<id>/share/<token>
-  // URL the trips-list card and Settings → Sharing tab produce.
-  const handleShare = useCallback(async () => {
-    if (!trip?.id || shareBusy) return;
-    setShareBusy(true);
-    try {
-      const token = await ensureShareLinkToken(trip.id);
-      if (trip.visibility === 'private') {
-        try { await updateTripVisibility(trip.id, 'link'); } catch {}
-      }
-      const url = `${window.location.origin}/trip/${trip.id}/share/${token}`;
-      const message = `Join me planning my trip to ${trip.destination} on Travyl: ${url}`;
-      const title = trip.title ?? `Trip to ${trip.destination}`;
-      if (typeof navigator !== 'undefined' && (navigator as any).share) {
-        try { await (navigator as any).share({ title, text: message, url }); return; } catch {}
-      }
-      try {
-        await navigator.clipboard.writeText(url);
-        window.alert(`Link copied to clipboard:\n${url}`);
-      } catch {
-        window.alert(`Share link:\n${url}`);
-      }
-    } catch (e: any) {
-      window.alert(`Share failed: ${e?.message ?? 'unknown error'}`);
-    } finally {
-      setShareBusy(false);
-    }
-  }, [trip?.id, trip?.destination, trip?.title, trip?.visibility, shareBusy]);
-
-  const saveEdits = useCallback(async () => {
-    if (!tripId || saving) return;
-    setSaving(true);
-    try {
-      const destChanged = editDest && editDest !== trip?.destination;
-      await updateTripDetails(tripId, {
-        title: editTitle || undefined,
-        destination: editDest || undefined,
-        start_date: editStart || undefined,
-        end_date: editEnd || undefined,
-        travelers: editTravelers,
-      });
-      setEditing(false);
-      onTripUpdate?.();
-      // If destination changed, trigger re-enrichment to repopulate all data
-      if (destChanged) {
-        fetch(`/api/trips/enrich`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tripId }),
-        }).then(() => onTripUpdate?.()).catch(() => {});
-      }
-    } catch (e) {
-      console.error('Failed to update trip:', e);
-    } finally {
-      setSaving(false);
-    }
-  }, [tripId, editTitle, editStart, editEnd, editTravelers, saving, onTripUpdate]);
-
   const [essentialsOpen, setEssentialsOpen] = useState(!compact);
   const [convertAmount, setConvertAmount] = useState<number | string>(1);
   const [convertEditing, setConvertEditing] = useState(false);
-  // Temperature unit follows user's distance preference: miles = °F, kilometers = °C
-  const distanceUnits = useSettingsStore((s) => s.distanceUnits);
-  const useFahrenheit = distanceUnits === 'miles';
+  // Temperature unit follows the user's profile.country (US → °F, else °C).
+  // No manual override — the Display tab was removed.
+  const { useFahrenheit } = useDisplayPrefs();
   const fmtTemp = (c: number) => useFahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`;
   // Prefer live weather from backend, fall back to enrichment snapshot
   const weatherCity = trip?.destination?.split(',')[0]?.trim() || '';
@@ -253,7 +179,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
 
       {/* Hero text — unified for all tabs, just different height */}
       <div className="relative z-10 flex flex-col justify-end" style={{ height: compact ? '35vh' : '70vh' }}>
-        <div className="w-full px-6 sm:px-10 md:pl-[120px] pb-2"
+        <div className={`w-full px-6 sm:px-10 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[180px]'} pb-2 transition-[padding] duration-200 ease-out`}
           style={!compact ? { opacity: Math.max(0, 1 - scrollY / 800) } : undefined}>
           <p className="flex items-center gap-2 text-[11px] tracking-[0.4em] uppercase font-semibold mb-1" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -283,70 +209,15 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
       </div>
 
       {/* Trip meta + collapsible details */}
-      <div className={`relative z-10 px-6 sm:px-10 md:pl-[120px] transition-all duration-300 ${essentialsOpen ? 'mb-6' : 'mb-3'}`}
+      <div className={`relative z-10 px-6 sm:px-10 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[180px]'} transition-all duration-300 ${essentialsOpen ? 'mb-6' : 'mb-3'}`}
         style={{ textShadow: '0 2px 10px rgba(0,0,0,0.6), 0 0 20px rgba(0,0,0,0.3)' }}>
 
         {/* Dates + travelers — always visible */}
-        {!editing ? (
-          <div className="flex items-center gap-4 text-[14px] sm:text-[15px] text-white/80 font-medium mb-3">
-            {dateStr && <span>{dateStr}</span>}
-            {dateStr && travelersStr && <span className="text-white/30">&middot;</span>}
-            {travelersStr && <span>{travelersStr}</span>}
-            {tripId && (
-              <button onClick={openEditor} className="ml-1 p-1 rounded-full hover:bg-white/15 text-white/50 hover:text-white transition-colors" title="Edit trip details">
-                <Pencil size={13} />
-              </button>
-            )}
-            {trip?.id && (
-              <button
-                onClick={handleShare}
-                disabled={shareBusy}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 hover:bg-white/25 border border-white/20 text-white text-[12px] font-medium transition-colors disabled:opacity-50"
-                title="Share this trip"
-              >
-                <Share2 size={12} />
-                <span>{shareBusy ? 'Sharing…' : 'Share'}</span>
-              </button>
-            )}
-          </div>
-        ) : (
-              <div className="flex flex-wrap items-end gap-3 mb-4 animate-[fadeSlideIn_0.2s_ease-out]">
-                <div>
-                  <label className="block text-[10px] uppercase tracking-wider text-white/50 mb-1">Destination</label>
-                  <input type="text" value={editDest} onChange={(e) => setEditDest(e.target.value)}
-                    placeholder="City, Country"
-                    className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/40 w-48" />
-                </div>
-                <div>
-                  <label className="block text-[10px] uppercase tracking-wider text-white/50 mb-1">Title</label>
-                  <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)}
-                    className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/40 w-48" />
-                </div>
-                <div>
-                  <label className="block text-[10px] uppercase tracking-wider text-white/50 mb-1">Start</label>
-                  <input type="date" value={editStart} onChange={(e) => setEditStart(e.target.value)}
-                    className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/40 [color-scheme:dark]" />
-                </div>
-                <div>
-                  <label className="block text-[10px] uppercase tracking-wider text-white/50 mb-1">End</label>
-                  <input type="date" value={editEnd} onChange={(e) => setEditEnd(e.target.value)}
-                    className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/40 [color-scheme:dark]" />
-                </div>
-                <div>
-                  <label className="block text-[10px] uppercase tracking-wider text-white/50 mb-1">Travelers</label>
-                  <input type="number" min={1} max={20} value={editTravelers} onChange={(e) => setEditTravelers(Number(e.target.value))}
-                    className="bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/40 w-20" />
-                </div>
-                <button onClick={saveEdits} disabled={saving}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-[#0f1f33] text-sm font-semibold hover:bg-white/90 transition-colors disabled:opacity-50">
-                  <Check size={14} /> {saving ? 'Saving...' : 'Save'}
-                </button>
-                <button onClick={() => setEditing(false)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 text-white text-sm font-medium hover:bg-white/20 transition-colors border border-white/20">
-                  <X size={14} /> Cancel
-                </button>
-              </div>
-            )}
+        <div className="flex items-center gap-4 text-[14px] sm:text-[15px] text-white/80 font-medium mb-3">
+          {dateStr && <span>{dateStr}</span>}
+          {dateStr && travelersStr && <span className="text-white/30">&middot;</span>}
+          {travelersStr && <span>{travelersStr}</span>}
+        </div>
 
         {/* Collapsible details */}
         {hasEssentials && (

@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@variant dark (&:where(.dark *));
 
 /* Shimmer skeleton for loading states */
 @keyframes shimmer {
@@ -36,29 +35,29 @@
   --magazine-border: rgba(184,149,62,0.15);
   --magazine-success: #34d399;
   --sand-wash: #d4c4a8;
-  --sand-base: #e8d5c0;
+  --sand-base: #f2e6d8;
   --ocean-primary: var(--primary);
 }
 
 /* Calendar theme tokens - light mode defaults */
 :root {
-  --cal-bg: #f9fafb;
+  --cal-bg: #ffffff;
   --cal-surface: #ffffff;
   --cal-surface-elevated: #ffffff;
   --cal-text: #111827;
   --cal-text-secondary: #6b7280;
   --cal-text-tertiary: #9ca3af;
-  --cal-border: #e5e7eb;
-  --cal-border-light: #f3f4f6;
+  --cal-border: rgba(0, 0, 0, 0.06);
+  --cal-border-light: rgba(0, 0, 0, 0.03);
   --cal-accent: #003594;
   --cal-accent-bg: #EFF4FF;
   --cal-nav-active-bg: #EFF4FF;
   --cal-nav-active-text: #003594;
   --cal-nav-inactive: #9ca3af;
-  --cal-grid-line: #f3f4f6;
-  --cal-grid-line-half: rgba(229, 231, 235, 0.6);
+  --cal-grid-line: rgba(0, 0, 0, 0.04);
+  --cal-grid-line-half: rgba(0, 0, 0, 0.02);
   --cal-drag-over: #EFF4FF;
-  --cal-hour-text: #9ca3af;
+  --cal-hour-text: #d1d5db;
 }
 
 .dark {
@@ -130,6 +129,9 @@
   --color-magazine-accent: var(--magazine-accent);
   --color-magazine-border: var(--magazine-border);
   --color-magazine-success: var(--magazine-success);
+  --color-sand-wash: var(--sand-wash);
+  --color-sand-base: var(--sand-base);
+  --color-ocean-primary: var(--ocean-primary);
   --font-sans: 'Satoshi', system-ui, sans-serif;
   --font-serif: var(--font-lustria), Georgia, "Times New Roman", serif;
   --font-mono: var(--font-geist-mono);
@@ -208,6 +210,16 @@ body::-webkit-scrollbar {
   background: var(--cal-text-tertiary, #9ca3af);
 }
 
+/* Reduced motion — respect user's OS setting */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @keyframes float {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-10px); }
@@ -218,10 +230,22 @@ body::-webkit-scrollbar {
   50% { opacity: 0; }
 }
 
+/* Slide-in from the right for panels */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.2s ease-out;
+}
+
 /* Masonry layout for For You panel suggestions */
 .masonry-grid {
   column-count: 2;
   column-gap: 0.5rem;
+  column-fill: auto;
+  orphans: 1;
+  widows: 1;
 }
 
 .masonry-grid-3 {
@@ -233,6 +257,8 @@ body::-webkit-scrollbar {
   break-inside: avoid;
   page-break-inside: avoid;
   -webkit-column-break-inside: avoid;
+  display: inline-block;
+  width: 100%;
 }
 
 /* Reveal animations for overview page */

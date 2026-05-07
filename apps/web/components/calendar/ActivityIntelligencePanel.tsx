@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
+import Image from 'next/image'
 import { MapPin, Clock, Cloud, Wallet, NavArrowDown, NavArrowRight } from 'iconoir-react'
 import { useActivityIntelligence } from './hooks/useActivityIntelligence'
 import { getWmoWeather } from './utils/wmoWeatherCode'
@@ -51,11 +52,15 @@ export function ActivityIntelligencePanel({ activity, tripId }: Props) {
       {/* Place Info */}
       <Section icon={<MapPin className="w-3.5 h-3.5" />} title="Place Info">
         {data.place.photos[0] && (
-          <img
-            src={data.place.photos[0]}
-            alt={data.place.name}
-            className="w-full h-28 object-cover rounded-lg mb-2"
-          />
+          <div className="relative w-full h-28 rounded-lg overflow-hidden mb-2">
+            <Image
+              src={data.place.photos[0]}
+              alt={data.place.name}
+              fill
+              className="object-cover"
+              sizes="300px"
+            />
+          </div>
         )}
         <div className="space-y-0.5 text-xs text-gray-600 dark:text-cal-text">
           {data.place.rating && (

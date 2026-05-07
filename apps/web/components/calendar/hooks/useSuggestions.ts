@@ -1,9 +1,10 @@
 // apps/web/components/calendar/hooks/useSuggestions.ts
 'use client'
 
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { SuggestionCard } from '../types'
+import type { PlaceItem } from '@travyl/shared'
 
 const FILTER_CATEGORIES = [
   'All',
@@ -16,16 +17,34 @@ const FILTER_CATEGORIES = [
   'Outdoor',
 ] as const
 
-/** Maps filter chip labels to activity category slugs */
-const CATEGORY_MAP: Record<string, string[]> = {
-  Sightseeing: ['sightseeing'],
-  Dining: ['dining'],
-  Tours: ['tour'],
-  Culture: ['cultural', 'museum'],
-  Shopping: ['shopping'],
-  Nightlife: ['nightlife'],
-  Outdoor: ['outdoor'],
+/**
+ * Each chip maps to one of the FastAPI `nearby` categories that the
+ * `/api/places` route understands. The route then translates them to
+ * Foursquare-friendly tokens internally.
+ */
+const CHIP_TO_PLACE_CATEGORY: Record<Exclude<FilterCategory, 'All'>, string> = {
+  Sightseeing: 'sightseeing',
+  Dining: 'dining',
+  Tours: 'tour',
+  Culture: 'cultural',
+  Shopping: 'shopping',
+  Nightlife: 'nightlife',
+  Outdoor: 'outdoor',
 }
+
+/** Categories the "All" feed pulls from to give the For-You feed real variety. */
+const FOR_YOU_BUNDLE: string[] = [
+  'sightseeing',
+  'dining',
+  'cultural',
+  'outdoor',
+  'tour',
+  'nightlife',
+]
+
+/** Per-category cap when fetching the "All" feed — bundle ≈ 6 × 8 = 48 raw items. */
+const PER_CATEGORY_LIMIT = 8
+const SINGLE_CATEGORY_LIMIT = 24
 
 export type FilterCategory = (typeof FILTER_CATEGORIES)[number]
 
@@ -52,40 +71,126 @@ interface UseSuggestionsReturn {
   loadMore: () => void
 }
 
-async function fetchSuggestions(destination: string, q?: string): Promise<SuggestionCard[]> {
-  if (!destination) return []
+// ── /api/places fetchers ──────────────────────────────────
+
+interface Coords { lat: string; lng: string }
+
+/** Geocode the destination once via the Nominatim proxy, then reuse the coords
+ * across every category fetch. Doing it inline in `/api/places` per-call would
+ * trigger Nominatim's 1-req/sec rate limit for parallel category fan-out. */
+async function geocodeDestination(destination: string): Promise<Coords | null> {
+  if (!destination) return null
   try {
-    const params = new URLSearchParams({ destination })
-    if (q) params.set('q', q)
-    const res = await fetch(`/api/suggest?${params}`)
+    const res = await fetch(`/api/geocode?q=${encodeURIComponent(destination)}&limit=1`)
+    if (!res.ok) return null
+    const data = await res.json() as Array<{ lat?: string; lon?: string }>
+    const hit = data?.[0]
+    if (!hit?.lat || !hit?.lon) return null
+    return { lat: hit.lat, lng: hit.lon }
+  } catch {
+    return null
+  }
+}
+
+async function fetchPlacesForCategory(
+  destination: string,
+  coords: Coords | null,
+  category: string,
+  limit: number,
+): Promise<PlaceItem[]> {
+  const params = new URLSearchParams({
+    q: destination,
+    category,
+    limit: String(limit),
+  })
+  if (coords) {
+    params.set('lat', coords.lat)
+    params.set('lng', coords.lng)
+  }
+  try {
+    const res = await fetch(`/api/places?${params}`)
     if (!res.ok) return []
     const data = await res.json()
-    return data.suggestions ?? []
+    return Array.isArray(data) ? (data as PlaceItem[]) : []
   } catch {
     return []
   }
 }
 
-async function fetchSuggestionsPage(destination: string, page: number): Promise<{ suggestions: SuggestionCard[]; hasMore: boolean }> {
-  try {
-    const params = new URLSearchParams({ destination, page: String(page) })
-    const res = await fetch(`/api/suggest?${params}`)
-    if (!res.ok) return { suggestions: [], hasMore: false }
-    const data = await res.json()
-    return { suggestions: data.suggestions ?? [], hasMore: data.hasMore ?? false }
-  } catch {
-    return { suggestions: [], hasMore: false }
+/** Round-robin merge so the For-You feed alternates categories instead of
+ * dumping one category after another. */
+function interleave<T>(groups: T[][]): T[] {
+  const out: T[] = []
+  const cursors = groups.map(() => 0)
+  while (true) {
+    let progressed = false
+    for (let i = 0; i < groups.length; i++) {
+      if (cursors[i] < groups[i].length) {
+        out.push(groups[i][cursors[i]])
+        cursors[i] += 1
+        progressed = true
+      }
+    }
+    if (!progressed) break
+  }
+  return out
+}
+
+function placeToSuggestion(p: PlaceItem): SuggestionCard {
+  // PlaceItem.category is a free-form string; SuggestionCard expects ActivityCategory.
+  // We keep the raw value — downstream UI tolerates unknown values.
+  return {
+    id: String(p.id),
+    name: p.name,
+    category: (p.category || 'sightseeing') as SuggestionCard['category'],
+    imageUrl: p.image,
+    imageUrls: p.images && p.images.length ? p.images : (p.image ? [p.image] : undefined),
+    duration: 1.5, // Reasonable default — PlaceItem.duration is a string ("1-2 hours") not a number.
+    price: null, // Place data has price level (1–4), not a numeric cost.
+    currency: '$',
+    rating: typeof p.rating === 'number' && p.rating > 0 ? p.rating : null,
+    location: p.address || p.tagline || '',
+    latitude: p.latitude ?? 0,
+    longitude: p.longitude ?? 0,
+    description: p.description || p.tagline || '',
+    source: 'search',
+    relevanceScore: typeof p.rating === 'number' ? p.rating : 0,
   }
 }
 
-function dedup(items: SuggestionCard[]): SuggestionCard[] {
+async function fetchAllSuggestions(
+  destination: string,
+  filter: FilterCategory,
+): Promise<SuggestionCard[]> {
+  if (!destination) return []
+  const coords = await geocodeDestination(destination)
+
+  if (filter === 'All') {
+    const groups = await Promise.all(
+      FOR_YOU_BUNDLE.map((cat) =>
+        fetchPlacesForCategory(destination, coords, cat, PER_CATEGORY_LIMIT),
+      ),
+    )
+    const merged = interleave(groups).map(placeToSuggestion)
+    return dedupBy(merged, (s) => s.id)
+  }
+
+  const cat = CHIP_TO_PLACE_CATEGORY[filter]
+  const places = await fetchPlacesForCategory(destination, coords, cat, SINGLE_CATEGORY_LIMIT)
+  return dedupBy(places.map(placeToSuggestion), (s) => s.id)
+}
+
+function dedupBy<T>(items: T[], key: (item: T) => string): T[] {
   const seen = new Set<string>()
-  return items.filter((s) => {
-    if (seen.has(s.id)) return false
-    seen.add(s.id)
+  return items.filter((item) => {
+    const k = key(item)
+    if (seen.has(k)) return false
+    seen.add(k)
     return true
   })
 }
+
+// ── Hook ───────────────────────────────────────────────────
 
 export function useSuggestions({
   destination,
@@ -95,48 +200,35 @@ export function useSuggestions({
   const [committedQuery, setCommittedQuery] = useState('')
   const [activeFilter, setActiveFilter] = useState<FilterCategory>('All')
   const [removedIds, setRemovedIds] = useState<Set<string>>(new Set())
-  const [extraSuggestions, setExtraSuggestions] = useState<SuggestionCard[]>([])
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
-  const [hasMoreFromServer, setHasMoreFromServer] = useState(true)
-  const nextPageRef = useRef(1)
-  const isLoadingMoreRef = useRef(false)
 
   const commitSearch = useCallback(() => {
     setCommittedQuery(searchQuery.trim())
-    setExtraSuggestions([])
-    setHasMoreFromServer(true)
-    nextPageRef.current = 1
   }, [searchQuery])
 
-  const { data: initialSuggestions = [], isLoading, error, refetch } = useQuery({
-    queryKey: ['suggestions', destination, committedQuery],
-    queryFn: () => fetchSuggestions(destination, committedQuery || undefined),
+  const { data: allSuggestions = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['for-you-suggestions', destination, activeFilter],
+    queryFn: () => fetchAllSuggestions(destination, activeFilter),
     enabled: !!destination,
     staleTime: 30 * 60 * 1000,
     gcTime: 2 * 60 * 60 * 1000,
   })
 
-  // Combine initial + extra, deduped
-  const allSuggestions = useMemo(
-    () => dedup([...initialSuggestions, ...extraSuggestions]),
-    [initialSuggestions, extraSuggestions],
-  )
-
-  const loadMore = useCallback(async () => {
-    if (isLoadingMoreRef.current || !hasMoreFromServer || committedQuery) return
-    isLoadingMoreRef.current = true
-    setIsLoadingMore(true)
-    try {
-      const page = nextPageRef.current
-      const { suggestions: results, hasMore } = await fetchSuggestionsPage(destination, page)
-      nextPageRef.current = page + 1
-      setHasMoreFromServer(hasMore)
-      setExtraSuggestions((prev) => [...prev, ...results])
-    } finally {
-      isLoadingMoreRef.current = false
-      setIsLoadingMore(false)
-    }
-  }, [destination, committedQuery, hasMoreFromServer])
+  // When a suggestion is dropped onto the calendar, also hide it locally so
+  // the user gets immediate visual feedback before the query refreshes.
+  useEffect(() => {
+    if (scheduledActivityIds.length === 0) return
+    setRemovedIds((prev) => {
+      let changed = false
+      const next = new Set(prev)
+      for (const id of scheduledActivityIds) {
+        if (!next.has(id)) {
+          next.add(id)
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [scheduledActivityIds])
 
   const removeSuggestion = useCallback((id: string) => {
     setRemovedIds((prev) => new Set(prev).add(id))
@@ -155,24 +247,22 @@ export function useSuggestions({
       (s) => !removedIds.has(s.id) && !scheduledActivityIds.includes(s.id),
     )
 
-    if (activeFilter !== 'All') {
-      const slugs = CATEGORY_MAP[activeFilter] ?? []
-      filtered = filtered.filter((s) => slugs.includes(s.category))
-    }
-
-    if (searchQuery.trim() && !committedQuery) {
-      const q = searchQuery.toLowerCase()
+    // Live (uncommitted) search filters across name/category/location/description.
+    const liveQuery = searchQuery.trim()
+    const effectiveQuery = committedQuery || liveQuery
+    if (effectiveQuery) {
+      const q = effectiveQuery.toLowerCase()
       filtered = filtered.filter(
         (s) =>
           s.name.toLowerCase().includes(q) ||
           s.category.toLowerCase().includes(q) ||
-          s.location.toLowerCase().includes(q) ||
-          s.description.toLowerCase().includes(q),
+          (s.location ?? '').toLowerCase().includes(q) ||
+          (s.description ?? '').toLowerCase().includes(q),
       )
     }
 
     return filtered
-  }, [allSuggestions, searchQuery, committedQuery, activeFilter, removedIds, scheduledActivityIds])
+  }, [allSuggestions, searchQuery, committedQuery, removedIds, scheduledActivityIds])
 
   return {
     suggestions,
@@ -187,8 +277,11 @@ export function useSuggestions({
     removeSuggestion,
     restoreSuggestion,
     refetch,
-    hasMore: hasMoreFromServer && !committedQuery,
-    isLoadingMore,
-    loadMore,
+    // Pagination intentionally disabled — `/api/places` returns a single
+    // batch per category. Bundling multiple categories already gives a
+    // dense, varied feed without it.
+    hasMore: false,
+    isLoadingMore: false,
+    loadMore: () => {},
   }
 }

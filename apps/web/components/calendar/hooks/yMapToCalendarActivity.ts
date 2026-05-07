@@ -25,6 +25,7 @@ export const CALENDAR_ACTIVITY_KEYS: (keyof CalendarActivity)[] = [
   'checkIn',
   'checkOut',
   'bookingRef',
+  'transitVehicleType',
 ]
 
 export function yMapToCalendarActivity(
