@@ -12,7 +12,10 @@ interface BudgetCategory {
   color: string;
 }
 
-const COLORS = ['#003594', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'];
+// Travyl-brand palette: brand blue + navy as anchors, gold for warmth, mid /
+// light blues to fill out the spectrum without going rainbow. Matches the
+// BudgetPieChart palette so all budget visualizations read as one family.
+const COLORS = ['#003594', '#d4b57a', '#1e3a5f', '#1A5CC8', '#4D7FD7'];
 
 export default function OverviewBudgetSummary({
   trip,
