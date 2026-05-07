@@ -1,7 +1,7 @@
 # Trip Command Bar — AI-Powered Floating Command Bar
 
 **Date:** 2026-05-07
-**Status:** Draft
+**Status:** Draft v2
 
 ## Overview
 
@@ -84,6 +84,64 @@ An always-visible floating command bar at the bottom of the trip dashboard that 
 
 The `toolCalls` array supports multiple actions in one response. The client iterates and executes each sequentially, so a message like "move the flight to the next day and add a nearby hotel" returns two tool calls.
 
+### Context population (client-side)
+
+The `context` object is built by the CommandBar component before POSTing:
+
+- **destination**: Read from the Yjs trip data (from `useTripActivities` → trip row's `destination` field)
+- **tripStartDate / tripEndDate**: Read from Yjs trip data
+- **currentDayOffset**: Computed as `daysBetween(tripStartDate, new Date())` — represents today's 0-based day index within the trip. If today is before the trip, value is 0. If after, value is the last day.
+- **existingActivityTitles**: Read from the `activities` array (from `useYjsSync`'s reactive state) — maps each activity to its `title`. This ensures the list is always current regardless of which tab the user is on.
+
+All context data comes from the same Yjs-driven state that the calendar uses, so it's always consistent with what the user sees.
+
+### Guardrails
+
+- **Max input length**: 500 characters. Longer messages are rejected with 413.
+- **Request timeout**: Bedrock call has a 10-second timeout. On timeout, returns `{ reply: "Request timed out. Try a simpler request.", toolCalls: [] }`.
+- **Rate limiting**: Not enforced in v1 (Lambda cold starts make in-memory rate limiting unreliable). Future: API Gateway usage plans or DynamoDB TTL-based counters if abuse becomes an issue.
+
+### System prompt
+
+The API route constructs the following system prompt for Claude 3.5 Haiku:
+
+```
+You are a trip command assistant. Your job is to parse the user's natural language
+request and return a list of tool calls to execute.
+
+Trip context: {destination}, {tripStartDate} to {tripEndDate}
+Current day offset (0-based): {currentDayOffset}
+Existing activities: {existingActivityTitles}
+
+Rules:
+Date patterns (map to 0-based day offset):
+  - "today" = day {currentDayOffset}
+  - "tomorrow" = day {currentDayOffset + 1}
+  - "day after tomorrow" = day {currentDayOffset + 2}
+  - "day N" = day N-1 (e.g. "day 1" = day 0)
+  - "first/last day" = day 0 / last day
+  - Relative day names resolve from trip start (e.g. day 0 = {tripStartDate} day of week)
+- Days are 0-based (day 0 = trip start date)
+- startHour is a 24h float (9 AM = 9, 1:30 PM = 13.5, 8 PM = 20)
+- duration is in fractional hours (1 hour = 1, 90 min = 1.5)
+- Activity types: food, sightseeing, entertainment, shopping, outdoor, culture, travel, stay, transit, flight, car
+- For moveActivity/removeActivity, use fuzzy matching against existing activity titles
+- addFlight tool has its own args (airline, flightNumber, day, departureTime, arrivalTime, from, to)
+- addHotel tool has its own args (name, checkInDay, checkOutDay, address)
+- Use addActivity when the user knows exactly what they want ("add dinner at Nobu")
+- Use suggestAndAdd when the user wants a recommendation ("suggest a good ramen place for lunch")
+  suggestAndAdd generates all details from your knowledge of the destination
+- NEVER suggest accessing a database or API directly — only return tool calls
+
+Respond with a JSON object:
+{
+  "reply": "A brief, friendly confirmation of what was done",
+  "toolCalls": [
+    { "tool": "toolName", "args": { ... } }
+  ]
+}
+```
+
 ### Error handling
 
 - **Parsing failure**: `{ reply: "I couldn't understand that. Try phrasing it as an action like 'add lunch at...'", toolCalls: [] }`
@@ -100,11 +158,22 @@ A client component rendered inside `TripLayoutContent`, below the children conte
 
 | State | Visual | Behavior |
 |-------|--------|----------|
-| Idle | Compact pill badge at bottom-center: sparkle icon + "Ask or do anything..." placeholder | Click to focus |
-| Focused | Input expands to full available width, shows cursor + placeholder text | Type to compose |
-| Submitting | Input shows animated loading dots, disabled state | POST in flight |
-| Result | Reply text appears below input with action confirmation + undo hint | Auto-dismiss after 5s |
-| Error | Inline error message with retry button | Tap to retry |
+| Idle | Compact pill badge at bottom-center: sparkle icon + "Ask or do anything..." | Click/tap to expand |
+| Focused | Input expands to full available width with cursor + placeholder | Type to compose. Enter to submit. Escape to collapse. |
+| Submitting | Input shows animated loading dots, disabled state | POST to API in flight |
+| Executing | Input shows progress — "Adding activity..." text below input | Tool calls being executed client-side one by one. Shows each action as it completes. |
+| Result | Reply text appears below input with action confirmation | Auto-dismiss after 5s. Tap to dismiss sooner. Hover pauses auto-dismiss. |
+| Error | Inline error message with retry button. Keeps input text intact. | Tap retry to re-submit. Edit message and re-submit. |
+
+### Multi-tool execution behavior
+
+When the API returns multiple tool calls, the client executes them **sequentially and stops on first failure**:
+
+1. Execute tool call #1 → success → update progress display
+2. Execute tool call #2 → success → update progress display
+3. Execute tool call #3 → failure → stop. Show partial success reply: "Added dinner and moved the flight, but couldn't add the hotel."
+
+The `undo` (from `useUndoRedo`) records the entire batch as a single undoable action, so one undo reverts all tools that succeeded.
 
 ### Positioning
 
@@ -120,16 +189,33 @@ A client component rendered inside `TripLayoutContent`, below the children conte
 | `moveActivity` | `activityQuery: string` (fuzzy match title), `newDay?: number, newStartHour?: number` | `useActivityMutations().moveActivity()` |
 | `removeActivity` | `activityQuery: string` (fuzzy match title) | `useActivityMutations().removeActivity()` |
 | `navigateTo` | `tab: "calendar" \| "hotels" \| "flights" \| "cars" \| "activities" \| "packing" \| "budget" \| "settings"` | `useRouter().push()` |
-| `addFlight` | `airline: string, flightNumber: string, day: number, departureTime: number, arrivalTime: number, from: string, to: string` | `addActivity()` with flight type |
-| `addHotel` | `name: string, checkInDay: number, checkOutDay: number, address?: string` | `addActivity()` with hotel type |
-| `suggestAndAdd` | `description: string, day: number, startHour: number` | Places API search → pick best → `addActivity()` |
-| `askQuestion` | `question: string` | Returns text reply only, no mutation |
+| `addFlight` | `airline: string, flightNumber: string, day: number, departureTime: number, arrivalTime: number, from: string, to: string` | Dedicated handler: builds title "AA 123: JFK → NRT", computes duration from departure→arrival (for overnight flights where arrival is next calendar day, duration is set to e.g. 14h and `day` refers to departure day), calls `addActivity()` with type="flight" |
+| `addHotel` | `name: string, checkInDay: number, checkOutDay: number, address?: string` | Dedicated handler: builds title "Hotel Name (check-in Day N)", duration = checkOutDay - checkInDay days, calls `addActivity()` with type="stay" |
+| `suggestAndAdd` | `title: string, day: number, startHour: number, duration: number, type: string, location?: string, notes?: string` | `addActivity()` directly (Claude generates suggestion details from its knowledge of the destination) |
+| `askQuestion` | `question: string` | Reply text only, no mutation. Result does NOT auto-dismiss — persists until user dismisses or enters a new command. |
+
+Note: `suggestAndAdd` and `addActivity` have the same args. They exist as separate tools so Claude can distinguish between "the user already knows what they want" (addActivity) vs "suggest something good at this spot" (suggestAndAdd). The reply text differs accordingly. No external Places API call is needed — Claude generates reasonable activity details from its training data.
 
 ### Fuzzy activity matching
 
-For `moveActivity` and `removeActivity`, the client uses Levenshtein distance to match `activityQuery` against the titles of all existing activities on the trip. The best match (if above a threshold) is used.
+For `moveActivity` and `removeActivity`, the client uses Levenshtein distance to match `activityQuery` against the titles of all existing activities on the trip. The best match (if above a threshold of 0.6) is used. If no match is found, the tool call is skipped and the reply is updated to indicate the failure.
 
 ## Implementation Plan
+
+### Prerequisite: IAM Permissions
+
+Add `bedrock:InvokeModel` to the `TravylWeb` Lambda's permissions block in `infra/web.ts`:
+
+```ts
+permissions: [
+  new PolicyStatements({
+    actions: ['bedrock:InvokeModel'],
+    resources: ['*'], // or scope to the specific Claude model ARN
+  }),
+],
+```
+
+This is required because the API route runs inside the `TravylWeb` Lambda (not in the standalone `api.ts` services that already have Bedrock permissions).
 
 ### Phase 1: API Route + Bedrock Integration
 1. Create `apps/web/app/api/trip/command/route.ts`
@@ -137,6 +223,7 @@ For `moveActivity` and `removeActivity`, the client uses Levenshtein distance to
 3. Wire up Bedrock Claude 3.5 Haiku invocation with system prompt + trip context
 4. Return `{ reply, toolCalls }` response
 5. Test via curl with JWT cookie
+6. Add a `/api/trip/command/test` variant (same route, query param `?dry_run=true`) that returns the parsed tool calls without executing them client-side — useful for debugging NL parsing in isolation
 
 ### Phase 2: Command Bar Component
 1. Create `apps/web/components/trip/CommandBar.tsx`
@@ -145,11 +232,13 @@ For `moveActivity` and `removeActivity`, the client uses Levenshtein distance to
 4. Display reply text with action confirmation
 
 ### Phase 3: Client-Side Tool Executor
-1. Implement executor that maps tool calls to mutations
-2. Fuzzy match activity titles for move/remove
-3. Wire up `navigateTo` to Next.js router
-4. Wire up `suggestAndAdd` to existing Places API
-5. Add undo support (using existing `useUndoRedo`)
+1. Define TypeScript types for each tool's args (mirrors API schemas)
+2. Implement executor with client-side validation (Zod) before each tool call
+3. Fuzzy match activity titles for move/remove (Levenshtein, 0.6 threshold)
+4. Wire up `navigateTo` to Next.js router
+5. Sequential execution with stop-on-first-failure
+6. Batch undo support: wrap multi-tool execution in a single `useUndoRedo` undoable action
+7. Update progress display ("Executing...") between each tool call
 
 ### Phase 4: Integration into Trip Layout
 1. Render `CommandBar` inside `TripLayoutContent`
@@ -164,6 +253,4 @@ For `moveActivity` and `removeActivity`, the client uses Levenshtein distance to
 
 ## Open Questions
 
-- Should `suggestAndAdd` use the existing Places API (SerpAPI) or should Claude generate the suggestion directly?
-- Rate limiting — how many requests per minute should the API allow?
-- Should we add a `/api/trip/command/test` variant that returns tool calls without executing them?
+None. All decisions resolved in v2 of this spec.
