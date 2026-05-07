@@ -29,7 +29,7 @@ export const SITE_ROUTES: SiteRoute[] = [
   { path: '/terms',     title: 'Terms of Service', description: 'Terms of service',            category: 'legal',  icon: 'FileText',  keywords: ['terms', 'service'], seo: true, requiresAuth: false },
 
   // Dashboard (auth required -- excluded from sitemap.xml)
-  { path: '/trips',            title: 'My Trips',  description: 'View all your trips',          category: 'dashboard', icon: 'Suitcase', keywords: ['trips', 'my trips', 'plans'], seo: false, requiresAuth: true },
+  { path: '/trips',            title: 'My Trips',  description: 'View all your trips',          category: 'dashboard', icon: 'Luggage', keywords: ['trips', 'my trips', 'plans'], seo: false, requiresAuth: true },
   { path: '/profile',          title: 'Profile',   description: 'Your profile',                 category: 'dashboard', icon: 'User',     keywords: ['profile', 'account'], seo: false, requiresAuth: true },
   { path: '/profile/settings', title: 'Settings',  description: 'App settings & preferences',   category: 'dashboard', icon: 'Settings', keywords: ['settings', 'preferences', 'theme'], seo: false, requiresAuth: true },
 ]
