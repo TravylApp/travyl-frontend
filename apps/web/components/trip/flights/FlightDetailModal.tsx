@@ -15,7 +15,6 @@ import {
   Star,
   ExternalLink,
   Building2,
-  Globe,
 } from 'lucide-react'
 import type { SerpFlight } from './flightSearch'
 import { kayakSearchUrl } from '@/lib/airlineLinks'
@@ -250,9 +249,18 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-[12px] font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition w-fit"
+                className="inline-flex items-center gap-2 px-3.5 h-9 rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-[12px] font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition w-fit"
               >
-                <Globe size={12} className="text-[#1e3a5f]" />
+                {/* Google's favicon service is the most stable source for the
+                    Kayak brand mark — Kayak's own asset URLs change often. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="https://www.google.com/s2/favicons?domain=kayak.com&sz=32"
+                  alt=""
+                  width={14}
+                  height={14}
+                  className="rounded-sm"
+                />
                 View this flight on Kayak
                 <ExternalLink size={10} className="text-gray-400" />
               </a>
