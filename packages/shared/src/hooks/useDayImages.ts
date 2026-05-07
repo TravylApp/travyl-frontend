@@ -16,22 +16,24 @@ interface DayImagesResult {
 
 async function fetchDayImages(destination: string, count: number): Promise<DayImagesResult> {
   const base = getWebApiBase();
+  // /api/places returns real attractions + their photos (SerpAPI-backed),
+  // which gives a richer, more relevant image bank than a generic stock
+  // search. Each result represents a distinct landmark / venue.
   const res = await fetch(
-    `${base}/api/images?q=${encodeURIComponent(destination)}&per_page=${count}`,
+    `${base}/api/places?q=${encodeURIComponent(destination)}&limit=${count}`,
   );
   if (!res.ok) return { images: [] };
-  const data = (await res.json()) as
-    | { images?: Array<string | { url?: string }>; url?: string }
-    | null;
-  if (!data) return { images: [] };
+  const data = (await res.json()) as Array<{ image?: string | null }> | null;
+  if (!Array.isArray(data)) return { images: [] };
 
-  const list = Array.isArray(data.images)
-    ? data.images
-        .map((entry) => (typeof entry === 'string' ? entry : entry?.url ?? null))
-        .filter((u): u is string => !!u)
-    : data.url
-      ? [data.url]
-      : [];
+  const seen = new Set<string>();
+  const list: string[] = [];
+  for (const entry of data) {
+    const url = entry?.image;
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    list.push(url);
+  }
   return { images: list };
 }
 
