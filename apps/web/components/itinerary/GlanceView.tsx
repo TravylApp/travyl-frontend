@@ -76,18 +76,20 @@ export function GlanceView({
 
   return (
     <div data-no-page-swipe>
-      <DaySlide
-        tripId={tripId}
-        day={day}
-        dayIndex={selectedDayIndex}
-        totalDays={days.length}
-        story={story}
-        isLoading={isLoading}
-        imageUrl={imageUrl}
-        weatherLabel={null /* TODO: wire weather in Phase 3 */}
-        onPrev={() => onSelectDay(Math.max(0, selectedDayIndex - 1))}
-        onNext={() => onSelectDay(Math.min(days.length - 1, selectedDayIndex + 1))}
-      />
+      <div className="mx-auto max-w-[1240px]">
+        <DaySlide
+          tripId={tripId}
+          day={day}
+          dayIndex={selectedDayIndex}
+          totalDays={days.length}
+          story={story}
+          isLoading={isLoading}
+          imageUrl={imageUrl}
+          weatherLabel={null /* TODO: wire weather in Phase 3 */}
+          onPrev={() => onSelectDay(Math.max(0, selectedDayIndex - 1))}
+          onNext={() => onSelectDay(Math.min(days.length - 1, selectedDayIndex + 1))}
+        />
+      </div>
 
       <div className="mt-7 flex justify-center">
         <div className="w-full max-w-[640px]">
