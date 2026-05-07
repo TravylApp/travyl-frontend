@@ -5,12 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { FlightViewModel, FlightData, Trip } from '@travyl/shared'
-import { supabase } from '@travyl/shared'
+import { supabase, useProfile } from '@travyl/shared'
 import { FlightCard } from './FlightCard'
 import { FlightForm } from './FlightForm'
 import { FlightSearchPanel } from './FlightSearchPanel'
 import { FlightResultsList, type FlightSearchState } from './FlightResultsList'
 import { mapSerpFlightToFlightData, type SerpFlight } from './flightSearch'
+import { searchAirports } from './airportSearch'
 import { addFlight, updateFlight, deleteFlight } from './flightMutations'
 
 export interface FlightsModuleProps {
@@ -25,6 +26,7 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency, fo
   const queryClient = useQueryClient()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { data: profile } = useProfile()
 
   const [searching, setSearching] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -33,6 +35,7 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency, fo
   })
   const [busyOfferId, setBusyOfferId] = useState<string | null>(null)
   const hasExpandedRef = useRef(false)
+  const [defaultFrom, setDefaultFrom] = useState<{ iata: string; name: string; city: string } | null>(null)
 
   const { data: trip } = useQuery<Trip | null>({
     queryKey: ['trip', tripId],
@@ -43,6 +46,28 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency, fo
     enabled: !!tripId,
     staleTime: 60_000,
   })
+
+  // Resolve profile.home_airport (IATA) into the full airport object for the search panel.
+  useEffect(() => {
+    let cancelled = false
+    const iata = profile?.home_airport
+    if (!iata) { setDefaultFrom(null); return }
+    void (async () => {
+      try {
+        const matches = await searchAirports(iata)
+        if (cancelled) return
+        const exact = matches.find((m) => m.iata === iata)
+        if (exact) {
+          setDefaultFrom({ iata: exact.iata, name: exact.name, city: exact.city })
+        } else {
+          setDefaultFrom({ iata, name: '', city: '' })
+        }
+      } catch {
+        if (!cancelled) setDefaultFrom({ iata, name: '', city: '' })
+      }
+    })()
+    return () => { cancelled = true }
+  }, [profile?.home_airport])
 
   const sorted = useMemo(
     () => [...flights].sort((a, b) => {
@@ -101,6 +126,7 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency, fo
     id: tripId,
     start_date: trip?.start_date ?? '',
     end_date: trip?.end_date ?? '',
+    destination: trip?.destination ?? '',
   }
 
   return (
@@ -109,6 +135,7 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency, fo
         <>
           <FlightSearchPanel
             trip={tripForPanel}
+            defaultFrom={defaultFrom}
             onResultsChange={setSearchState}
             onClose={() => {
               setSearching(false)

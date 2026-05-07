@@ -65,7 +65,7 @@ export function HotelSearchPanel({ trip, onResultsChange, onInputsChange, onClos
   }
 
   return (
-    <div onKeyDown={handleKey} className="rounded-xl border border-[var(--trip-base)]/30 bg-white dark:bg-white/[0.04] p-5 space-y-4 relative">
+    <div onKeyDown={handleKey} className="space-y-4 relative pb-2">
       {onClose && (
         <button
           onClick={onClose}
