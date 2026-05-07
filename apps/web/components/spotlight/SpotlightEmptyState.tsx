@@ -1,8 +1,9 @@
 'use client'
 
-import { Clock, Building2, Plane, UtensilsCrossed, MapPin, Plus, Calendar, Pin, Compass, ArrowRight, Terminal, Settings } from 'lucide-react'
+import { Clock, Building2, Plane, UtensilsCrossed, MapPin, Plus, Calendar, Pin, Compass, ArrowRight, Terminal, Settings, Luggage, User, Info } from 'lucide-react'
 // Building2 and Plane kept for PINNED_TYPE_ICONS (pinned hotel/flight results may persist in localStorage)
 import { useRouter } from 'next/navigation'
+import { useCommandRegistry } from '@/stores/commandRegistry'
 import type { PinnedResult } from '@/hooks/useSpotlightSearch'
 
 interface Props {
@@ -20,8 +21,13 @@ const QUICK_CATEGORIES = [
 ]
 
 const QUICK_ACTIONS = [
-  { label: 'New Trip', icon: Plus, href: '/trips?new=true', shortcut: null },
-  { label: 'Go to Calendar', icon: Calendar, href: '/trips', shortcut: null },
+  { label: 'New Trip', icon: Plus, href: '/trips?new=true' },
+  { label: 'My Trips', icon: Luggage, href: '/trips' },
+  { label: 'Explore', icon: Compass, href: '/explore' },
+  { label: 'Places', icon: MapPin, href: '/places' },
+  { label: 'Profile', icon: User, href: '/profile' },
+  { label: 'Settings', icon: Settings, href: '/profile/settings' },
+  { label: 'About', icon: Info, href: '/about' },
 ]
 
 const PINNED_TYPE_ICONS: Record<string, React.ElementType> = {
@@ -38,6 +44,7 @@ const PINNED_TYPE_ICONS: Record<string, React.ElementType> = {
 
 export function SpotlightEmptyState({ recentSearches, onSelectRecent, onClearRecent, onClose, pinnedResults, onSelectPinned }: Props) {
   const router = useRouter()
+  const pageCommands = useCommandRegistry((s) => s.pageCommands)
 
   return (
     <div className="px-4 py-3">
@@ -96,6 +103,34 @@ export function SpotlightEmptyState({ recentSearches, onSelectRecent, onClearRec
           ))}
         </div>
       </div>
+
+      {/* Page Commands */}
+      {pageCommands.length > 0 && (
+        <div className="mb-4">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-2 block">
+            Page Commands
+          </span>
+          <div className="space-y-0.5">
+            {pageCommands.slice(0, 6).map((cmd) => (
+              <button
+                key={cmd.id}
+                onClick={() => { cmd.execute(); onClose() }}
+                className="flex items-center gap-2.5 w-full px-2.5 py-2 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors"
+              >
+                <div className="w-7 h-7 rounded-md bg-gray-50 dark:bg-gray-800 flex items-center justify-center flex-shrink-0">
+                  <Terminal className="w-3.5 h-3.5 text-gray-500" />
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <div className="text-sm font-medium truncate">{cmd.label}</div>
+                  {cmd.shortcut && (
+                    <span className="text-xs text-gray-400">{cmd.shortcut.display}</span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Recent Searches */}
       {recentSearches.length > 0 && (

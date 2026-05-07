@@ -19,6 +19,8 @@ import { useInteractionTracking } from './hooks/useInteractionTracking'
 import { CalendarToolbar } from './CalendarToolbar'
 import { useCalendarCommands } from './hooks/useCalendarCommands'
 import { useCalendarCommandsStore } from '@/stores/calendarCommandsStore'
+import { useCommandRegistry } from '@/stores/commandRegistry'
+import type { GlobalCommand } from '@/lib/commands/types'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { useMarqueeSelection } from './hooks/useMarqueeSelection'
 import { useResizablePanel } from './hooks/useResizablePanel'
@@ -602,6 +604,27 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
     setCommands(commands)
     return () => clearCommands()
   }, [commands, setCommands, clearCommands])
+
+  // Also publish to the new command registry (for Spotlight + chord shortcuts)
+  const registerPageCommands = useCommandRegistry((s) => s.registerPageCommands)
+
+  const globalCommands: GlobalCommand[] = useMemo(() => {
+    return commands
+      .filter((cmd) => cmd.isEnabled)
+      .map((cmd) => ({
+        id: `cal-${cmd.id}`,
+        label: cmd.label,
+        description: cmd.label,
+        group: 'page-action' as const,
+        shortcut: cmd.shortcut,
+        isEnabled: true,
+        execute: cmd.execute,
+      }))
+  }, [commands])
+
+  useEffect(() => {
+    return registerPageCommands(globalCommands)
+  }, [globalCommands, registerPageCommands])
 
   useKeyboardShortcuts(
     isSharedView ? EMPTY_COMMANDS : commands,
