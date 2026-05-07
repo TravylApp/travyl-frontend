@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { Pencil, X, Check, Calendar, Users, ChevronDown, Share2, Map } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { formatDateRange, updateTripDetails, useWeather, ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
 import { useRailCollapsed } from '@/components/trip-rail';
@@ -118,9 +119,34 @@ export function CompactTripHeader({
   const countryFlag = trip?.trip_context?.country?.flag as string | undefined;
   const countryCca2 = trip?.trip_context?.country?.cca2 as string | undefined;
   const flagUrl = countryFlag || (countryCca2 ? `https://flagcdn.com/24x18/${countryCca2.toLowerCase()}.png` : null);
-  // Abbreviate US states / Canadian provinces; everything else uses the full
-  // parsed region name (e.g. "Île-de-France", "São Paulo").
-  const regionDisplay = abbreviateRegion(rawRegionName, countryCca2);
+
+  // Many trips were saved with destination = "City, Country" (no region).
+  // When that's the case but we have lat/lng, reverse-geocode through the
+  // existing /api/geocode proxy (Nominatim) to recover the state/province.
+  // Coordinates don't change for a trip, so cache forever.
+  const lat = trip?.trip_context?.lat;
+  const lng = trip?.trip_context?.lng;
+  const needsRegionLookup = !rawRegionName && lat != null && lng != null;
+  const { data: lookupRegion } = useQuery<string | null>({
+    queryKey: ['reverse-region', lat, lng],
+    queryFn: async () => {
+      const res = await fetch(`/api/geocode?lat=${lat}&lng=${lng}&zoom=10`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      const addr = data?.address;
+      if (!addr) return null;
+      // Nominatim's `state` covers US states, Canadian provinces, French
+      // régions, etc. `region` and `county` are reasonable fallbacks for
+      // smaller administrative units.
+      return addr.state || addr.region || addr.county || null;
+    },
+    enabled: needsRegionLookup,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
+  const effectiveRegion = rawRegionName || lookupRegion || '';
+  const regionDisplay = abbreviateRegion(effectiveRegion, countryCca2);
 
   // Quick info — prefer live weather, fall back to trip_context
   const ctx = trip?.trip_context as Record<string, any> | undefined;
