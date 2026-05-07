@@ -2,7 +2,7 @@
 
 import {
   Home, Calendar, CalendarDays, Plane, Building2, Compass,
-  Luggage, PieChart, Car, Settings, History,
+  Luggage, PieChart, Car, Train, Settings, History,
   MoreHorizontal, X, ChevronLeft, ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
@@ -61,6 +61,7 @@ export const ALL_TABS: TabDef[] = [
   { segment: 'hotels',     label: 'Hotels',     subtitle: 'Accommodation & stays',          icon: Building2, color: DEFAULT_COLOR },
   { segment: 'flights',    label: 'Flights',    subtitle: 'Flight bookings & details',      icon: Plane,     color: DEFAULT_COLOR },
   { segment: 'cars',       label: 'Cars',       subtitle: 'Vehicle rentals & transport',    icon: Car,       color: DEFAULT_COLOR },
+  { segment: 'transit',    label: 'Transit',    subtitle: 'Buses, trains & ground transport', icon: Train,    color: DEFAULT_COLOR },
   { segment: 'activities', label: 'Explore',    subtitle: 'Restaurants, activities & more', icon: Compass,   color: DEFAULT_COLOR },
   { segment: 'packing',    label: 'Packing',    subtitle: 'What to bring',                  icon: Luggage,   color: DEFAULT_COLOR },
   { segment: 'budget',     label: 'Budget',     subtitle: 'Trip expenses & spending',       icon: PieChart,  color: DEFAULT_COLOR },
@@ -74,7 +75,7 @@ export interface TabGroup {
 
 export const TAB_GROUPS: TabGroup[] = [
   { id: 'plan',    segments: ['', 'itinerary', 'calendar'] },
-  { id: 'book',    segments: ['hotels', 'flights', 'cars'] },
+  { id: 'book',    segments: ['hotels', 'flights', 'cars', 'transit'] },
   { id: 'explore', segments: ['activities', 'packing', 'budget'] },
 ];
 
