@@ -1,9 +1,14 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { detectRoutePairs, type RoutePair } from './detectRoutePairs';
+import { concurrencyLimit } from './concurrencyLimit';
+import { TransitRoutePairCard } from './TransitRoutePairCard';
+import { TransitDaySection } from './TransitDaySection';
+import { TransitBetweenDaysSection } from './TransitBetweenDaysSection';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import { fetchTransit, addTransit, updateTransit, deleteTransit } from '@travyl/shared';
-import type { TransitData, TransitSegment, TransitDirectionResult } from '@travyl/shared';
+import type { TransitData, TransitSegment, TransitDirectionResult, ItineraryDayViewModel, HotelViewModel } from '@travyl/shared';
 import { TransitCard } from './TransitCard';
 import { TransitForm } from './TransitForm';
 import { buildTransitCardViewModel } from './types';
@@ -14,9 +19,12 @@ import { getSupabaseBrowser } from '@/lib/supabase-browser';
 interface TransitsModuleProps {
   tripId: string;
   defaultCurrency?: string;
+  days: ItineraryDayViewModel[];
+  hotels: HotelViewModel[];
+  tripStartDate: string;
 }
 
-export function TransitsModule({ tripId, defaultCurrency = 'USD' }: TransitsModuleProps) {
+export function TransitsModule({ tripId, defaultCurrency = 'USD', days, hotels, tripStartDate }: TransitsModuleProps) {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
 
@@ -44,6 +52,61 @@ export function TransitsModule({ tripId, defaultCurrency = 'USD' }: TransitsModu
     window.addEventListener('transit:add', handleAdd);
     return () => window.removeEventListener('transit:add', handleAdd);
   }, []);
+
+  // ── Route pair detection (auto-suggest) ──────────────────────
+  const routePairs: RoutePair[] = useMemo(
+    () => detectRoutePairs(tripStartDate, days, hotels),
+    [tripStartDate, days, hotels],
+  );
+
+  const [dismissedPairIds, setDismissedPairIds] = useState<Set<string>>(new Set());
+  const [suggestionResults, setSuggestionResults] = useState<Record<string, TransitDirectionResult[]>>({});
+  const [suggestionLoading, setSuggestionLoading] = useState<Record<string, boolean>>({});
+  const [suggestionErrors, setSuggestionErrors] = useState<Record<string, string | null>>({});
+  const routePairsVersionRef = useRef(0);
+  const [fetchVersion, setFetchVersion] = useState(0);
+
+  useEffect(() => {
+    const currentVersion = ++routePairsVersionRef.current;
+    const limit = concurrencyLimit(4);
+
+    const pairIds = routePairs.map((p) => p.id);
+    setSuggestionResults({});
+    setSuggestionLoading(Object.fromEntries(pairIds.map((id) => [id, true])));
+    setSuggestionErrors({});
+
+    const fetches = routePairs.map((pair) =>
+      limit(async () => {
+        if (dismissedPairIds.has(pair.id)) return;
+
+        try {
+          const token = await getAuthToken();
+          const response = await fetch(
+            `/api/transit/directions?origin_lat=${pair.origin.lat}&origin_lng=${pair.origin.lng}` +
+            `&dest_lat=${pair.destination.lat}&dest_lng=${pair.destination.lng}` +
+            `&departure_time=${encodeURIComponent(pair.departureTime)}`,
+            { headers: { authorization: `Bearer ${token}` } }
+          );
+          if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error || 'Search failed');
+          }
+          const results: TransitDirectionResult[] = await response.json();
+          if (currentVersion !== routePairsVersionRef.current) return;
+          setSuggestionResults((prev) => ({ ...prev, [pair.id]: results }));
+        } catch (err: any) {
+          if (currentVersion !== routePairsVersionRef.current) return;
+          setSuggestionErrors((prev) => ({ ...prev, [pair.id]: err.message }));
+        } finally {
+          if (currentVersion === routePairsVersionRef.current) {
+            setSuggestionLoading((prev) => ({ ...prev, [pair.id]: false }));
+          }
+        }
+      })
+    );
+
+    Promise.all(fetches);
+  }, [routePairs, dismissedPairIds, fetchVersion]);
 
   const [searching, setSearching] = React.useState(false);
   const [searchResults, setSearchResults] = React.useState<TransitDirectionResult[]>([]);
@@ -124,6 +187,24 @@ export function TransitsModule({ tripId, defaultCurrency = 'USD' }: TransitsModu
     onSuccess: () => { setEditingId(null); invalidate(); },
   });
 
+  async function handleAddFromSuggestion(pairId: string, result: TransitDirectionResult) {
+    setDismissedPairIds((prev) => new Set(prev).add(pairId));
+    await addMutation.mutateAsync({
+      vehicleType: result.steps[0]?.mode ?? 'train',
+      provider: result.steps[0]?.carrier ?? '',
+      routeName: result.steps.map((s) => s.line).filter(Boolean).join(' → ') || 'Transit route',
+      originLabel: result.origin.label,
+      destinationLabel: result.destination.label,
+      departureAt: result.departure_at,
+      arrivalAt: result.arrival_at,
+      price: result.fare?.amount ?? null,
+      currency: result.fare?.currency ?? 'USD',
+      bookingRef: null,
+      confirmationCode: null,
+      notes: null,
+    });
+  }
+
   const bookings = React.useMemo(
     () => rawBookings
       .map((b: TransitSegment) => ({ ...buildTransitCardViewModel(b.data), id: b.id }))
@@ -154,7 +235,7 @@ export function TransitsModule({ tripId, defaultCurrency = 'USD' }: TransitsModu
     );
   }
 
-  if (bookings.length === 0 && !adding) {
+  if (bookings.length === 0 && routePairs.length === 0 && !adding) {
     return (
       <div className="text-center py-12">
         <p className="text-[15px] font-medium text-gray-900 dark:text-white">No transit bookings yet</p>
@@ -166,6 +247,72 @@ export function TransitsModule({ tripId, defaultCurrency = 'USD' }: TransitsModu
         >
           Add Transit
         </button>
+      </div>
+    );
+  }
+
+  function renderSuggestions() {
+    const activePairs = routePairs.filter((p) => !dismissedPairIds.has(p.id));
+    if (activePairs.length === 0) return null;
+
+    const byDay: Map<number, { withinDay: RoutePair[]; crossDay: RoutePair[] }> = new Map();
+    for (const pair of activePairs) {
+      if (!byDay.has(pair.dayIndex)) {
+        byDay.set(pair.dayIndex, { withinDay: [], crossDay: [] });
+      }
+      const day = byDay.get(pair.dayIndex)!;
+      if (pair.type === 'cross-day') {
+        day.crossDay.push(pair);
+      } else {
+        day.withinDay.push(pair);
+      }
+    }
+
+    return (
+      <div className="space-y-4 mt-6">
+        <h2 className="text-[15px] font-semibold text-gray-900 dark:text-white">Suggested Routes</h2>
+        {days.map((day, idx) => {
+          const dayPairs = byDay.get(idx);
+          if (!dayPairs || (dayPairs.withinDay.length === 0 && dayPairs.crossDay.length === 0)) return null;
+          return (
+            <TransitDaySection key={idx} dayLabel={day.dayLabel} dateLabel={day.dateLabel}>
+              {dayPairs.withinDay.map((pair) => (
+                <TransitRoutePairCard
+                  key={pair.id}
+                  routePair={pair}
+                  results={suggestionResults[pair.id] ?? []}
+                  isLoading={suggestionLoading[pair.id] ?? false}
+                  error={suggestionErrors[pair.id] ?? null}
+                  onAdd={(result) => handleAddFromSuggestion(pair.id, result)}
+                  onRetry={() => {
+                    setSuggestionErrors((prev) => ({ ...prev, [pair.id]: null }));
+                    setSuggestionLoading((prev) => ({ ...prev, [pair.id]: true }));
+                    setFetchVersion((v) => v + 1);
+                  }}
+                />
+              ))}
+              {dayPairs.crossDay.length > 0 && (
+                <TransitBetweenDaysSection>
+                  {dayPairs.crossDay.map((pair) => (
+                    <TransitRoutePairCard
+                      key={pair.id}
+                      routePair={pair}
+                      results={suggestionResults[pair.id] ?? []}
+                      isLoading={suggestionLoading[pair.id] ?? false}
+                      error={suggestionErrors[pair.id] ?? null}
+                      onAdd={(result) => handleAddFromSuggestion(pair.id, result)}
+                      onRetry={() => {
+                        setSuggestionErrors((prev) => ({ ...prev, [pair.id]: null }));
+                        setSuggestionLoading((prev) => ({ ...prev, [pair.id]: true }));
+                        routePairsVersionRef.current++;
+                      }}
+                    />
+                  ))}
+                </TransitBetweenDaysSection>
+              )}
+            </TransitDaySection>
+          );
+        })}
       </div>
     );
   }
@@ -224,6 +371,7 @@ export function TransitsModule({ tripId, defaultCurrency = 'USD' }: TransitsModu
           )}
         </div>
       )}
+      {renderSuggestions()}
     </div>
   );
 }

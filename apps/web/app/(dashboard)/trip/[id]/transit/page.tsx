@@ -7,8 +7,9 @@ import { TransitsModule } from '@/components/trip/transit/TransitsModule'
 
 export default function TransitPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { isLoading, trip } = useItineraryScreen(id);
+  const { isLoading, trip, days, hotels } = useItineraryScreen(id);
   const tripCurrency = ((trip as any)?.currency ?? 'USD').match(/^[A-Z]{3}/)?.[0] ?? 'USD';
+  const tripStartDate = (trip as any)?.start_date ?? '';
 
   if (isLoading) {
     return (
@@ -34,7 +35,7 @@ export default function TransitPage({ params }: { params: Promise<{ id: string }
           <Plus size={13} /> Transit
         </button>
       </div>
-      <TransitsModule tripId={id} defaultCurrency={tripCurrency} />
+      <TransitsModule tripId={id} defaultCurrency={tripCurrency} days={days} hotels={hotels} tripStartDate={tripStartDate} />
     </div>
   );
 }
