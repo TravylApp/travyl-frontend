@@ -262,13 +262,17 @@ export function CarSearchPanel({
   const apiError: string | undefined = (data as any)?.error;
   const hasResults = allRates.length > 0;
 
-  // Extract unique suppliers and categories
+  // Extract unique suppliers with their logos
   const suppliers = useMemo(() => {
-    const set = new Set<string>();
+    const map = new Map<string, string | null>();
     allRates.forEach((r: any) => {
-      if (r.supplier) set.add(r.supplier);
+      if (r.supplier && !map.has(r.supplier)) {
+        map.set(r.supplier, r.supplier_logo ?? null);
+      }
     });
-    return Array.from(set).sort();
+    return Array.from(map.entries())
+      .map(([name, logo]) => ({ name, logo }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [allRates]);
 
   const categories = useMemo(() => {
@@ -621,7 +625,7 @@ export function CarSearchPanel({
               onClick={() => setShowFilters(!showFilters)}
               className={`text-[12px] h-8 px-3 rounded-lg border transition ${
                 hasActiveFilters
-                  ? "bg-gray-900 text-white border-gray-900 dark:bg-blue-600 dark:border-blue-600"
+                  ? "bg-[#1e3a5f] text-white border-[#1e3a5f] dark:bg-blue-600 dark:border-blue-600"
                   : "border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/[0.15]"
               }`}
             >
@@ -667,14 +671,14 @@ export function CarSearchPanel({
                         {open && (
                           <div className="flex flex-col gap-0.5 mt-2">
                             {suppliers.map((s) => {
-                              const active = supplierFilter.includes(s);
+                              const active = supplierFilter.includes(s.name);
                               return (
                                 <button
-                                  key={s}
-                                  onClick={() => toggleSupplier(s)}
+                                  key={s.name}
+                                  onClick={() => toggleSupplier(s.name)}
                                   className={`text-[12px] px-3 py-1.5 rounded-lg text-left flex items-center gap-2.5 transition ${
                                     active
-                                      ? "bg-gray-900 text-white dark:bg-blue-600 dark:border-blue-600"
+                                      ? "bg-[#1e3a5f] text-white dark:bg-blue-600 dark:border-blue-600"
                                       : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06]"
                                   }`}
                                 >
@@ -687,7 +691,16 @@ export function CarSearchPanel({
                                       </svg>
                                     )}
                                   </span>
-                                  {s}
+                                  {s.logo ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={s.logo}
+                                      alt={s.name}
+                                      className="h-4 w-auto max-w-[50px] object-contain"
+                                    />
+                                  ) : (
+                                    <span>{s.name}</span>
+                                  )}
                                 </button>
                               );
                             })}
@@ -719,7 +732,7 @@ export function CarSearchPanel({
                                   onClick={() => toggleBrand(b)}
                                   className={`text-[12px] px-3 py-1.5 rounded-lg text-left flex items-center gap-2.5 transition ${
                                     active
-                                      ? "bg-gray-900 text-white dark:bg-blue-600 dark:border-blue-600"
+                                      ? "bg-[#1e3a5f] text-white dark:bg-blue-600 dark:border-blue-600"
                                       : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06]"
                                   }`}
                                 >
@@ -766,7 +779,7 @@ export function CarSearchPanel({
                                   onClick={() => toggleCategory(c)}
                                   className={`text-[12px] px-3 py-1.5 rounded-lg text-left flex items-center gap-2.5 transition ${
                                     active
-                                      ? "bg-gray-900 text-white dark:bg-blue-600 dark:border-blue-600"
+                                      ? "bg-[#1e3a5f] text-white dark:bg-blue-600 dark:border-blue-600"
                                       : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06]"
                                   }`}
                                 >
@@ -866,7 +879,7 @@ export function CarSearchPanel({
                                   onClick={() => setMinMpg(minMpg === val ? '' : val)}
                                   className={`text-[11px] px-2.5 py-1 rounded-full border transition ${
                                     minMpg === val
-                                      ? 'bg-gray-900 text-white border-gray-900 dark:bg-blue-600 dark:border-blue-600'
+                                      ? 'bg-[#1e3a5f] text-white border-[#1e3a5f] dark:bg-blue-600 dark:border-blue-600'
                                       : 'bg-white dark:bg-white/[0.04] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/[0.10] hover:border-gray-300 dark:hover:border-white/[0.15]'
                                   }`}
                                 >
@@ -1047,7 +1060,7 @@ export function CarSearchPanel({
                     onClick={() => setPage(pageNum)}
                     className={`text-[12px] h-8 min-w-[32px] px-2 rounded-lg border transition ${
                       safePage === pageNum
-                        ? "bg-gray-900 text-white border-gray-900 font-medium dark:bg-blue-600 dark:border-blue-600"
+                        ? "bg-[#1e3a5f] text-white border-[#1e3a5f] font-medium dark:bg-blue-600 dark:border-blue-600"
                         : "border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/[0.15]"
                     }`}
                   >
