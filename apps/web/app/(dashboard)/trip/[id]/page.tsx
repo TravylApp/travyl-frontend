@@ -729,6 +729,11 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     staleTime: 30 * 60 * 1000,
   });
 
+  // Stored phrases may be `{}` for older English-destination trips — treat
+  // that as missing so the live query fills it in.
+  const storedPhrases = trip?.trip_context?.phrases as Record<string, string> | undefined;
+  const hasStoredPhrases = !!storedPhrases && Object.keys(storedPhrases).length > 0;
+
   const { data: livePhrases } = useQuery({
     queryKey: ['trip-phrases', tripCountryShort],
     queryFn: async () => {
@@ -737,7 +742,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
       const data = await res.json();
       return data?.phrases ?? null;
     },
-    enabled: !!tripCountryShort && !enriching && !trip?.trip_context?.phrases,
+    enabled: !!tripCountryShort && !enriching && !hasStoredPhrases,
     staleTime: 60 * 60 * 1000,
   });
 
@@ -795,7 +800,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   const ctxRestaurants = (trip?.trip_context?.restaurants as any[] | undefined)?.filter((r: any) => r.image).map((r: any) => ({ ...r, image: hiRes(r.image) })) ?? [];
   const restaurantData = ctxRestaurants.length > 0 ? ctxRestaurants : (liveRestaurants ?? []);
   const hasRestaurants = restaurantData.length > 0;
-  const phrasesData = trip?.trip_context?.phrases ?? livePhrases;
+  const phrasesData = hasStoredPhrases ? storedPhrases : livePhrases;
   const costData = trip?.trip_context?.cost_of_living ?? liveCostOfLiving;
   const hasNewsArticles = news.some(n => n.category === 'news' || n.category === 'advisory');
 
