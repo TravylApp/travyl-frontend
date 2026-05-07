@@ -8,7 +8,7 @@ import { MapPin, Map, X } from 'lucide-react';
 import type { Trip } from '@travyl/shared';
 import { usePathname, useRouter } from 'next/navigation';
 import TripRail, { useRailCollapsed } from '@/components/trip-rail';
-import { useItineraryScreen, useAuthStore, canViewTrip, useDestinationImage, upscaleGoogleImage } from '@travyl/shared';
+import { useItineraryScreen, useAuthStore, canViewTrip, useCollaborators, useDestinationImage, upscaleGoogleImage } from '@travyl/shared';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
 import { CompactTripHeader } from '@/components/trip/CompactTripHeader';
@@ -346,13 +346,23 @@ function TripLayoutContent({
   const city = trip?.destination?.split(',')[0]?.trim();
   const { data: destImageData, isLoading: destImageLoading } = useDestinationImage(city || '');
 
-  // Redirect to login if the trip has loaded and the user can't view it
+  // Whether the viewer is an accepted collaborator — needed so private-trip
+  // collaborators don't fail canViewTrip's owner-only path.
+  const { collaborators: tripCollaborators } = useCollaborators(tripId);
+  const isAcceptedCollaborator = !!user?.id && tripCollaborators.some(
+    (c) => c.user_id === user.id && c.invite_status === 'accepted',
+  );
+
+  // If the viewer has lost access (e.g. owner flipped the link to private and
+  // they were a link-joined collaborator), bounce them to their trips list
+  // rather than /login. The session is still valid; sending them to the login
+  // page makes it look like they were signed out.
   useEffect(() => {
     if (isLoading || !trip) return;
-    if (!canViewTrip(trip, user?.id ?? null)) {
-      router.replace(`/login?next=/trip/${tripId}`);
+    if (!canViewTrip(trip, user?.id ?? null, isAcceptedCollaborator)) {
+      router.replace(user?.id ? '/trips' : `/login?next=/trip/${tripId}`);
     }
-  }, [trip, isLoading, user?.id, tripId, router]);
+  }, [trip, isLoading, user?.id, tripId, router, isAcceptedCollaborator]);
   const { mapMarkers, selectedMarkerId, requestMapOpen, setRequestMapOpen } = useItineraryContext();
 
   // Sync map open with context requests
