@@ -42,32 +42,46 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency, fo
     staleTime: 60_000,
   })
 
-  // Resolve profile.home_airport (IATA) into a full airport object
+  // Derive the default From airport.
+  //  1. profile.home_airport (explicit IATA override, e.g., "BFL") wins
+  //  2. otherwise derive from profile.city — search airports near "Austin"
+  //     and use the first airport result. This is the "where you live →
+  //     nearest airport" path the user expected; they can still change in
+  //     the search panel itself.
   useEffect(() => {
     let cancelled = false
     const iata = profile?.home_airport
-    if (!iata) {
+    const city = profile?.city
+    if (!iata && !city) {
       setDefaultFrom(null)
       return
     }
     void (async () => {
       try {
-        const matches = await searchAirports(iata)
+        const query = iata || city || ''
+        if (!query) return
+        const matches = await searchAirports(query)
         if (cancelled) return
-        const exact = matches.find((m) => m.iata === iata)
-        if (exact) {
-          setDefaultFrom({ iata: exact.iata, name: exact.name ?? '', city: exact.city ?? '' })
-        } else {
+        // Prefer an exact IATA hit when override was set; otherwise take the
+        // first proper airport in the city's results.
+        const pick = iata
+          ? matches.find((m) => m.iata === iata) ?? matches[0]
+          : matches.find((m) => m.type === 'airport') ?? matches[0]
+        if (pick?.iata) {
+          setDefaultFrom({ iata: pick.iata, name: pick.name ?? '', city: pick.city ?? '' })
+        } else if (iata) {
           setDefaultFrom({ iata, name: '', city: '' })
+        } else {
+          setDefaultFrom(null)
         }
       } catch {
-        if (!cancelled) setDefaultFrom({ iata, name: '', city: '' })
+        if (!cancelled && iata) setDefaultFrom({ iata, name: '', city: '' })
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [profile?.home_airport])
+  }, [profile?.home_airport, profile?.city])
 
   const sorted = useMemo(
     () =>
