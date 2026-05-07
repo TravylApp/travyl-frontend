@@ -8,40 +8,6 @@ import { formatDateRange, updateTripDetails, useWeather, ensureShareLinkToken, u
 import type { Trip } from '@travyl/shared';
 import { useRailCollapsed } from '@/components/trip-rail';
 
-// US state and Canadian province name → 2-letter code. We abbreviate inline in
-// the title (e.g. "San Francisco, CA") because that's the convention people
-// expect for those countries; everywhere else, the full region name reads
-// better than an opaque code.
-const US_STATE_ABBR: Record<string, string> = {
-  alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR', california: 'CA',
-  colorado: 'CO', connecticut: 'CT', delaware: 'DE', florida: 'FL', georgia: 'GA',
-  hawaii: 'HI', idaho: 'ID', illinois: 'IL', indiana: 'IN', iowa: 'IA',
-  kansas: 'KS', kentucky: 'KY', louisiana: 'LA', maine: 'ME', maryland: 'MD',
-  massachusetts: 'MA', michigan: 'MI', minnesota: 'MN', mississippi: 'MS', missouri: 'MO',
-  montana: 'MT', nebraska: 'NE', nevada: 'NV', 'new hampshire': 'NH', 'new jersey': 'NJ',
-  'new mexico': 'NM', 'new york': 'NY', 'north carolina': 'NC', 'north dakota': 'ND',
-  ohio: 'OH', oklahoma: 'OK', oregon: 'OR', pennsylvania: 'PA', 'rhode island': 'RI',
-  'south carolina': 'SC', 'south dakota': 'SD', tennessee: 'TN', texas: 'TX', utah: 'UT',
-  vermont: 'VT', virginia: 'VA', washington: 'WA', 'west virginia': 'WV', wisconsin: 'WI',
-  wyoming: 'WY', 'district of columbia': 'DC', 'washington dc': 'DC',
-};
-const CA_PROVINCE_ABBR: Record<string, string> = {
-  alberta: 'AB', 'british columbia': 'BC', manitoba: 'MB', 'new brunswick': 'NB',
-  'newfoundland and labrador': 'NL', 'nova scotia': 'NS', ontario: 'ON',
-  'prince edward island': 'PE', quebec: 'QC', 'québec': 'QC', saskatchewan: 'SK',
-  'northwest territories': 'NT', nunavut: 'NU', yukon: 'YT',
-};
-
-function abbreviateRegion(region: string, countryCode?: string): string {
-  if (!region) return '';
-  const trimmed = region.trim();
-  // Already a short code (2-3 chars, all caps) — leave as-is
-  if (trimmed.length <= 3 && trimmed === trimmed.toUpperCase()) return trimmed;
-  const key = trimmed.toLowerCase();
-  if (countryCode === 'US' && US_STATE_ABBR[key]) return US_STATE_ABBR[key];
-  if (countryCode === 'CA' && CA_PROVINCE_ABBR[key]) return CA_PROVINCE_ABBR[key];
-  return trimmed;
-}
 
 export function CompactTripHeader({
   tripId,
@@ -149,8 +115,7 @@ export function CompactTripHeader({
     gcTime: Infinity,
   });
 
-  const effectiveRegion = rawRegionName || lookupRegion || '';
-  const regionDisplay = abbreviateRegion(effectiveRegion, countryCca2);
+  const regionDisplay = (rawRegionName || lookupRegion || '').trim();
 
   // Quick info — prefer live weather, fall back to trip_context
   const ctx = trip?.trip_context as Record<string, any> | undefined;
