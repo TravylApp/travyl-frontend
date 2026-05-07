@@ -18,7 +18,7 @@ import {
   Globe,
 } from 'lucide-react'
 import type { SerpFlight } from './flightSearch'
-import { airlineHomepage, kayakSearchUrl, googleFlightsSearchUrl } from '@/lib/airlineLinks'
+import { kayakSearchUrl } from '@/lib/airlineLinks'
 
 interface AirportInfo {
   iata: string
@@ -236,67 +236,26 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
             </div>
           )}
 
-          {/* Outbound booking links: Kayak deep-link → carrier homepage → Google Flights */}
+          {/* Outbound link to the actual flight on Kayak */}
           {(() => {
-            const carrier = first?.airline ?? ''
-            const route =
-              first?.departure.id && last?.arrival.id && first?.departure.time
-                ? {
-                    origin: first.departure.id,
-                    destination: last.arrival.id,
-                    date: first.departure.time,
-                    returnDate: null,
-                  }
-                : null
-            const kayakUrl = route ? kayakSearchUrl(route) : null
-            const googleUrl = route ? googleFlightsSearchUrl(route) : null
-            const carrierUrl = airlineHomepage(carrier)
-            if (!kayakUrl && !googleUrl && !carrierUrl) return null
+            if (!first?.departure.id || !last?.arrival.id || !first?.departure.time) return null
+            const url = kayakSearchUrl({
+              origin: first.departure.id,
+              destination: last.arrival.id,
+              date: first.departure.time,
+              returnDate: null,
+            })
             return (
-              <div className="flex flex-wrap items-center gap-2">
-                {kayakUrl && (
-                  <a
-                    href={kayakUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-[12px] font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
-                  >
-                    <Globe size={12} className="text-[#1e3a5f]" />
-                    View this flight on Kayak
-                    <ExternalLink size={10} className="text-gray-400" />
-                  </a>
-                )}
-                {carrierUrl && carrier && (
-                  <a
-                    href={carrierUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-lg text-[12px] font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition"
-                  >
-                    {first?.airlineLogo ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={first.airlineLogo}
-                        alt=""
-                        className="w-4 h-4 object-contain"
-                      />
-                    ) : null}
-                    {carrier} site
-                    <ExternalLink size={10} />
-                  </a>
-                )}
-                {googleUrl && (
-                  <a
-                    href={googleUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-lg text-[12px] font-medium text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition"
-                  >
-                    Google Flights
-                    <ExternalLink size={10} />
-                  </a>
-                )}
-              </div>
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-[12px] font-medium text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition w-fit"
+              >
+                <Globe size={12} className="text-[#1e3a5f]" />
+                View this flight on Kayak
+                <ExternalLink size={10} className="text-gray-400" />
+              </a>
             )
           })()}
 
