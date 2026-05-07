@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Check, Plane, ChevronDown, ChevronUp, Leaf, Clock, ArmchairIcon } from 'lucide-react'
+import { Plus, Check, Plane, Leaf, Clock, ArmchairIcon } from 'lucide-react'
 import type { SerpFlight } from './flightSearch'
+import { FlightDetailModal } from './FlightDetailModal'
 
 export interface FlightResultCardProps {
   flight: SerpFlight
@@ -31,7 +32,7 @@ function formatDuration(min: number): string {
 }
 
 export function FlightResultCard({ flight, alreadySaved, busy, onAdd, formatPrice }: FlightResultCardProps) {
-  const [expanded, setExpanded] = useState(false)
+  const [open, setOpen] = useState(false)
   const first = flight.legs[0]
   const last = flight.legs[flight.legs.length - 1]
   const carriers = Array.from(new Set(flight.legs.map((l) => l.airline).filter(Boolean)))
@@ -57,7 +58,18 @@ export function FlightResultCard({ flight, alreadySaved, busy, onAdd, formatPric
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200/80 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:shadow-md transition-shadow">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => setOpen(true)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          setOpen(true)
+        }
+      }}
+      className="rounded-2xl border border-gray-200/80 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:shadow-md hover:border-gray-300 dark:hover:border-white/[0.12] transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--trip-base)]"
+    >
       <div className="p-5">
         {/* Header: airline + price */}
         <div className="flex items-start justify-between gap-4">
@@ -171,7 +183,7 @@ export function FlightResultCard({ flight, alreadySaved, busy, onAdd, formatPric
         </div>
 
         {/* Actions */}
-        <div className="mt-4 flex items-center gap-2">
+        <div className="mt-4 flex items-center gap-3">
           <button
             onClick={handleAdd}
             disabled={busy || alreadySaved}
@@ -180,57 +192,22 @@ export function FlightResultCard({ flight, alreadySaved, busy, onAdd, formatPric
           >
             {alreadySaved ? <><Check size={13} /> Added to trip</> : <><Plus size={13} /> Add to trip</>}
           </button>
-          {flight.legs.length > 1 && (
-            <button
-              onClick={() => setExpanded((v) => !v)}
-              className="inline-flex items-center gap-1 text-[12px] text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white px-2 h-9"
-            >
-              {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-              {expanded ? 'Hide' : 'Show'} {flight.legs.length} legs
-            </button>
-          )}
+          <span className="text-[12px] text-gray-400 dark:text-gray-500">
+            Click for full itinerary{flight.legs.length > 1 ? ` · ${flight.legs.length} legs` : ''}
+          </span>
         </div>
-
-        {/* Multi-leg detail */}
-        {expanded && (
-          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-white/[0.06] space-y-3">
-            {flight.legs.map((leg, i) => (
-              <div key={i}>
-                <div className="flex items-start gap-3 text-[12px]">
-                  {leg.airlineLogo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={leg.airlineLogo} alt={leg.airline} className="w-6 h-6 object-contain rounded shrink-0 mt-0.5 border border-gray-100 dark:border-white/[0.06]" />
-                  ) : (
-                    <Plane size={14} className="text-gray-400 mt-1 shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-gray-900 dark:text-white font-medium">
-                      {leg.airline} {leg.flightNumber}
-                    </div>
-                    <div className="text-gray-600 dark:text-gray-400 mt-0.5">
-                      <span className="font-mono">{leg.departure.id}</span> {formatTime(leg.departure.time)}
-                      <span className="text-gray-400 mx-1">→</span>
-                      <span className="font-mono">{leg.arrival.id}</span> {formatTime(leg.arrival.time)}
-                      <span className="text-gray-400 mx-1">·</span>
-                      {formatDuration(leg.duration)}
-                    </div>
-                    {(leg.airplane || leg.travelClass || leg.legroom) && (
-                      <div className="text-gray-500 dark:text-gray-500 text-[11px] mt-0.5">
-                        {[leg.airplane, leg.travelClass, leg.legroom].filter(Boolean).join(' · ')}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {i < flight.legs.length - 1 && flight.layovers[i] && (
-                  <div className="ml-9 mt-2 mb-2 text-[11px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 rounded-md px-2 py-1 inline-block">
-                    Layover at {flight.layovers[i].airport} ({flight.layovers[i].id}) · {formatDuration(flight.layovers[i].duration)}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+
+      {open && (
+        <FlightDetailModal
+          flight={flight}
+          alreadySaved={alreadySaved}
+          busy={busy}
+          onClose={() => setOpen(false)}
+          onAdd={onAdd}
+          formatPrice={formatPrice}
+        />
+      )}
     </div>
   )
 }

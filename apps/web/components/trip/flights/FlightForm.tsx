@@ -2,17 +2,9 @@
 
 import { useState } from 'react'
 import type { FlightData } from '@travyl/shared'
+import { useProfile } from '@travyl/shared'
 import { FieldLabel, Input, Select, PrimaryButton, SecondaryButton, DateTimeInput } from '@/components/trip/BookingFormPrimitives'
-
-const CURRENCY_OPTIONS = [
-  { value: 'USD', label: 'USD ($)' },
-  { value: 'EUR', label: 'EUR (€)' },
-  { value: 'GBP', label: 'GBP (£)' },
-  { value: 'JPY', label: 'JPY (¥)' },
-  { value: 'CAD', label: 'CAD ($)' },
-  { value: 'AUD', label: 'AUD ($)' },
-  { value: 'MXN', label: 'MXN ($)' },
-]
+import { currencyForCountry } from '@/lib/countryCurrency'
 
 const CABIN_OPTIONS = [
   { value: '', label: '—' },
@@ -51,6 +43,11 @@ export interface FlightFormProps {
 export function FlightForm({ initial, defaultCurrency = 'USD', onSubmit, onCancel, onDelete }: FlightFormProps) {
   const data = initial ?? ({} as Partial<FlightData>)
   const isEditing = !!initial
+  const { data: profile } = useProfile()
+  // Derive the booking currency from the user's home country (e.g.,
+  // United States → USD). The user said: "currency should be derived
+  // from profile settings location — United States = USD obviously."
+  const profileCurrency = currencyForCountry(profile?.country) ?? defaultCurrency
 
   const [airline, setAirline] = useState(data.airline ?? '')
   const [flightNumber, setFlightNumber] = useState(data.flight_number ?? '')
@@ -60,7 +57,6 @@ export function FlightForm({ initial, defaultCurrency = 'USD', onSubmit, onCance
   const [arrivalAt, setArrivalAt] = useState(toLocalDateTime(data.arrival_at))
   const [cabinClass, setCabinClass] = useState(data.cabin_class ?? '')
   const [price, setPrice] = useState(data.price?.toString() ?? '')
-  const [currency, setCurrency] = useState(data.currency ?? defaultCurrency)
   const [bookingRef, setBookingRef] = useState(data.booking_ref ?? '')
   const [busy, setBusy] = useState(false)
   const [errors, setErrors] = useState<{ airline?: boolean; origin?: boolean; dest?: boolean; departureAt?: boolean }>({})
@@ -82,6 +78,7 @@ export function FlightForm({ initial, defaultCurrency = 'USD', onSubmit, onCance
     try {
       const out: FlightData = {
         airline: isEditing ? (data.airline ?? '') : airline.trim(),
+        airline_logo: data.airline_logo ?? null,
         flight_number: isEditing ? (data.flight_number ?? null) : (flightNumber.trim() || null),
         origin_iata: isEditing ? (data.origin_iata ?? '') : originIata.trim().toUpperCase(),
         origin_name: data.origin_name ?? null,
@@ -89,8 +86,12 @@ export function FlightForm({ initial, defaultCurrency = 'USD', onSubmit, onCance
         dest_name: data.dest_name ?? null,
         departure_at: isEditing ? (data.departure_at ?? null) : (departureAt ? new Date(departureAt).toISOString() : null),
         arrival_at: isEditing ? (data.arrival_at ?? null) : (arrivalAt ? new Date(arrivalAt).toISOString() : null),
-        price: price ? Number(price) : null,
-        currency: price ? currency : null,
+        // Edit mode: keep the existing price untouched (user can't change it
+        // in this form; would require deleting and re-adding).
+        // Manual-add mode: take the entered price and stamp the derived
+        // currency from the profile.
+        price: isEditing ? (data.price ?? null) : (price ? Number(price) : null),
+        currency: isEditing ? (data.currency ?? null) : (price ? profileCurrency : null),
         cabin_class: isEditing ? (data.cabin_class ?? null) : (cabinClass || null),
         booking_ref: bookingRef.trim() || null,
         offer_id: data.offer_id ?? null,
@@ -162,16 +163,12 @@ export function FlightForm({ initial, defaultCurrency = 'USD', onSubmit, onCance
               <FieldLabel>Cabin</FieldLabel>
               <Select value={cabinClass} onChange={setCabinClass} options={CABIN_OPTIONS} />
             </div>
+            <div className="md:col-span-4">
+              <FieldLabel>Price ({profileCurrency})</FieldLabel>
+              <Input type="number" value={price} onChange={setPrice} placeholder="0" min={0} />
+            </div>
           </>
         )}
-        <div className={`${isEditing ? 'md:col-span-2' : 'md:col-span-2'}`}>
-          <FieldLabel>Price</FieldLabel>
-          <Input type="number" value={price} onChange={setPrice} placeholder="0" min={0} />
-        </div>
-        <div className="md:col-span-2">
-          <FieldLabel>Currency</FieldLabel>
-          <Select value={currency} onChange={setCurrency} options={CURRENCY_OPTIONS} />
-        </div>
         <div className="md:col-span-6">
           <FieldLabel>Booking ref</FieldLabel>
           <Input value={bookingRef} onChange={setBookingRef} placeholder="Confirmation number (optional)" />
