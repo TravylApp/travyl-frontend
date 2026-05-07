@@ -321,23 +321,20 @@ export default function Home() {
   const questions: FollowUpQuestion[] = planner.state.phase === 'clarifying' ? planner.state.questions : [];
   const currentQuestion = questions[currentQIdx];
 
-  // Auto-skip questions when user clicked Send (not Refine).
-  // Retries up to 2 times if the plan API keeps returning needs_clarification,
-  // then falls back to showing the questions so the user isn't stuck.
+  // Surface clarifying questions immediately when the planner asks for them.
+  // Previously this issued an empty-answers retry round to try to bypass
+  // questions when the backend extraction was confident; the FastAPI backend
+  // always returns questions for sparse prompts though, so the retry was a
+  // ~3–5s loading flash with no benefit. Skip the round-trip and show the
+  // question UI on the first clarifying response.
   useEffect(() => {
-    if (isClarifying && skipQuestionsRef.current) {
-      if (skipRetryCountRef.current < 1) {
-        skipRetryCountRef.current += 1;
-        setShowTakeoff(true);
-        planner.submitAnswers({});
-      } else {
-        skipQuestionsRef.current = false;
-        skipRetryCountRef.current = 0;
-        setShowTakeoff(false);
-        setShowQuestions(true);
-      }
+    if (isClarifying) {
+      skipQuestionsRef.current = false;
+      skipRetryCountRef.current = 0;
+      setShowTakeoff(false);
+      setShowQuestions(true);
     }
-  }, [isClarifying]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isClarifying]);
 
   // Cycling placeholders live in isolated memo components above
   // to avoid re-rendering the entire page every ~25ms
@@ -671,22 +668,9 @@ export default function Home() {
       setTakeoffCompleted(false);
     }
     if (planner.state.phase === 'clarifying' && showTakeoff) {
-      clarifyRoundRef.current += 1;
-      // Only auto-answer when we're still in skip mode AND have looped twice;
-      // otherwise the auto-skip effect (above) has already taken over and is
-      // about to surface the questions UI — clobbering it here forces an
-      // unwanted loop where the user sees only a loading takeoff.
-      const stillSkipping = skipQuestionsRef.current;
-      if (stillSkipping && clarifyRoundRef.current >= 2 && planner.state.questions?.length) {
-        const autoAnswers: Record<string, string> = {};
-        for (const q of planner.state.questions) {
-          autoAnswers[q.id] = q.options?.[0] ?? '';
-        }
-        planner.submitAnswers(autoAnswers);
-      } else {
-        // Drop the overlay so the user can see and answer the clarifying questions.
-        setShowTakeoff(false);
-      }
+      // Drop the overlay so the user can see and answer the clarifying questions.
+      // The clarifying-show effect above takes care of setShowQuestions(true).
+      setShowTakeoff(false);
     }
     if (planner.state.phase === 'error' && showTakeoff) {
       setLoadingError(planner.state.message);
