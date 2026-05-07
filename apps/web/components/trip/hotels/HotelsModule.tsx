@@ -8,7 +8,6 @@ import type { HotelViewModel, HotelData, Trip } from '@travyl/shared'
 import { supabase } from '@travyl/shared'
 import { HotelCard } from './HotelCard'
 import { HotelForm } from './HotelForm'
-import { HotelDetailModal } from './HotelDetailModal'
 import { HotelSearchPanel } from './HotelSearchPanel'
 import { mapSerpHotelToHotelData, type SerpHotel } from './hotelSearch'
 import { addHotel, updateHotel, deleteHotel } from './hotelMutations'
@@ -39,7 +38,6 @@ export function HotelsModule({
   const searchParams = useSearchParams()
 
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [viewingId, setViewingId] = useState<string | null>(null)
   const [addingManually, setAddingManually] = useState(false)
   const [searchInputs, setSearchInputs] = useState({ check_in: '', check_out: '', guests: 2 })
   const [busyOfferId, setBusyOfferId] = useState<string | null>(null)
@@ -172,7 +170,7 @@ export function HotelsModule({
                 <HotelCard
                   key={h.id}
                   hotel={h}
-                  onEdit={() => setViewingId(h.id)}
+                  onEdit={() => setEditingId(h.id)}
                   onDelete={() => handleDelete(h.id)}
                 />
               )
@@ -180,30 +178,6 @@ export function HotelsModule({
           </div>
         </section>
       )}
-
-      {/* Detail modal — opens on HotelCard click. "Edit details" inside the
-          modal swaps in the inline HotelForm. */}
-      {viewingId && (() => {
-        const vm = hotels.find((h) => h.id === viewingId)
-        const raw = rawHotels.find((r) => r.id === viewingId)
-        if (!vm || !raw) return null
-        return (
-          <HotelDetailModal
-            hotel={vm}
-            data={raw.data}
-            formatPrice={formatPrice}
-            onClose={() => setViewingId(null)}
-            onEdit={() => {
-              setEditingId(viewingId)
-              setViewingId(null)
-            }}
-            onDelete={async () => {
-              setViewingId(null)
-              await handleDelete(viewingId)
-            }}
-          />
-        )
-      })()}
 
       {/* Always-on search */}
       <section className="space-y-3">
