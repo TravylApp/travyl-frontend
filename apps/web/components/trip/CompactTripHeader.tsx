@@ -251,7 +251,7 @@ export function CompactTripHeader({
             >
               {cityName || trip?.title || 'Untitled Trip'}
               {regionDisplay && (
-                <span className="text-white/55 font-light">, {regionDisplay}</span>
+                <span className="text-white">, {regionDisplay}</span>
               )}
             </h1>
             {hasExpandContent && (
