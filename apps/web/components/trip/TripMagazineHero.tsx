@@ -255,7 +255,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
 
       {/* Hero text — unified for all tabs, just different height */}
       <div className="relative z-10 flex flex-col justify-end" style={{ height: compact ? '35vh' : '70vh' }}>
-        <div className={`w-full px-6 sm:px-10 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} pb-2 transition-[padding] duration-200 ease-out`}
+        <div className={`w-full px-6 sm:px-10 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[180px]'} pb-2 transition-[padding] duration-200 ease-out`}
           style={!compact ? { opacity: Math.max(0, 1 - scrollY / 800) } : undefined}>
           <p className="flex items-center gap-2 text-[11px] tracking-[0.4em] uppercase font-semibold mb-1" style={{ color: 'var(--magazine-accent, #c8a96a)' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -285,7 +285,7 @@ export function TripMagazineHero({ tripId, trip, overrideImage, compact, onTripU
       </div>
 
       {/* Trip meta + collapsible details */}
-      <div className={`relative z-10 px-6 sm:px-10 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} transition-all duration-300 ${essentialsOpen ? 'mb-6' : 'mb-3'}`}
+      <div className={`relative z-10 px-6 sm:px-10 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[180px]'} transition-all duration-300 ${essentialsOpen ? 'mb-6' : 'mb-3'}`}
         style={{ textShadow: '0 2px 10px rgba(0,0,0,0.6), 0 0 20px rgba(0,0,0,0.3)' }}>
 
         {/* Dates + travelers — always visible */}

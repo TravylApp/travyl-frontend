@@ -67,10 +67,11 @@ export function useHomeCurrency(): UseHomeCurrencyResult {
           return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency,
-            maximumFractionDigits: 0,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
           }).format(amount)
         } catch {
-          return `${currency} ${amount.toLocaleString()}`
+          return `${currency} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         }
       }
 
@@ -80,10 +81,11 @@ export function useHomeCurrency(): UseHomeCurrencyResult {
           return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency,
-            maximumFractionDigits: 0,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
           }).format(amount)
         } catch {
-          return `${currency} ${amount.toLocaleString()}`
+          return `${currency} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         }
       }
 
@@ -95,10 +97,11 @@ export function useHomeCurrency(): UseHomeCurrencyResult {
           return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: sourceCurrency,
-            maximumFractionDigits: 0,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
           }).format(amount)
         } catch {
-          return `${sourceCurrency} ${amount.toLocaleString()}`
+          return `${sourceCurrency} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         }
       }
 
@@ -107,10 +110,11 @@ export function useHomeCurrency(): UseHomeCurrencyResult {
         return new Intl.NumberFormat('en-US', {
           style: 'currency',
           currency,
-          maximumFractionDigits: 0,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
         }).format(converted)
       } catch {
-        return `${currency} ${converted.toLocaleString()}`
+        return `${currency} ${converted.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       }
     },
     [convert, currency],

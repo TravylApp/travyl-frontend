@@ -1,7 +1,7 @@
 // apps/web/components/calendar/hooks/useSuggestions.ts
 'use client'
 
-import { useState, useMemo, useCallback, useRef } from 'react'
+import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { SuggestionCard } from '../types'
 
@@ -137,6 +137,23 @@ export function useSuggestions({
       setIsLoadingMore(false)
     }
   }, [destination, committedQuery, hasMoreFromServer])
+
+  // When scheduledActivityIds changes (suggestion was dropped onto calendar),
+  // also mark those suggestions as locally removed so they disappear immediately.
+  useEffect(() => {
+    if (scheduledActivityIds.length === 0) return
+    setRemovedIds((prev) => {
+      let changed = false
+      const next = new Set(prev)
+      for (const id of scheduledActivityIds) {
+        if (!next.has(id)) {
+          next.add(id)
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [scheduledActivityIds])
 
   const removeSuggestion = useCallback((id: string) => {
     setRemovedIds((prev) => new Set(prev).add(id))

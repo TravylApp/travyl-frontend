@@ -61,27 +61,12 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
       }
     : {}
 
-  const [activeIdx, setActiveIdx] = useState(0)
-  const [cycleKey, setCycleKey] = useState(0)
   const [isHovered, setIsHovered] = useState(false)
   const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set())
   const cardHeight = useMemo(() => getCardHeight(suggestion), [suggestion])
 
   const rawImages = suggestion.imageUrls?.length ? suggestion.imageUrls : suggestion.imageUrl ? [suggestion.imageUrl] : []
   const images = rawImages.filter(u => !failedUrls.has(u))
-  const hasMultiple = images.length > 1
-
-  useEffect(() => {
-    if (!hasMultiple || !isHovered) return
-    const id = setInterval(() => {
-      setActiveIdx(i => (i + 1) % images.length)
-    }, 1800)
-    return () => clearInterval(id)
-  }, [isHovered, hasMultiple, images.length, cycleKey])
-
-  useEffect(() => {
-    if (!isHovered) setActiveIdx(0)
-  }, [isHovered])
 
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
@@ -99,12 +84,6 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
     if (hours < 1) return `${Math.round(hours * 60)}m`
     if (hours % 1 === 0) return `${hours}h`
     return `${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`
-  }
-
-  const navigate = (dir: 1 | -1, e: React.MouseEvent) => {
-    e.stopPropagation()
-    setActiveIdx(i => Math.max(0, Math.min(images.length - 1, i + dir)))
-    setCycleKey(k => k + 1)
   }
 
   const handleClick = () => {
@@ -130,7 +109,7 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
         isDragging ? '' : 'hover:-translate-y-0.5 hover:shadow-[0_6px_24px_rgba(0,0,0,0.4)]',
       ].join(' ')}
     >
-      {/* Image carousel */}
+      {/* Image section — collage layout when multiple images, full width when single */}
       <div
         className="relative w-full overflow-hidden"
         style={{ height: cardHeight }}
@@ -140,59 +119,92 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
           className="absolute inset-0"
           style={{ background: `linear-gradient(135deg, ${tagColor}28 0%, ${tagColor}55 100%)` }}
         />
-        {images.length === 0 ? null : (
-          images.map((url, idx) => (
-            <Image
-              key={url}
-              src={url}
-              alt=""
-              fill
-              loading="lazy"
-              className="object-cover transition-opacity duration-700"
-              style={{ opacity: idx === activeIdx ? 1 : 0 }}
-              draggable={false}
-              sizes="(max-width: 640px) 100vw, 300px"
-              onError={() => {
-                setFailedUrls(prev => new Set(prev).add(url))
-                if (idx === activeIdx) setActiveIdx(i => Math.max(0, i - 1))
-              }}
-            />
-          ))
-        )}
-        {hasMultiple && (
-          <div className="absolute bottom-[7px] left-1/2 -translate-x-1/2 flex gap-[3px] z-10">
-            {images.map((_, idx) => (
-              <div
-                key={idx}
-                className="h-[3px] rounded-full transition-all duration-300"
-                style={{
-                  width: idx === activeIdx ? 14 : 4,
-                  background: idx === activeIdx ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.4)',
-                }}
+
+        {images.length === 0 ? null : images.length === 1 ? (
+          <Image
+            src={images[0]}
+            alt=""
+            fill
+            loading="lazy"
+            className="object-cover"
+            draggable={false}
+            sizes="(max-width: 640px) 100vw, 300px"
+            onError={() => setFailedUrls(prev => new Set(prev).add(images[0]))}
+          />
+        ) : (
+          <div className="flex w-full h-full">
+            {/* 2 images: 50/50 split — 3+ images: first image takes left half */}
+            <div className="relative w-[calc(50%-1px)] h-full overflow-hidden">
+              <Image
+                src={images[0]}
+                alt=""
+                fill
+                loading="lazy"
+                className="object-cover"
+                draggable={false}
+                sizes="150px"
+                onError={() => setFailedUrls(prev => new Set(prev).add(images[0]))}
               />
-            ))}
+            </div>
+
+            {/* Divider between columns */}
+            <div className="w-[2px] h-full bg-black/20 relative z-10 shrink-0" />
+
+            {images.length === 2 ? (
+              <div className="relative w-[calc(50%-1px)] h-full overflow-hidden">
+                <Image
+                  src={images[1]}
+                  alt=""
+                  fill
+                  loading="lazy"
+                  className="object-cover"
+                  draggable={false}
+                  sizes="150px"
+                  onError={() => setFailedUrls(prev => new Set(prev).add(images[1]))}
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col w-[calc(50%-1px)] h-full">
+                <div className="relative w-full h-[calc(50%-1px)] overflow-hidden">
+                  <Image
+                    src={images[1]}
+                    alt=""
+                    fill
+                    loading="lazy"
+                    className="object-cover"
+                    draggable={false}
+                    sizes="150px"
+                    onError={() => setFailedUrls(prev => new Set(prev).add(images[1]))}
+                  />
+                </div>
+                {/* Divider between rows */}
+                <div className="w-full h-[2px] bg-black/20 relative z-10 shrink-0" />
+                <div className="relative w-full h-[calc(50%-1px)] overflow-hidden">
+                  <Image
+                    src={images[2]}
+                    alt=""
+                    fill
+                    loading="lazy"
+                    className="object-cover"
+                    draggable={false}
+                    sizes="150px"
+                    onError={() => setFailedUrls(prev => new Set(prev).add(images[2]))}
+                  />
+                  {images.length > 3 && (
+                    <div className="absolute bottom-[5px] right-[5px] bg-black/60 backdrop-blur-sm rounded-md px-[6px] py-[2px] z-10">
+                      <span className="text-white text-[10px] font-semibold">+{images.length - 3}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Arrow navigation — visible on hover when multiple images exist */}
-        {isHovered && hasMultiple && activeIdx > 0 && (
-          <button
-            aria-label="Previous photo"
-            onClick={(e) => navigate(-1, e)}
-            className="absolute left-1.5 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white text-[10px] hover:bg-black/70 transition-colors"
-          >
-            ‹
-          </button>
-        )}
-        {isHovered && hasMultiple && activeIdx < images.length - 1 && (
-          <button
-            aria-label="Next photo"
-            onClick={(e) => navigate(1, e)}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 z-20 w-6 h-6 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white text-[10px] hover:bg-black/70 transition-colors"
-          >
-            ›
-          </button>
-        )}
+        {/* Gradient overlay at bottom for text readability */}
+        <div className="absolute bottom-0 left-0 right-0 h-1/3 pointer-events-none z-10"
+          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)' }}
+        />
       </div>
 
       {/* Price badge — top left */}

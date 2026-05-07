@@ -3,10 +3,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MapPin, Luggage, User, Settings, LogOut, Sun, Moon, Menu, X } from "lucide-react";
+import { MapPin, Luggage, User, Settings, LogOut, Sun, Moon, Menu, X, Share2 } from "lucide-react";
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import { PlaceholderAvatar } from "@/components/ui/PlaceholderAvatar";
-import { useAuthStore, useTrips, useProfile } from "@travyl/shared";
+import { Tooltip } from "@/components/ui/tooltip";
+import { useAuthStore, useTrips, useProfile, useTrip, ensureShareLinkToken, updateTripVisibility, supabase } from "@travyl/shared";
 
 const baseNavLinks = [
   { href: "/places", label: "Explore", icon: MapPin },
@@ -24,6 +25,16 @@ export default function GlobalNavbar() {
   const { data: profile } = useProfile();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareLink, setShareLink] = useState<string | null>(null);
+  const [linkPermission, setLinkPermission] = useState<'viewer' | 'editor'>('viewer');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'viewer' | 'editor'>('editor');
+  const [isInviting, setIsInviting] = useState(false);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -45,6 +56,9 @@ export default function GlobalNavbar() {
 
   const isAuthPage = AUTH_PAGES.some((p) => pathname.startsWith(p));
   const isTripRoute = pathname.startsWith('/trip/');
+  const isSharePage = pathname.startsWith('/trip/') && pathname.includes('/share/');
+  const tripIdFromPath = !isSharePage && isTripRoute ? pathname.split('/')[2] : undefined;
+  const { data: currentTrip } = useTrip(tripIdFromPath);
   const isHomePage = pathname === "/";
   const useLightNav = isHomePage && !scrolled;
 
@@ -93,6 +107,79 @@ export default function GlobalNavbar() {
     localStorage.setItem("theme", newDarkMode ? "dark" : "light");
     document.documentElement.classList.toggle("dark", newDarkMode);
   }, [isDarkMode]);
+
+  const openShareModal = useCallback(async () => {
+    if (!currentTrip?.id) return;
+    setShareLink(null);
+    setLinkCopied(false);
+    setInviteEmail('');
+    setInviteError(null);
+    setInviteSuccess(null);
+    setShareModalOpen(true);
+    setShareBusy(true);
+    try {
+      const token = await ensureShareLinkToken(currentTrip.id);
+      const url = `${window.location.origin}/trip/${currentTrip.id}/share/${token}`;
+      setShareLink(url);
+    } catch {
+      setInviteError('Failed to generate share link');
+    } finally {
+      setShareBusy(false);
+    }
+  }, [currentTrip?.id]);
+
+  const handleCopyLink = useCallback(async () => {
+    if (!shareLink) return;
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {}
+  }, [shareLink]);
+
+  const handleChangeLinkPermission = useCallback(async (permission: 'viewer' | 'editor') => {
+    if (!currentTrip?.id) return;
+    setLinkPermission(permission);
+    try {
+      await updateTripVisibility(currentTrip.id, currentTrip.visibility === 'private' ? 'link' : currentTrip.visibility, permission);
+      const token = await ensureShareLinkToken(currentTrip.id);
+      setShareLink(`${window.location.origin}/trip/${currentTrip.id}/share/${token}`);
+    } catch {}
+  }, [currentTrip?.id, currentTrip?.visibility]);
+
+  const handleInvite = useCallback(async () => {
+    if (!currentTrip?.id || !inviteEmail.trim()) return;
+    setIsInviting(true);
+    setInviteError(null);
+    setInviteSuccess(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+      const res = await fetch('/api/calendar/invite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ tripId: currentTrip.id, email: inviteEmail.trim(), role: inviteRole }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Invite failed (${res.status})`);
+      setInviteSuccess(`Invited ${inviteEmail.trim()}`);
+      setInviteEmail('');
+    } catch (err) {
+      setInviteError(err instanceof Error ? err.message : 'Failed to send invite');
+    } finally {
+      setIsInviting(false);
+    }
+  }, [currentTrip?.id, inviteEmail, inviteRole]);
+
+  useEffect(() => {
+    if (!shareModalOpen) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setShareModalOpen(false); };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [shareModalOpen]);
 
   const handleSignOut = useCallback(async () => {
     setDropdownOpen(false);
@@ -240,18 +327,36 @@ export default function GlobalNavbar() {
 
           {/* Right side — desktop */}
           <div className="hidden sm:flex items-center shrink-0">
+            {/* Share button — trip pages only */}
+            {tripIdFromPath && currentTrip && (
+              <Tooltip content="Share this trip">
+                <button
+                  onClick={openShareModal}
+                  aria-label="Share this trip"
+                  className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-300 mr-1.5 ${
+                    useLightNav
+                      ? "text-white/80 hover:text-white hover:bg-white/10"
+                      : "text-[#1e3a5f]/60 dark:text-[#f5efe8]/60 hover:text-[#1e3a5f] dark:hover:text-[#f5efe8] hover:bg-[#1e3a5f]/5 dark:hover:bg-white/8"
+                  }`}
+                >
+                  <Share2 size={14} />
+                </button>
+              </Tooltip>
+            )}
             {/* Dark mode toggle */}
-            <button
-              onClick={toggleTheme}
-              aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
-              className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-300 mr-2 ${
-                useLightNav
-                  ? "text-white/80 hover:text-white hover:bg-white/10"
-                  : "text-[#1e3a5f]/60 dark:text-[#f5efe8]/60 hover:text-[#1e3a5f] dark:hover:text-[#f5efe8] hover:bg-[#1e3a5f]/5 dark:hover:bg-white/8"
-              }`}
-            >
-              {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
-            </button>
+            <Tooltip content="Toggle dark mode">
+              <button
+                onClick={toggleTheme}
+                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                className={`flex items-center justify-center w-8 h-8 rounded-full transition-all duration-300 mr-2 ${
+                  useLightNav
+                    ? "text-white/80 hover:text-white hover:bg-white/10"
+                    : "text-[#1e3a5f]/60 dark:text-[#f5efe8]/60 hover:text-[#1e3a5f] dark:hover:text-[#f5efe8] hover:bg-[#1e3a5f]/5 dark:hover:bg-white/8"
+                }`}
+              >
+                {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
+              </button>
+            </Tooltip>
             {loading ? (
               <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-white/10 animate-pulse" />
             ) : user ? (
@@ -402,6 +507,115 @@ export default function GlobalNavbar() {
           </div>
         </div>
       </div>
+      {shareModalOpen && currentTrip && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60" onClick={() => setShareModalOpen(false)}>
+          <div
+            className="w-full max-w-md rounded-xl border p-5 shadow-2xl max-h-[90vh] overflow-y-auto mx-4"
+            style={{
+              background: isDarkMode ? '#0f1a28' : '#ffffff',
+              borderColor: isDarkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                Share &ldquo;{currentTrip.title}&rdquo;
+              </h2>
+              <button onClick={() => setShareModalOpen(false)} className={`${isDarkMode ? 'text-white/40 hover:text-white' : 'text-gray-400 hover:text-gray-600'} transition-colors text-xl leading-none`}>
+                &times;
+              </button>
+            </div>
+
+            {/* Invite by email */}
+            <div className="mb-4">
+              <label className={`block text-xs font-medium mb-1.5 ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>
+                Invite by email
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="friend@email.com"
+                  className={`flex-1 rounded-lg border px-3 py-2 text-sm outline-none transition-colors ${
+                    isDarkMode
+                      ? 'bg-white/5 border-white/10 text-white placeholder-white/30 focus:border-white/30'
+                      : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:border-gray-400'
+                  }`}
+                />
+                <select
+                  value={inviteRole}
+                  onChange={(e) => setInviteRole(e.target.value as 'viewer' | 'editor')}
+                  className={`rounded-lg border px-2 py-2 text-sm outline-none ${
+                    isDarkMode
+                      ? 'bg-white/5 border-white/10 text-white/80'
+                      : 'bg-gray-50 border-gray-200 text-gray-700'
+                  }`}
+                >
+                  <option value="viewer">Can view</option>
+                  <option value="editor">Can edit</option>
+                </select>
+                <button
+                  onClick={handleInvite}
+                  disabled={isInviting || !inviteEmail.trim()}
+                  className="shrink-0 rounded-lg px-3 py-2 text-sm font-medium text-white bg-[#1e3a5f] hover:bg-[#16304f] disabled:opacity-50 transition-colors"
+                >
+                  {isInviting ? '...' : 'Invite'}
+                </button>
+              </div>
+              {inviteError && (
+                <p className={`mt-1.5 text-xs ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>{inviteError}</p>
+              )}
+              {inviteSuccess && (
+                <p className={`mt-1.5 text-xs ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{inviteSuccess}</p>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className={`border-t my-4 ${isDarkMode ? 'border-white/10' : 'border-gray-100'}`} />
+
+            {/* Share link */}
+            <div>
+              <label className={`block text-xs font-medium mb-1.5 ${isDarkMode ? 'text-white/60' : 'text-gray-500'}`}>
+                Share link
+              </label>
+              <div className="flex items-center gap-2 mb-2">
+                <select
+                  value={linkPermission}
+                  onChange={(e) => handleChangeLinkPermission(e.target.value as 'viewer' | 'editor')}
+                  className={`rounded-lg border px-2 py-2 text-sm outline-none ${
+                    isDarkMode
+                      ? 'bg-white/5 border-white/10 text-white/80'
+                      : 'bg-gray-50 border-gray-200 text-gray-700'
+                  }`}
+                >
+                  <option value="viewer">Can view</option>
+                  <option value="editor">Can edit</option>
+                </select>
+                <button
+                  onClick={handleCopyLink}
+                  disabled={!shareLink || shareBusy}
+                  className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                    linkCopied
+                      ? 'bg-green-500/20 text-green-600'
+                      : isDarkMode
+                        ? 'bg-white/10 text-white hover:bg-white/15'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {shareBusy ? 'Generating...' : linkCopied ? 'Copied!' : 'Copy share link'}
+                </button>
+              </div>
+              {shareLink && (
+                <p className={`text-xs truncate ${isDarkMode ? 'text-white/40' : 'text-gray-400'}`}>
+                  {shareLink}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -56,7 +56,6 @@ const DEFAULT_COLOR = '#1e3a5f';
 
 export const ALL_TABS: TabDef[] = [
   { segment: '',           label: 'Overview',   subtitle: 'Trip overview & info',           icon: Home,      color: DEFAULT_COLOR },
-  { segment: 'itinerary',  label: 'Itinerary',  subtitle: 'Your day-by-day travel plan',    icon: Calendar,  color: DEFAULT_COLOR },
   { segment: 'calendar',   label: 'Calendar',   subtitle: 'Visual calendar & For You',      icon: CalendarDays, color: DEFAULT_COLOR },
   { segment: 'hotels',     label: 'Hotels',     subtitle: 'Accommodation & stays',          icon: Building2, color: DEFAULT_COLOR },
   { segment: 'flights',    label: 'Flights',    subtitle: 'Flight bookings & details',      icon: Plane,     color: DEFAULT_COLOR },
@@ -74,7 +73,7 @@ export interface TabGroup {
 }
 
 export const TAB_GROUPS: TabGroup[] = [
-  { id: 'plan',    segments: ['', 'itinerary', 'calendar'] },
+  { id: 'plan',    segments: ['', 'calendar'] },
   { id: 'book',    segments: ['hotels', 'flights', 'cars', 'transit'] },
   { id: 'explore', segments: ['activities', 'packing', 'budget'] },
 ];
@@ -189,7 +188,7 @@ function RailDesktop({
 
   return (
     <aside
-      className={`hidden md:flex flex-col fixed top-12 bottom-0 left-0 ${collapsed ? 'w-[56px]' : 'w-[220px]'} transition-[width] duration-200 ease-out border-r ${surface} z-30`}
+      className={`hidden md:flex flex-col fixed top-12 bottom-0 left-0 ${collapsed ? 'w-[56px]' : 'w-[160px]'} transition-[width] duration-200 ease-out border-r ${surface} z-30`}
       aria-label="Trip navigation"
     >
       {!collapsed && (
@@ -277,7 +276,7 @@ function RailDesktop({
 
 // ── Mobile bottom bar ────────────────────────────────────────
 
-const MOBILE_PRIMARY: string[] = ['', 'itinerary', 'hotels', 'flights', 'transit', 'activities'];
+const MOBILE_PRIMARY: string[] = ['', 'hotels', 'flights', 'transit', 'activities'];
 
 function RailMobile({
   basePath, isActive, tabColorFor, isTabHidden, onOpenHistory,

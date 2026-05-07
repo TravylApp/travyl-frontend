@@ -18,6 +18,17 @@ function randomModifier(): string {
   return VARIETY_MODIFIERS[Math.floor(Math.random() * VARIETY_MODIFIERS.length)]
 }
 
+// ─── Fisher-Yates shuffle — guarantees different results on each
+//     regeneration even when SerpAPI returns the same pool ─────
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
+
 // ─── POST /regenerate/activity ───────────────────────────────
 
 interface RegenerateActivityBody {
@@ -46,9 +57,9 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       queryModifier: randomModifier(),
     })
 
-    // Filter duplicates against excludeNames (case-insensitive)
+    // Shuffle first so every regeneration call returns different results
     const excludeLower = excludeNames.map((n) => n.toLowerCase())
-    const filtered = pool.filter(
+    const filtered = shuffle(pool).filter(
       (place) => !excludeLower.some((ex) => place.name.toLowerCase().includes(ex) || ex.includes(place.name.toLowerCase())),
     )
 
@@ -112,9 +123,9 @@ export const dayHandler: APIGatewayProxyHandlerV2 = async (event) => {
           queryModifier: randomModifier(),
         })
 
-        // Filter duplicates against the activity's own title
+        // Shuffle first for variety, then filter duplicates
         const titleLower = activity.title.toLowerCase()
-        const filtered = pool.filter(
+        const filtered = shuffle(pool).filter(
           (place) =>
             !place.name.toLowerCase().includes(titleLower) &&
             !titleLower.includes(place.name.toLowerCase()),

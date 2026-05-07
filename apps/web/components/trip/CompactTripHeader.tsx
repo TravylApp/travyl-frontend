@@ -230,7 +230,7 @@ export function CompactTripHeader({
         </div>
 
         {/* Content — all on the hero image */}
-        <div className={`relative z-10 flex flex-col justify-end max-w-7xl mx-auto px-6 sm:px-10 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} pb-5 transition-[padding] duration-200 ease-out`} style={{ minHeight: 300 }}>
+        <div className={`relative z-10 flex flex-col justify-end max-w-7xl mx-auto px-6 sm:px-10 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[180px]'} pb-5 transition-[padding] duration-200 ease-out`} style={{ minHeight: 300 }}>
           {/* Country tag — flag + country only (region now lives in the title) */}
           {countryName && (
             <p

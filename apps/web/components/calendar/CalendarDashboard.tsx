@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { computeTimeRange } from '@travyl/shared/viewmodels/calendarViewModel'
 import { fetchCollaborators, computeGaps } from '@travyl/shared'
 import { useGapFiller } from './hooks/useGapFiller'
+import { useTransitGapFiller } from './hooks/useTransitGapFiller'
 import { HOUR_HEIGHT } from './constants'
 import { useCalendarDnd } from './hooks/useCalendarDnd'
 import { useTripActivities } from './hooks/useTripActivities'
@@ -69,6 +70,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   shopping: '🛍️',
   nightlife: '🍸',
   outdoor: '🌿',
+  transport: '🚌',
   default: '📍',
 }
 
@@ -204,6 +206,17 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
     () => activities.filter((a) => a.unscheduled),
     [activities],
   )
+
+  const {
+    fillTransitGaps,
+    isFilling: isAutoTransitPending,
+  } = useTransitGapFiller({
+    tripId,
+    tripStartDate,
+    userId,
+    activities: scheduledActivities,
+    addActivity,
+  })
 
   const {
     viewMode,
@@ -737,6 +750,13 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
     handleCreateActivity(selectedDayIndex ?? 0, 12)
   }
 
+  const handleAutoTransit = useCallback(async () => {
+    const count = await fillTransitGaps()
+    if (count > 0) {
+      console.log(`[CalendarDashboard] Auto-created ${count} transit activities`)
+    }
+  }, [fillTransitGaps])
+
   const handleClickDayHeader = (dayIndex: number) => {
     goToDayView(dayIndex)
   }
@@ -799,6 +819,8 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
           onOpenHistory={() => setIsHistoryOpen(true)}
           hasUnscheduled={unscheduledActivities.length > 0}
           onOpenUnscheduled={undefined}
+          onAutoTransit={handleAutoTransit}
+          isAutoTransitPending={isAutoTransitPending}
         />
 
         {/* Day strip */}

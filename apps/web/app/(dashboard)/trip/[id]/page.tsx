@@ -19,6 +19,7 @@ import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 import { TripExploreSection } from './trip-layout-inner';
 import OverviewBudgetSummary from '@/components/trip/OverviewBudgetSummary';
 import { useTripPreload } from '@/lib/preload/useTripPreload';
+import ItinerarySection from '@/components/itinerary/ItinerarySection';
 
 // Hide broken images — no misleading fallback photos
 const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -815,6 +816,11 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
         <div ref={revealRef}>
 
           {/* Weather is now shown in the compact header toggle — removed duplicate widget */}
+
+          {/* ── Itinerary Section ── */}
+          <div className="mt-6">
+            <ItinerarySection tripId={id} />
+          </div>
 
           {/* ── Row 1: Things to Do (left) + Restaurants (right) ── */}
           <div className={`mt-6 ${sectionCard}`}>

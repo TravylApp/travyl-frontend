@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
+import Image from 'next/image'
 import { AnimatePresence, motion } from 'motion/react'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
 
@@ -163,13 +164,16 @@ export function CardPopover({
 
           {/* Image */}
           {image ? (
-            <img
-              src={image}
-              alt=""
-              className="w-full object-cover"
-              style={{ height: 200 }}
-              draggable={false}
-            />
+            <div className="relative w-full" style={{ height: 200 }}>
+              <Image
+                src={image}
+                alt=""
+                fill
+                className="object-cover"
+                draggable={false}
+                sizes="280px"
+              />
+            </div>
           ) : (
             <div
               className="w-full flex items-center justify-center text-white/60 text-3xl"

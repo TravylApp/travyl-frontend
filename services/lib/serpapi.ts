@@ -103,7 +103,7 @@ export async function searchPlaces(
   try {
     const res = await fetch(url.toString(), {
       headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(5000),
     })
 
     if (!res.ok) {

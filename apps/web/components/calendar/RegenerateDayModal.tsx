@@ -1,14 +1,18 @@
 'use client'
 
-import { useEffect, useRef, useState, useMemo } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
+import { formatHour12 } from './utils'
 import type { SuggestionCard } from './types'
+import type { CalendarActivity } from '@travyl/shared/types'
 import type { DaySlotAlternatives } from './hooks/useRegenerateDay'
 
-interface RegenerateDayModalProps {
+interface RegenerateDayPanelProps {
+  dayIndex: number
+  dayLabel: string
   slots: DaySlotAlternatives[]
+  originalActivities: CalendarActivity[]
   onApply: (selections: Map<string, SuggestionCard>) => void
   onClose: () => void
   isLoading: boolean
@@ -16,10 +20,12 @@ interface RegenerateDayModalProps {
 
 function SlotCard({
   slot,
+  originalActivity,
   selected,
   onSelect,
 }: {
   slot: DaySlotAlternatives
+  originalActivity: CalendarActivity | undefined
   selected: SuggestionCard | null
   onSelect: (alternative: SuggestionCard) => void
 }) {
@@ -32,14 +38,33 @@ function SlotCard({
 
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden">
-      {/* Slot header */}
-      <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-200">
-        <div className="text-sm font-medium text-gray-900">
-          {slot.startHour.toString().padStart(2, '0')}:00 —{' '}
-          {(slot.startHour + slot.duration).toString().padStart(2, '0')}:00
-        </div>
-        <div className="text-xs text-gray-500 mt-0.5">
-          Replace <span className="font-medium text-gray-700">{slot.originalType}</span> activity
+      {/* Slot header — shows original activity + time */}
+      <div className="px-3 py-2.5 bg-gray-50 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm font-semibold text-gray-900">
+              {formatHour12(slot.startHour)} — {formatHour12(slot.startHour + slot.duration)}
+            </div>
+            <div className="text-xs text-gray-500 mt-0.5">
+              Replace{' '}
+              {originalActivity ? (
+                <span className="font-medium text-gray-700">&ldquo;{originalActivity.title}&rdquo;</span>
+              ) : (
+                <span className="font-medium text-gray-700">{slot.originalType}</span>
+              )}
+            </div>
+          </div>
+          {originalActivity?.image && (
+            <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200">
+              <Image
+                src={originalActivity.image}
+                alt={originalActivity.title}
+                fill
+                className="object-cover"
+                sizes="40px"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -68,7 +93,7 @@ function SlotCard({
                 ].join(' ')}
               >
                 {/* Image */}
-                <div className="relative h-[80px] bg-gray-100">
+                <div className="relative h-[72px] bg-gray-100">
                   {imageUrl ? (
                     <Image
                       src={imageUrl}
@@ -124,12 +149,14 @@ function SlotCard({
 }
 
 export function RegenerateDayModal({
+  dayIndex,
+  dayLabel,
   slots,
+  originalActivities,
   onApply,
   onClose,
   isLoading,
-}: RegenerateDayModalProps) {
-  const backdropRef = useRef<HTMLDivElement>(null)
+}: RegenerateDayPanelProps) {
   const [selections, setSelections] = useState<Map<string, SuggestionCard>>(new Map())
 
   // Reset selections when slots change
@@ -137,21 +164,16 @@ export function RegenerateDayModal({
     setSelections(new Map())
   }, [slots])
 
+  // Prevent body scroll while open
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose()
-      }
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
 
   const handleSelect = (activityId: string, alternative: SuggestionCard) => {
     setSelections((prev) => {
       const next = new Map(prev)
-      // Toggle: deselect if already selected
       if (next.get(activityId)?.id === alternative.id) {
         next.delete(activityId)
       } else {
@@ -162,56 +184,58 @@ export function RegenerateDayModal({
   }
 
   const hasSelections = selections.size > 0
+  const totalSlots = slots.length
+  const selectedCount = selections.size
 
   if (isLoading) {
-    return createPortal(
-      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm">
-        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-8">
-          <div className="flex items-center justify-center">
-            <div className="w-6 h-6 border-2 border-[#003594] border-t-transparent rounded-full animate-spin" />
-            <span className="ml-3 text-sm text-gray-600">Finding alternatives for this day...</span>
-          </div>
-        </div>
-      </div>,
-      document.body,
+    return (
+      <div className="h-full flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-6 h-6 border-2 border-[#003594] border-t-transparent rounded-full animate-spin" />
+        <span className="ml-3 mt-3 text-sm text-gray-500">Finding alternatives for this day...</span>
+      </div>
     )
   }
 
-  return createPortal(
-    <div
-      ref={backdropRef}
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm"
-      onClick={(e) => {
-        if (e.target === backdropRef.current) onClose()
-      }}
-    >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-y-auto mx-4 p-5">
+  return (
+    <>
+      {/* Backdrop for closing on click outside */}
+      <div
+        className="absolute inset-0 z-10 bg-black/20 backdrop-blur-[1px]"
+        onClick={onClose}
+      />
+
+      {/* Slide-in panel from the right */}
+      <div
+        className="absolute inset-y-0 right-0 z-20 w-full max-w-[400px] bg-white border-l border-gray-200 shadow-2xl flex flex-col animate-slide-in-right"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900">Regenerate Day</h3>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Choose alternatives for each slot ({selections.size} selected)
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold text-gray-900">Regenerate Day</h3>
+            <p className="text-xs text-gray-500 mt-0.5 truncate">
+              {dayLabel || `Day ${dayIndex + 1}`} &middot; {selectedCount} of {totalSlots} slots selected
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors flex-shrink-0 ml-3"
             aria-label="Close"
           >
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </button>
         </div>
 
-        {/* Slots */}
-        <div className="space-y-4">
+        {/* Slots list — scrollable */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {slots.map((slot) => (
             <SlotCard
               key={slot.activityId}
               slot={slot}
+              originalActivity={originalActivities.find((a) => a.id === slot.activityId)}
               selected={selections.get(slot.activityId) ?? null}
               onSelect={(alt) => handleSelect(slot.activityId, alt)}
             />
@@ -219,7 +243,7 @@ export function RegenerateDayModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 mt-5 pt-4 border-t border-gray-100">
+        <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-100 flex-shrink-0">
           <button
             type="button"
             onClick={onClose}
@@ -238,11 +262,10 @@ export function RegenerateDayModal({
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed',
             ].join(' ')}
           >
-            Apply {hasSelections ? `(${selections.size})` : ''}
+            Apply {hasSelections ? `(${selectedCount})` : ''}
           </button>
         </div>
       </div>
-    </div>,
-    document.body,
+    </>
   )
 }

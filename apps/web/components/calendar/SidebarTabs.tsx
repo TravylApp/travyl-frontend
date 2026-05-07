@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { SunLight, MapPin, Calendar } from 'iconoir-react'
+import { Tooltip } from '@/components/ui/tooltip'
 
 type Tab = 'for-you' | 'events' | 'map'
 
@@ -37,22 +38,23 @@ export default function SidebarTabs({
         {TABS.map(tab => {
           const isActive = activeTab === tab.id
           return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={[
-                'flex items-center gap-1.5 flex-1 justify-center py-3 text-xs font-medium transition-all relative',
-                isActive
-                  ? 'text-primary'
-                  : 'text-cal-text-secondary hover:text-cal-text',
-              ].join(' ')}
-            >
-              {tab.icon}
-              <span>{tab.label}</span>
-              {isActive && (
-                <div className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-primary" />
-              )}
-            </button>
+            <Tooltip key={tab.id} content={tab.label}>
+              <button
+                onClick={() => setActiveTab(tab.id)}
+                className={[
+                  'flex items-center gap-1.5 flex-1 justify-center py-3 text-xs font-medium transition-all relative',
+                  isActive
+                    ? 'text-primary'
+                    : 'text-cal-text-secondary hover:text-cal-text',
+                ].join(' ')}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+                {isActive && (
+                  <div className="absolute bottom-0 left-3 right-3 h-0.5 rounded-full bg-primary" />
+                )}
+              </button>
+            </Tooltip>
           )
         })}
       </div>

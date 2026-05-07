@@ -217,7 +217,7 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
   if (categories.length === 0 && !liveFetching) return null;
 
   return (
-    <div ref={exploreRef} className={embedded ? 'py-2' : `max-w-7xl mx-auto px-4 sm:px-6 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} py-8 transition-[padding] duration-200 ease-out`}>
+    <div ref={exploreRef} className={embedded ? 'py-2' : `max-w-7xl mx-auto px-4 sm:px-6 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[180px]'} py-8 transition-[padding] duration-200 ease-out`}>
       <h2 className={`text-xl font-normal tracking-wide mb-6 font-serif ${embedded ? 'text-white' : 'text-gray-900 dark:text-white'}`}
         style={embedded ? { textShadow: '0 2px 10px rgba(0,0,0,0.5)' } : undefined}>
         Explore {city || 'Destination'}
@@ -374,7 +374,7 @@ function TripLayoutContent({
   const isOverview = currentSegment === '';
   const isCalendar = currentSegment === 'calendar';
 
-  const tabOrder = ['', 'itinerary', 'calendar', 'hotels', 'flights', 'transit', 'restaurants', 'activities', 'packing', 'budget', 'cars'];
+  const tabOrder = ['', 'calendar', 'hotels', 'flights', 'transit', 'restaurants', 'activities', 'packing', 'budget', 'cars'];
   const prevSegmentRef = useRef(currentSegment);
   const directionRef = useRef<1 | -1>(1);
 
@@ -435,10 +435,10 @@ function TripLayoutContent({
             {/* Main content */}
             <div className={`flex-1 min-w-0 relative overflow-hidden transition-[padding] duration-200 ease-out ${
               isCalendar
-                ? `${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} flex flex-col`
+                ? `${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[180px]'} flex flex-col`
                 : isMagazine
-                  ? `px-6 sm:px-10 ${railCollapsed ? 'md:pl-[96px]' : 'md:pl-[260px]'} md:pr-10`
-                  : `px-5 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} pt-4 pb-5`
+                  ? `px-6 sm:px-10 ${railCollapsed ? 'md:pl-[96px]' : 'md:pl-[200px]'} md:pr-10`
+                  : `px-5 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[180px]'} pt-4 pb-5`
             }`}>
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.div
@@ -533,7 +533,7 @@ function TripLayoutContent({
       {isOverview && !isCalendar && (
         <div className="relative z-10">
           {isMagazine ? (
-            <div className={`px-6 sm:px-10 ${railCollapsed ? 'md:pl-[96px]' : 'md:pl-[260px]'} md:pr-10 mt-4 pb-8 transition-[padding] duration-200 ease-out`}>
+            <div className={`px-6 sm:px-10 ${railCollapsed ? 'md:pl-[96px]' : 'md:pl-[200px]'} md:pr-10 mt-4 pb-8 transition-[padding] duration-200 ease-out`}>
               <TripExploreSection trip={trip} embedded />
             </div>
           ) : (

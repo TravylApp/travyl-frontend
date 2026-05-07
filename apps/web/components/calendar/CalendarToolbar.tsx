@@ -1,6 +1,8 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import { Plus, ShareAndroid, Clock } from 'iconoir-react'
+import { TrainFront } from 'lucide-react'
+import { Tooltip } from '@/components/ui/tooltip'
 import type { Trip } from '@travyl/shared'
 import { useAuthStore, useProfile } from '@travyl/shared'
 import type { CalendarActivity } from './types'
@@ -29,6 +31,10 @@ interface CalendarToolbarProps {
   /** When true, unscheduled items exist */
   hasUnscheduled?: boolean
   onOpenUnscheduled?: () => void
+  /** Callback to auto-fill transit gaps between activities */
+  onAutoTransit?: () => void
+  /** Whether auto-transit is currently in progress */
+  isAutoTransitPending?: boolean
 }
 
 export function CalendarToolbar({
@@ -44,6 +50,8 @@ export function CalendarToolbar({
   isSharedView = false,
   hasUnscheduled = false,
   onOpenUnscheduled,
+  onAutoTransit,
+  isAutoTransitPending = false,
 }: CalendarToolbarProps) {
   const user = useAuthStore((s) => s.user)
   const { data: profile } = useProfile()
@@ -123,15 +131,30 @@ export function CalendarToolbar({
           </button>
         )}
 
+        {/* Auto Transit */}
+        {!isSharedView && onAutoTransit && (
+          <Tooltip content="Auto-fill transit gaps">
+            <button
+              onClick={onAutoTransit}
+              disabled={isAutoTransitPending}
+              className="flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-cal-border px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-cal-text-secondary hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-cal-accent-bg/80 dark:hover:text-cal-text transition-colors shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <TrainFront className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{isAutoTransitPending ? 'Transiting...' : 'Auto Transit'}</span>
+            </button>
+          </Tooltip>
+        )}
+
         {/* Change history */}
         {onOpenHistory && !isSharedView && (
-          <button
-            onClick={onOpenHistory}
-            title="Change history"
-            className="p-1.5 rounded-lg text-gray-500 dark:text-cal-text-secondary hover:bg-gray-100 dark:hover:bg-cal-accent-bg transition-colors"
-          >
-            <Clock className="w-4 h-4" />
-          </button>
+          <Tooltip content="Change history">
+            <button
+              onClick={onOpenHistory}
+              className="p-1.5 rounded-lg text-gray-500 dark:text-cal-text-secondary hover:bg-gray-100 dark:hover:bg-cal-accent-bg transition-colors"
+            >
+              <Clock className="w-4 h-4" />
+            </button>
+          </Tooltip>
         )}
 
         {/* Collaborator avatars */}
@@ -156,13 +179,15 @@ export function CalendarToolbar({
 
         {/* Share */}
         {!isSharedView && (
-          <button
-            onClick={onShare}
-            className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600 transition-colors shrink-0"
-          >
-            <ShareAndroid width={12} height={12} />
-            Share
-          </button>
+          <Tooltip content="Share this trip">
+            <button
+              onClick={onShare}
+              className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-600 transition-colors shrink-0"
+            >
+              <ShareAndroid width={12} height={12} />
+              Share
+            </button>
+          </Tooltip>
         )}
 
         {/* Shared view indicator */}

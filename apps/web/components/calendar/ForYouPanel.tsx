@@ -58,19 +58,37 @@ export function ForYouPanel({
   const suggestionNames = useMemo(() => suggestions.map(s => s.name), [suggestions])
   const imageResults = usePlaceImages(suggestionNames)
 
+  // Fetch a second image per suggestion with category context for variety
+  const categoryImageQueries = useMemo(
+    () => suggestions.map(s => `${s.name} ${s.category} travel`),
+    [suggestions],
+  )
+  const categoryImageResults = usePlaceImages(categoryImageQueries)
+
   const enrichedSuggestions = useMemo(() => {
     if (!imageResults.length) return suggestions
     return suggestions.map((suggestion, i) => {
-      if (suggestion.imageUrl) return suggestion
-      const pexelsUrl = imageResults[i]?.data?.url
-      if (!pexelsUrl) return suggestion
+      const mainUrl = imageResults[i]?.data?.url
+      const catUrl = categoryImageResults[i]?.data?.url
+
+      // Collect existing images from the API suggestion
+      const existingUrls = suggestion.imageUrls?.length
+        ? suggestion.imageUrls
+        : suggestion.imageUrl
+          ? [suggestion.imageUrl]
+          : []
+
+      // Merge: main Pexels, category Pexels, then any API images — deduped
+      const merged = [mainUrl, catUrl, ...existingUrls].filter((u): u is string => !!u)
+      const deduped = [...new Set(merged)]
+
       return {
         ...suggestion,
-        imageUrl: pexelsUrl,
-        imageUrls: [pexelsUrl, ...(suggestion.imageUrls ?? [])],
+        imageUrl: mainUrl ?? suggestion.imageUrl,
+        imageUrls: deduped,
       }
     })
-  }, [suggestions, imageResults])
+  }, [suggestions, imageResults, categoryImageResults])
 
   const [selectedSuggestion, setSelectedSuggestion] = useState<SuggestionCardType | null>(null)
   const [isClosing, setIsClosing] = useState(false)

@@ -27,28 +27,64 @@ interface UseCalendarDndOptions {
   onMoveNote?: (noteId: string, day: number, hour: number) => void
   onGroupMove?: (dayDelta: number, hourDelta: number) => void
   marqueeSelectedIds?: Set<string>
-  /** Ref to the scrollable grid container — used to compute absolute drop position for suggestions */
+  /** Ref to the scrollable grid container */
   scrollRef: React.RefObject<HTMLDivElement | null>
   /** Start hour of the visible time range (e.g., 7 for 7 AM) */
   timeRangeStartHour: number
 }
 
+// ── Helpers ────────────────────────────────────────────────
+
 /**
- * Compute the hour on the calendar grid by measuring the actual DOM element.
- * Queries `[data-day-grid="N"]` for a fresh getBoundingClientRect() — never stale.
+ * Snap a fractional hour to the nearest N-minute increment.
+ * When `free` is true, returns the raw value clamped to [0, 23].
  */
-function cursorToHour(
-  cursorY: number,
-  dayIndex: number,
-  timeRangeStartHour: number,
-): number {
-  const gridEl = document.querySelector(`[data-day-grid="${dayIndex}"]`)
-  if (!gridEl) return timeRangeStartHour
-  const rect = gridEl.getBoundingClientRect()
-  const gridRelativeY = cursorY - rect.top
-  const rawHour = timeRangeStartHour + gridRelativeY / HOUR_HEIGHT
-  return Math.max(0, Math.min(23, Math.round(rawHour * 2) / 2))
+function snapHour(hour: number, incrementMinutes = 15, free = false): number {
+  if (free) return Math.max(0, Math.min(23, hour))
+  const incrementsPerHour = 60 / incrementMinutes
+  return Math.max(0, Math.min(23, Math.round(hour * incrementsPerHour) / incrementsPerHour))
 }
+
+/**
+ * Compute the absolute hour from a pointer Y position within a specific day's grid rect.
+ * No DOM queries — uses the pre-cached rect.
+ */
+function computeHourFromPointer(
+  clientY: number,
+  dayIndex: number,
+  gridRects: Map<number, DOMRect>,
+  timeRangeStartHour: number,
+): number | null {
+  const rect = gridRects.get(dayIndex)
+  if (!rect) return null
+  const gridRelativeY = clientY - rect.top
+  return timeRangeStartHour + gridRelativeY / HOUR_HEIGHT
+}
+
+/**
+ * Re-cache all day grid rects by enumerating [data-day-grid] elements.
+ * Called once at drag start and whenever the container scrolls.
+ */
+function collectGridRects(): Map<number, DOMRect> {
+  const map = new Map<number, DOMRect>()
+  const elements = document.querySelectorAll<HTMLElement>('[data-day-grid]')
+  elements.forEach((el) => {
+    const dayIndex = parseInt(el.getAttribute('data-day-grid') ?? '', 10)
+    if (!isNaN(dayIndex)) {
+      map.set(dayIndex, el.getBoundingClientRect())
+    }
+  })
+  return map
+}
+
+/** Scroll speed (px per frame) — quadratic curve for natural feel */
+function scrollSpeed(distanceFromEdge: number, threshold: number): number {
+  if (distanceFromEdge > threshold) return 0
+  const t = 1 - distanceFromEdge / threshold
+  return t * t * 15
+}
+
+// ── Hook ───────────────────────────────────────────────────
 
 export function useCalendarDnd({
   onMoveActivity,
@@ -66,39 +102,126 @@ export function useCalendarDnd({
     activity: CalendarActivity
   } | null>(null)
 
-  // Track the latest pointer position so we always use the current cursor Y,
-  // not the stale activatorEvent from drag start.
-  const lastPointerY = useRef(0)
+  // Pre-cached grid rects, rebuilt on drag start and after scroll
+  const gridRectsRef = useRef<Map<number, DOMRect>>(new Map())
+  // Latest pointer position (updated via pointermove listener)
+  const lastPointerRef = useRef({ x: 0, y: 0 })
+  // Alt key state for snap override
+  const altKeyRef = useRef(false)
+  // Cleanup function for drag session
   const cleanupRef = useRef<(() => void) | null>(null)
+  // Auto-scroll animation frame handle
+  const scrollAnimRef = useRef<number | null>(null)
+  // Ref to prevent concurrent re-cache
+  const isCachingRef = useRef(false)
 
+  // ── Sensors (Fix 4: touchAction handled via CSS on EventBlock) ──
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5,
-      },
+      activationConstraint: { distance: 5 },
     }),
     useSensor(KeyboardSensor),
   )
 
+  // ── Auto-scroll ──────────────────────────────────────────
+  const startAutoScroll = useCallback(() => {
+    if (scrollAnimRef.current !== null) return
+
+    const container = scrollRef.current
+    if (!container) return
+
+    const THRESHOLD = 80
+
+    const tick = () => {
+      if (!container) {
+        scrollAnimRef.current = null
+        return
+      }
+      const { x, y } = lastPointerRef.current
+      if (x === 0 && y === 0) {
+        scrollAnimRef.current = requestAnimationFrame(tick)
+        return
+      }
+
+      const rect = container.getBoundingClientRect()
+      let dx = 0
+      let dy = 0
+
+      // Horizontal
+      const distR = rect.right - x
+      dx = scrollSpeed(distR, THRESHOLD)
+      if (dx === 0) {
+        const distL = x - rect.left
+        dx = -scrollSpeed(distL, THRESHOLD)
+      }
+
+      // Vertical
+      const distB = rect.bottom - y
+      dy = scrollSpeed(distB, THRESHOLD)
+      if (dy === 0) {
+        const distT = y - rect.top
+        dy = -scrollSpeed(distT, THRESHOLD)
+      }
+
+      if (dx !== 0 || dy !== 0) {
+        container.scrollBy({ left: dx * 0.4, top: dy * 0.4 })
+        // Re-cache rects after scroll to keep positions accurate
+        if (!isCachingRef.current) {
+          isCachingRef.current = true
+          gridRectsRef.current = collectGridRects()
+          isCachingRef.current = false
+        }
+      }
+
+      scrollAnimRef.current = requestAnimationFrame(tick)
+    }
+
+    scrollAnimRef.current = requestAnimationFrame(tick)
+  }, [scrollRef])
+
+  const stopAutoScroll = useCallback(() => {
+    if (scrollAnimRef.current !== null) {
+      cancelAnimationFrame(scrollAnimRef.current)
+      scrollAnimRef.current = null
+    }
+  }, [])
+
+  // ── Drag start ───────────────────────────────────────────
   const handleDragStart = useCallback((event: { active: { id: string | number; data?: { current?: unknown } } }) => {
     setActiveId(String(event.active.id))
     const data = event.active.data?.current as DragData | undefined
     setActiveData(data ?? null)
 
-    // Track live pointer position throughout the drag
-    const onPointerMove = (e: PointerEvent) => {
-      lastPointerY.current = e.clientY
-    }
-    window.addEventListener('pointermove', onPointerMove)
-    cleanupRef.current = () => window.removeEventListener('pointermove', onPointerMove)
-  }, [])
+    // (Fix 2) Cache all grid rects once at drag start
+    gridRectsRef.current = collectGridRects()
 
+    // Track live pointer & Alt key throughout drag
+    const onPointerMove = (e: PointerEvent) => {
+      lastPointerRef.current = { x: e.clientX, y: e.clientY }
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') altKeyRef.current = true
+    }
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') altKeyRef.current = false
+    }
+
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    cleanupRef.current = () => {
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+      stopAutoScroll()
+    }
+  }, [stopAutoScroll])
+
+  // ── Drag move ────────────────────────────────────────────
   const handleDragMove = useCallback(
     (event: DragMoveEvent) => {
       const { active, over } = event
-      // When the pointer is in a dead zone (gap between columns, resize divider,
-      // etc.) `over` is null. Keep the last known pendingDrop so the ghost doesn't
-      // flicker/disappear as the user drags across column boundaries.
+      // Dead zone: keep last known pendingDrop so ghost doesn't flicker
       if (!over) return
 
       const overIdStr = String(over.id)
@@ -112,18 +235,34 @@ export function useCalendarDnd({
       const dragData = active.data?.current as DragData | undefined
       if (!dragData) return
 
+      // (Fix 3) Start auto-scrolling based on pointer proximity to edge
+      startAutoScroll()
+
+      // (Fix 6) Check Alt key for free-placement (no snap)
+      const freeSnap = altKeyRef.current
+
+      // (Fix 5) Use absolute pointer position for hour computation
+      const { y } = lastPointerRef.current
+
       if (dragData.type === 'activity') {
-        const rawHourDelta = event.delta.y / HOUR_HEIGHT
-        const snappedHourDelta = Math.round(rawHourDelta * 4) / 4
-        const currentStartHour = dragData.activity.startHour ?? 0
-        const newStartHour = Math.max(0, Math.min(23 - dragData.activity.duration, currentStartHour + snappedHourDelta))
+        // (Fix 2 + Fix 5) Compute hour from cached rect + absolute pointer
+        const absHour = computeHourFromPointer(y, newDay, gridRectsRef.current, timeRangeStartHour)
+        // Fallback to delta-based if rect not cached
+        const newStartHour = absHour !== null
+          ? Math.max(0, Math.min(23 - dragData.activity.duration, snapHour(absHour, 15, freeSnap)))
+          : Math.max(0, Math.min(23 - dragData.activity.duration,
+              snapHour(dragData.activity.startHour + (event.delta.y / HOUR_HEIGHT), 15, freeSnap)))
+
         setPendingDrop({
           dayIndex: newDay,
           activity: { ...dragData.activity, day: newDay, startHour: newStartHour },
         })
       } else if (dragData.type === 'suggestion') {
-        const cursorY = lastPointerY.current || (event.activatorEvent as PointerEvent)?.clientY || 0
-        const snappedStartHour = cursorToHour(cursorY, newDay, timeRangeStartHour)
+        const absHour = computeHourFromPointer(y, newDay, gridRectsRef.current, timeRangeStartHour)
+        const snappedStartHour = absHour !== null
+          ? snapHour(absHour, 15, freeSnap)
+          : snapHour(timeRangeStartHour, 15, freeSnap)
+
         setPendingDrop({
           dayIndex: newDay,
           activity: {
@@ -135,11 +274,26 @@ export function useCalendarDnd({
             duration: dragData.suggestion.duration,
           },
         })
+      } else if (dragData.type === 'note') {
+        const absHour = computeHourFromPointer(y, newDay, gridRectsRef.current, timeRangeStartHour)
+        const targetHour = absHour !== null ? snapHour(absHour, 15, freeSnap) : timeRangeStartHour
+        setPendingDrop({
+          dayIndex: newDay,
+          activity: {
+            id: `pending-${dragData.note.id}`,
+            title: dragData.note.text,
+            type: 'other' as CalendarActivity['type'],
+            day: newDay,
+            startHour: targetHour,
+            duration: 0.5,
+          },
+        })
       }
     },
-    [timeRangeStartHour],
+    [timeRangeStartHour, startAutoScroll],
   )
 
+  // ── Drag cancel ──────────────────────────────────────────
   const handleDragCancel = useCallback(() => {
     setActiveId(null)
     setActiveData(null)
@@ -148,6 +302,7 @@ export function useCalendarDnd({
     cleanupRef.current = null
   }, [])
 
+  // ── Drag end ─────────────────────────────────────────────
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       setActiveId(null)
@@ -157,50 +312,47 @@ export function useCalendarDnd({
       cleanupRef.current = null
 
       const { active, over, delta } = event
-
       if (!over) return
 
       const overIdStr = String(over.id)
       let newDay: number | null = null
-
       if (overIdStr.startsWith('day-')) {
         const parsed = parseInt(overIdStr.replace('day-', ''), 10)
         if (!isNaN(parsed)) newDay = parsed
       }
-
       if (newDay === null) return
 
       const dragData = active.data?.current as DragData | undefined
       if (!dragData) return
 
+      const freeSnap = altKeyRef.current
+      const { y } = lastPointerRef.current
+
       if (dragData.type === 'activity') {
-        const rawHourDelta = delta.y / HOUR_HEIGHT
-        const snappedHourDelta = Math.round(rawHourDelta * 4) / 4
-        const currentStartHour = dragData.activity.startHour ?? 0
-        const newStartHour = Math.max(0, Math.min(23 - dragData.activity.duration, currentStartHour + snappedHourDelta))
+        const absHour = computeHourFromPointer(y, newDay, gridRectsRef.current, timeRangeStartHour)
+        const finalStartHour = absHour !== null
+          ? Math.max(0, Math.min(23 - dragData.activity.duration, snapHour(absHour, 15, freeSnap)))
+          : Math.max(0, Math.min(23 - dragData.activity.duration,
+              snapHour(dragData.activity.startHour + (delta.y / HOUR_HEIGHT), 15, freeSnap)))
 
         if (marqueeSelectedIds && marqueeSelectedIds.has(String(active.id)) && marqueeSelectedIds.size > 1) {
           const dayDelta = newDay - dragData.activity.day
-          const hourDelta = newStartHour - currentStartHour
-          if (onGroupMove) {
-            onGroupMove(dayDelta, hourDelta)
-          }
+          const hourDelta = finalStartHour - dragData.activity.startHour
+          if (onGroupMove) onGroupMove(dayDelta, hourDelta)
         } else {
-          onMoveActivity(String(active.id), newDay, newStartHour)
+          onMoveActivity(String(active.id), newDay, finalStartHour)
         }
       } else if (dragData.type === 'suggestion') {
-        const cursorY = lastPointerY.current || (event.activatorEvent as PointerEvent)?.clientY || 0
-        const snappedStartHour = cursorToHour(cursorY, newDay, timeRangeStartHour)
+        const absHour = computeHourFromPointer(y, newDay, gridRectsRef.current, timeRangeStartHour)
+        const snappedStartHour = absHour !== null
+          ? snapHour(absHour, 15, freeSnap)
+          : snapHour(timeRangeStartHour, 15, freeSnap)
 
-        const newActivity = suggestionToCalendarActivity(
-          dragData.suggestion,
-          newDay,
-          snappedStartHour,
-        )
+        const newActivity = suggestionToCalendarActivity(dragData.suggestion, newDay, snappedStartHour)
         onAddFromSuggestion(newActivity, dragData.suggestion.id)
       } else if (dragData.type === 'note' && onMoveNote) {
-        const cursorY = lastPointerY.current || (event.activatorEvent as PointerEvent)?.clientY || 0
-        const targetHour = cursorToHour(cursorY, newDay, timeRangeStartHour)
+        const absHour = computeHourFromPointer(y, newDay, gridRectsRef.current, timeRangeStartHour)
+        const targetHour = absHour !== null ? snapHour(absHour, 15, freeSnap) : timeRangeStartHour
         onMoveNote(dragData.note.id, newDay, targetHour)
       }
     },

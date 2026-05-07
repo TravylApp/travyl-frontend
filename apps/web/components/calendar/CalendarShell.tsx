@@ -3,11 +3,10 @@
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core'
 import { useQuery } from '@tanstack/react-query'
-import { computeTimeRange } from '@travyl/shared/viewmodels/calendarViewModel'
+import { computeTimeRange, getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
 import { fetchCollaborators } from '@travyl/shared'
 import { DEFAULT_TIME_RANGE } from './constants'
 import { CalendarTopBar } from './CalendarTopBar'
-import { MiniMonthCalendar } from './MiniMonthCalendar'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
 import SidebarTabs from './SidebarTabs'
@@ -42,6 +41,8 @@ import { RegenerateOptionsModal } from './RegenerateOptionsModal'
 import { RegenerateDayModal } from './RegenerateDayModal'
 import { getSupabaseBrowser } from '@/lib/supabase-browser'
 import type { CalendarActivity, SuggestionCard } from './types'
+import type { DragData } from './hooks/useCalendarDnd'
+import { formatTimeRange } from './utils'
 
 interface CalendarShellProps {
   tripId: string
@@ -61,6 +62,74 @@ function buildDays(startDate: Date, tripDays: number) {
     days.push({ dayIndex: i, label })
   }
   return days
+}
+
+/**
+ * Drag overlay card — follows the cursor while dragging.
+ * Shows a compact version of the event with type color, title, and time.
+ */
+function DragOverlayContent({ data }: { data: DragData | null }) {
+  if (!data) return null
+
+  if (data.type === 'activity') {
+    const a = data.activity
+    const color = getActivityColor(a.type)
+    return (
+      <div
+        className="rounded-lg shadow-2xl border border-white/20 overflow-hidden pointer-events-none"
+        style={{
+          width: 180,
+          backgroundColor: color,
+          opacity: 0.92,
+        }}
+      >
+        {a.image && a.duration >= 1 && (
+          <div className="h-12 bg-black/20 relative overflow-hidden">
+            <img
+              src={a.image}
+              alt=""
+              className="w-full h-full object-cover opacity-60"
+              draggable={false}
+            />
+          </div>
+        )}
+        <div className="px-3 py-2">
+          <div className="text-white font-semibold text-sm truncate">{a.title}</div>
+          <div className="text-white/80 text-xs mt-0.5">{formatTimeRange(a)}</div>
+          {a.location && (
+            <div className="text-white/60 text-[10px] truncate mt-0.5">{a.location}</div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  if (data.type === 'suggestion') {
+    const s = data.suggestion
+    return (
+      <div
+        className="rounded-lg shadow-2xl border border-white/20 overflow-hidden pointer-events-none"
+        style={{ width: 180, backgroundColor: '#1e3a5f', opacity: 0.92 }}
+      >
+        {s.imageUrl && (
+          <div className="h-12 relative overflow-hidden">
+            <img
+              src={s.imageUrl}
+              alt=""
+              className="w-full h-full object-cover opacity-60"
+              draggable={false}
+            />
+          </div>
+        )}
+        <div className="px-3 py-2">
+          <div className="text-white font-semibold text-sm truncate">{s.name}</div>
+          <div className="text-white/60 text-[10px] mt-0.5 truncate">{s.category}</div>
+        </div>
+      </div>
+    )
+  }
+
+  return null
 }
 
 export function CalendarShell({
@@ -431,39 +500,11 @@ export function CalendarShell({
             onShare={() => {}}
           />
 
-          {/* Three-column layout */}
+          {/* Two-column layout (left date nav hidden) */}
           <div className="flex flex-1 min-h-0 overflow-hidden">
-            {/* Left: Date Nav */}
-            <div className="flex-shrink-0 w-[180px] p-3 overflow-y-auto hidden lg:flex flex-col gap-3 border-r border-[var(--cal-border)]">
-              <MiniMonthCalendar
-                tripStartDate={parsedStartDate}
-                tripEndDate={parsedEndDate}
-                selectedDayIndex={selectedDayIndex}
-                onSelectDay={selectDay}
-                viewMonth={viewMonth}
-                viewYear={viewYear}
-                onNavigate={(m, y) => { setViewMonth(m); setViewYear(y) }}
-                activityCounts={activityCounts}
-              />
-              <div className="bg-[var(--cal-surface)] rounded-xl border border-[var(--cal-border)] p-3">
-                <h4 className="text-xs font-semibold text-[var(--cal-text-secondary)] uppercase tracking-wider mb-2">
-                  Trip Summary
-                </h4>
-                <div className="space-y-1 text-xs text-[var(--cal-text-secondary)]">
-                  <div className="flex justify-between">
-                    <span>Activities</span>
-                    <span className="font-medium text-[var(--cal-text)]">{scheduledActivities.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Unscheduled</span>
-                    <span className="font-medium text-[var(--cal-text)]">{unscheduledActivities.length}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             {/* Center: Calendar Grid */}
-            <div ref={weekGridRef} className="flex-1 min-w-0 overflow-auto">
+            <div ref={weekGridRef} className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
               {viewMode === 'week' ? (
                 <WeekView
                   days={days}
@@ -481,6 +522,7 @@ export function CalendarShell({
                   pendingDrop={pendingDrop}
                   tripId={tripId}
                   onContextMenu={handleContextMenu}
+                  onRegenerateDay={handleRegenerateDay}
                 />
               ) : (
                 <DayView
@@ -496,13 +538,14 @@ export function CalendarShell({
                   pendingDrop={pendingDrop}
                   tripId={tripId}
                   onContextMenu={handleContextMenu}
+                  onRegenerateDay={handleRegenerateDay}
                 />
               )}
             </div>
 
             {/* Right: Context Panel */}
             <div
-              className="flex-shrink-0 border-l border-[var(--cal-border)] overflow-y-auto bg-[var(--cal-bg)] relative"
+              className="flex-shrink-0 border-l border-[var(--cal-border)] bg-[var(--cal-bg)] relative"
               style={{ width: panelWidth }}
             >
               {/* Resize handle */}
@@ -531,40 +574,52 @@ export function CalendarShell({
                   window.addEventListener('mouseup', onMouseUp)
                 }}
               />
-              <SidebarTabs
-                width={panelWidth}
-                forYouContent={
-                  <ForYouPanel
-                    destination={trip?.destination ?? ''}
-                    tripId={trip?.id ?? ''}
-                    width={panelWidth}
-                  />
-                }
-                eventsContent={
-                  <EventsPanel
-                    events={events}
-                    isLoading={eventsLoading}
-                    destination={trip?.destination ?? ''}
-                    startDate={trip?.start_date ?? ''}
-                    endDate={trip?.end_date ?? ''}
-                    onRetry={eventsError ? refetchEvents : undefined}
-                  />
-                }
-                mapContent={
-                  <DayMap
-                    activities={currentDayMapActivities}
-                    selectedActivityId={selectedEventId}
-                    onSelectActivity={(id) => handleSelectEvent(id)}
-                    className="h-full"
-                  />
-                }
-              />
+              {regeneratingDayIndex !== null ? (
+                <RegenerateDayModal
+                  dayIndex={regeneratingDayIndex}
+                  dayLabel={days[regeneratingDayIndex]?.label ?? ''}
+                  slots={regenerateDaySlots}
+                  originalActivities={activities.filter((a) => a.day === regeneratingDayIndex && !a.unscheduled)}
+                  onApply={handleRegenerateDayApply}
+                  onClose={handleCloseRegenerateDayModal}
+                  isLoading={regenerateDayMutation.isPending}
+                />
+              ) : (
+                <SidebarTabs
+                  width={panelWidth}
+                  forYouContent={
+                    <ForYouPanel
+                      destination={trip?.destination ?? ''}
+                      tripId={trip?.id ?? ''}
+                      width={panelWidth}
+                    />
+                  }
+                  eventsContent={
+                    <EventsPanel
+                      events={events}
+                      isLoading={eventsLoading}
+                      destination={trip?.destination ?? ''}
+                      startDate={trip?.start_date ?? ''}
+                      endDate={trip?.end_date ?? ''}
+                      onRetry={eventsError ? refetchEvents : undefined}
+                    />
+                  }
+                  mapContent={
+                    <DayMap
+                      activities={currentDayMapActivities}
+                      selectedActivityId={selectedEventId}
+                      onSelectActivity={(id) => handleSelectEvent(id)}
+                      className="h-full"
+                    />
+                  }
+                />
+              )}
             </div>
           </div>
         </div>
 
-        <DragOverlay>
-          {/* Drag overlay rendered here */}
+        <DragOverlay dropAnimation={null}>
+          <DragOverlayContent data={activeData} />
         </DragOverlay>
 
         {/* Activity context menu */}
@@ -610,16 +665,6 @@ export function CalendarShell({
             onSelect={handleRegenerateSelect}
             onClose={handleCloseRegenerateModal}
             isLoading={regenerateMutation.isPending}
-          />
-        )}
-
-        {/* Regenerate day modal */}
-        {regeneratingDayIndex !== null && (
-          <RegenerateDayModal
-            slots={regenerateDaySlots}
-            onApply={handleRegenerateDayApply}
-            onClose={handleCloseRegenerateDayModal}
-            isLoading={regenerateDayMutation.isPending}
           />
         )}
       </DndContext>

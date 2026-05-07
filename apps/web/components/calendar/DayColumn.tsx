@@ -1,5 +1,7 @@
 'use client'
 import { useMemo } from 'react'
+import { Sparks } from 'iconoir-react'
+import { Tooltip } from '@/components/ui/tooltip'
 import { useDroppable } from '@dnd-kit/core'
 import { HOUR_HEIGHT } from './constants'
 import { EventBlock } from './EventBlock'
@@ -223,20 +225,18 @@ export function DayColumn({
             />
           )}
           {onRegenerateDay && (
-            <button
-              type="button"
-              className="ml-0.5 p-0.5 rounded hover:bg-cal-border-light text-cal-text-secondary opacity-0 group-hover:opacity-100 transition-opacity"
-              title="Regenerate day"
-              onClick={(e) => {
-                e.stopPropagation()
-                onRegenerateDay(dayIndex)
-              }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="23 4 23 10 17 10" />
-                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-              </svg>
-            </button>
+            <Tooltip content="Regenerate day suggestions">
+              <button
+                type="button"
+                className="ml-0.5 p-0.5 rounded hover:bg-cal-border-light text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onRegenerateDay(dayIndex)
+                }}
+              >
+                <Sparks width={14} height={14} />
+              </button>
+            </Tooltip>
           )}
         </span>
       </div>

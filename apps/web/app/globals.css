@@ -230,6 +230,15 @@ body::-webkit-scrollbar {
   50% { opacity: 0; }
 }
 
+/* Slide-in from the right for panels */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+.animate-slide-in-right {
+  animation: slide-in-right 0.2s ease-out;
+}
+
 /* Masonry layout for For You panel suggestions */
 .masonry-grid {
   column-count: 2;

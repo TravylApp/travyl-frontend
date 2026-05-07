@@ -1,6 +1,7 @@
 'use client'
 
 import { Plus, ShareAndroid } from 'iconoir-react'
+import { Tooltip } from '@/components/ui/tooltip'
 
 interface CalendarTopBarProps {
   tripName: string
@@ -35,26 +36,30 @@ export function CalendarTopBar({
       {/* Center: Week navigation + view toggle */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => onWeekChange(-1)}
-            className="p-1.5 rounded-md hover:bg-[var(--cal-nav-active-bg)] text-[var(--cal-nav-inactive)] transition-colors text-sm leading-none"
-            aria-label="Previous week"
-          >
-            ‹
-          </button>
+          <Tooltip content="Previous week">
+            <button
+              onClick={() => onWeekChange(-1)}
+              className="p-1.5 rounded-md hover:bg-[var(--cal-nav-active-bg)] text-[var(--cal-nav-inactive)] transition-colors text-sm leading-none"
+              aria-label="Previous week"
+            >
+              ‹
+            </button>
+          </Tooltip>
           <button
             onClick={onToday}
             className="px-2 py-1 text-xs font-medium text-[var(--cal-accent)] hover:bg-[var(--cal-accent-bg)] rounded-md transition-colors"
           >
             Today
           </button>
-          <button
-            onClick={() => onWeekChange(1)}
-            className="p-1.5 rounded-md hover:bg-[var(--cal-nav-active-bg)] text-[var(--cal-nav-inactive)] transition-colors text-sm leading-none"
-            aria-label="Next week"
-          >
-            ›
-          </button>
+          <Tooltip content="Next week">
+            <button
+              onClick={() => onWeekChange(1)}
+              className="p-1.5 rounded-md hover:bg-[var(--cal-nav-active-bg)] text-[var(--cal-nav-inactive)] transition-colors text-sm leading-none"
+              aria-label="Next week"
+            >
+              ›
+            </button>
+          </Tooltip>
         </div>
 
         {/* View toggle */}
@@ -91,13 +96,15 @@ export function CalendarTopBar({
           <Plus width={14} height={14} />
           <span className="hidden sm:inline">New</span>
         </button>
-        <button
-          onClick={onShare}
-          className="p-1.5 rounded-md hover:bg-[var(--cal-accent-bg)] text-[var(--cal-text-secondary)] transition-colors"
-          aria-label="Share"
-        >
-          <ShareAndroid width={16} height={16} />
-        </button>
+        <Tooltip content="Share trip">
+          <button
+            onClick={onShare}
+            className="p-1.5 rounded-md hover:bg-[var(--cal-accent-bg)] text-[var(--cal-text-secondary)] transition-colors"
+            aria-label="Share"
+          >
+            <ShareAndroid width={16} height={16} />
+          </button>
+        </Tooltip>
       </div>
     </div>
   )

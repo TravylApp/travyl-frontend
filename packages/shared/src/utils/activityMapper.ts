@@ -197,6 +197,7 @@ export function toCalendarActivity(row: ActivityRow, tripStartDate: string): Cal
     checkIn: row.activity_data?.check_in,
     checkOut: row.activity_data?.check_out,
     bookingRef: row.activity_data?.booking_ref,
+    transitVehicleType: row.activity_data?.transit_vehicle_type as CalendarActivity['transitVehicleType'],
   }
 }
 
@@ -241,6 +242,7 @@ export function toActivityRow(
       check_in: cal.checkIn,
       check_out: cal.checkOut,
       booking_ref: cal.bookingRef,
+      ...(cal.transitVehicleType !== undefined && { transit_vehicle_type: cal.transitVehicleType }),
       ...(cal.unscheduled !== undefined && { unscheduled: cal.unscheduled }),
     },
   }
