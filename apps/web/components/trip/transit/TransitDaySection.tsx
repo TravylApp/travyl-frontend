@@ -11,11 +11,14 @@ interface TransitDaySectionProps {
 
 export function TransitDaySection({ dayLabel, dateLabel, defaultOpen = true, children }: TransitDaySectionProps) {
   const [open, setOpen] = React.useState(defaultOpen);
+  const contentId = React.useId();
 
   return (
     <div>
       <button
         onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        aria-controls={contentId}
         className="flex items-center gap-2 w-full text-left py-2"
       >
         <ChevronDown
@@ -30,7 +33,7 @@ export function TransitDaySection({ dayLabel, dateLabel, defaultOpen = true, chi
           {dateLabel}
         </span>
       </button>
-      {open && <div className="space-y-2 pl-6">{children}</div>}
+      {open && <div id={contentId} className="space-y-2 pl-6">{children}</div>}
     </div>
   );
 }
