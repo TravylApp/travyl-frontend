@@ -86,12 +86,14 @@ export async function GET(req: NextRequest) {
 
     // Normalize flights into a consistent shape
     const normalize = (flights: any[], tier: string) =>
-      flights.map((f: any, i: number) => {
+      flights.map((f: any) => {
         const legs = f.flights ?? []
         const firstLeg = legs[0] ?? {}
+        const lastLeg = legs[legs.length - 1] ?? {}
 
         return {
-          id: `${tier}-${i}`,
+          // Content-derived stable ID so the same itinerary keeps the same offer_id across re-searches.
+          id: `serp:${tier}:${firstLeg.flight_number ?? ''}:${firstLeg.departure_airport?.id ?? ''}:${firstLeg.departure_airport?.time ?? ''}:${lastLeg.arrival_airport?.id ?? ''}`,
           tier,
           price: f.price ?? null,
           type: f.type ?? 'Round trip',

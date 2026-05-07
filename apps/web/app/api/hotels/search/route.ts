@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!SERPAPI_KEY) {
-    return NextResponse.json({ total: 0, hotels: [] })
+    return NextResponse.json({ total: 0, hotels: [], error: 'unavailable' }, { status: 503 })
   }
 
   try {
@@ -65,8 +65,10 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    const hotels = properties.slice(0, 20).map((p: any, i: number) => ({
-      id: `serp-hotel-${i}`,
+    const slug = (s: string) => (s ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60)
+    const hotels = properties.slice(0, 20).map((p: any) => ({
+      // Content-derived stable ID so the same property keeps the same offer_id across re-searches.
+      id: `serp:${slug(p.name)}:${p.gps_coordinates?.latitude ?? 0}:${p.gps_coordinates?.longitude ?? 0}`,
       name: p.name,
       stars: p.hotel_class ?? 0,
       rating: p.overall_rating ?? 0,

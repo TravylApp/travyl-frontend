@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { FieldLabel, Input, Select, DateInput, PrimaryButton } from '@/components/trip/BookingFormPrimitives'
 import { searchHotels, type HotelSearchInput } from './hotelSearch'
 import type { HotelSearchState } from './HotelResultsList'
@@ -15,9 +15,10 @@ export interface HotelSearchPanelProps {
   trip: { id: string; destination: string; start_date: string; end_date: string }
   onResultsChange: (state: HotelSearchState) => void
   onInputsChange: (inputs: { check_in: string; check_out: string; guests: number }) => void
+  onClose?: () => void
 }
 
-export function HotelSearchPanel({ trip, onResultsChange, onInputsChange }: HotelSearchPanelProps) {
+export function HotelSearchPanel({ trip, onResultsChange, onInputsChange, onClose }: HotelSearchPanelProps) {
   const [destination, setDestination] = useState(trip.destination ?? '')
   const [checkIn, setCheckIn] = useState(trip.start_date ?? '')
   const [checkOut, setCheckOut] = useState(trip.end_date ?? '')
@@ -64,7 +65,16 @@ export function HotelSearchPanel({ trip, onResultsChange, onInputsChange }: Hote
   }
 
   return (
-    <div onKeyDown={handleKey} className="rounded-xl border border-[var(--trip-base)]/30 bg-white dark:bg-white/[0.04] p-5 space-y-4">
+    <div onKeyDown={handleKey} className="rounded-xl border border-[var(--trip-base)]/30 bg-white dark:bg-white/[0.04] p-5 space-y-4 relative">
+      {onClose && (
+        <button
+          onClick={onClose}
+          aria-label="Close search"
+          className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition"
+        >
+          <X size={14} />
+        </button>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-6 gap-x-4 gap-y-3">
         <div className="md:col-span-6">
           <FieldLabel>Destination</FieldLabel>

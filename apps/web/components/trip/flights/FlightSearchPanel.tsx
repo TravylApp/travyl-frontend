@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Search } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { FieldLabel, Input, Select, DateInput, PrimaryButton } from '@/components/trip/BookingFormPrimitives'
 import { AirportAutocomplete } from './AirportAutocomplete'
 import { searchFlights, type FlightSearchInput, type SerpFlight } from './flightSearch'
@@ -17,9 +17,10 @@ const CABIN_OPTIONS = [
 export interface FlightSearchPanelProps {
   trip: { id: string; start_date: string; end_date: string }
   onResultsChange: (state: FlightSearchState) => void
+  onClose?: () => void
 }
 
-export function FlightSearchPanel({ trip, onResultsChange }: FlightSearchPanelProps) {
+export function FlightSearchPanel({ trip, onResultsChange, onClose }: FlightSearchPanelProps) {
   const [from, setFrom] = useState<{ iata: string; name: string; city: string } | null>(null)
   const [to, setTo] = useState<{ iata: string; name: string; city: string } | null>(null)
   const [date, setDate] = useState(trip.start_date ?? '')
@@ -79,7 +80,16 @@ export function FlightSearchPanel({ trip, onResultsChange }: FlightSearchPanelPr
   }
 
   return (
-    <div onKeyDown={handleKey} className="rounded-xl border border-[var(--trip-base)]/30 bg-white dark:bg-white/[0.04] p-5 space-y-4">
+    <div onKeyDown={handleKey} className="rounded-xl border border-[var(--trip-base)]/30 bg-white dark:bg-white/[0.04] p-5 space-y-4 relative">
+      {onClose && (
+        <button
+          onClick={onClose}
+          aria-label="Close search"
+          className="absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-white/[0.06] transition"
+        >
+          <X size={14} />
+        </button>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-6 gap-x-4 gap-y-3">
         <div className="md:col-span-3">
           <AirportAutocomplete label="From" value={from} onChange={setFrom} invalid={errors.from} />

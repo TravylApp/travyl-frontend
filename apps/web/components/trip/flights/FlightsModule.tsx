@@ -132,7 +132,14 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency, fo
     <div className="space-y-4">
       {searching && (
         <>
-          <FlightSearchPanel trip={tripForPanel} onResultsChange={setSearchState} />
+          <FlightSearchPanel
+            trip={tripForPanel}
+            onResultsChange={setSearchState}
+            onClose={() => {
+              setSearching(false)
+              setSearchState({ loading: false, results: [], error: null, hasSearched: false })
+            }}
+          />
           <FlightResultsList
             state={searchState}
             savedOfferIds={savedOfferIds}

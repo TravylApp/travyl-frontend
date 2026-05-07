@@ -134,6 +134,10 @@ export function HotelsModule({ tripId, hotels, rawHotels, defaultCurrency, forma
             trip={tripForPanel}
             onResultsChange={setSearchState}
             onInputsChange={setSearchInputs}
+            onClose={() => {
+              setSearching(false)
+              setSearchState({ loading: false, results: [], error: null, hasSearched: false })
+            }}
           />
           <HotelResultsList
             state={searchState}

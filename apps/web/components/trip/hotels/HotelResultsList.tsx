@@ -33,10 +33,13 @@ export function HotelResultsList({ state, savedOfferIds, busyOfferId, onAdd, for
   }
 
   if (state.error) {
+    const isUnavailable = state.error === 'unavailable' || state.error.includes('503')
     return (
       <div className="flex flex-col items-center text-center py-10">
         <AlertCircle size={20} className="text-gray-400 mb-2" />
-        <p className="text-[13px] text-gray-700 dark:text-gray-200">{state.error}</p>
+        <p className="text-[13px] text-gray-700 dark:text-gray-200">
+          {isUnavailable ? 'Search unavailable — contact admin' : state.error}
+        </p>
       </div>
     )
   }
