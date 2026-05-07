@@ -60,6 +60,8 @@ export function TransitsModule({ tripId, defaultCurrency = 'USD', days, hotels, 
   );
 
   const [dismissedPairIds, setDismissedPairIds] = useState<Set<string>>(new Set());
+  const dismissedPairIdsRef = useRef(dismissedPairIds);
+  dismissedPairIdsRef.current = dismissedPairIds;
   const [suggestionResults, setSuggestionResults] = useState<Record<string, TransitDirectionResult[]>>({});
   const [suggestionLoading, setSuggestionLoading] = useState<Record<string, boolean>>({});
   const [suggestionErrors, setSuggestionErrors] = useState<Record<string, string | null>>({});
@@ -75,9 +77,11 @@ export function TransitsModule({ tripId, defaultCurrency = 'USD', days, hotels, 
     setSuggestionLoading(Object.fromEntries(pairIds.map((id) => [id, true])));
     setSuggestionErrors({});
 
+    const currentDismissed = dismissedPairIdsRef.current;
+
     const fetches = routePairs.map((pair) =>
       limit(async () => {
-        if (dismissedPairIds.has(pair.id)) return;
+        if (currentDismissed.has(pair.id)) return;
 
         try {
           const token = await getAuthToken();
@@ -106,7 +110,7 @@ export function TransitsModule({ tripId, defaultCurrency = 'USD', days, hotels, 
     );
 
     Promise.all(fetches);
-  }, [routePairs, dismissedPairIds, fetchVersion]);
+  }, [routePairs, fetchVersion]);
 
   const [searching, setSearching] = React.useState(false);
   const [searchResults, setSearchResults] = React.useState<TransitDirectionResult[]>([]);
@@ -188,21 +192,25 @@ export function TransitsModule({ tripId, defaultCurrency = 'USD', days, hotels, 
   });
 
   async function handleAddFromSuggestion(pairId: string, result: TransitDirectionResult) {
-    setDismissedPairIds((prev) => new Set(prev).add(pairId));
-    await addMutation.mutateAsync({
-      vehicleType: result.steps[0]?.mode ?? 'train',
-      provider: result.steps[0]?.carrier ?? '',
-      routeName: result.steps.map((s) => s.line).filter(Boolean).join(' → ') || 'Transit route',
-      originLabel: result.origin.label,
-      destinationLabel: result.destination.label,
-      departureAt: result.departure_at,
-      arrivalAt: result.arrival_at,
-      price: result.fare?.amount ?? null,
-      currency: result.fare?.currency ?? 'USD',
-      bookingRef: null,
-      confirmationCode: null,
-      notes: null,
-    });
+    try {
+      await addMutation.mutateAsync({
+        vehicleType: result.steps[0]?.mode ?? 'train',
+        provider: result.steps[0]?.carrier ?? '',
+        routeName: result.steps.map((s) => s.line).filter(Boolean).join(' → ') || 'Transit route',
+        originLabel: result.origin.label,
+        destinationLabel: result.destination.label,
+        departureAt: result.departure_at,
+        arrivalAt: result.arrival_at,
+        price: result.fare?.amount ?? null,
+        currency: result.fare?.currency ?? 'USD',
+        bookingRef: null,
+        confirmationCode: null,
+        notes: null,
+      });
+      setDismissedPairIds((prev) => new Set(prev).add(pairId));
+    } catch {
+      // mutation failed — pair stays visible so user can retry
+    }
   }
 
   const bookings = React.useMemo(
@@ -230,7 +238,7 @@ export function TransitsModule({ tripId, defaultCurrency = 'USD', days, hotels, 
   if (error) {
     return (
       <div className="text-center py-12">
-        <p className="text-[13px] text-red-500">Could not load transit bookings.</p>
+        <p className="text-sm text-red-500">Could not load transit bookings.</p>
       </div>
     );
   }
@@ -239,10 +247,10 @@ export function TransitsModule({ tripId, defaultCurrency = 'USD', days, hotels, 
     return (
       <div className="text-center py-12">
         <p className="text-[15px] font-medium text-gray-900 dark:text-white">No transit bookings yet</p>
-        <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1">Add a transit leg to your trip</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Add a transit leg to your trip</p>
         <button
           onClick={() => setAdding(true)}
-          className="mt-4 px-4 h-9 rounded-xl text-[13px] font-semibold text-white shadow-sm hover:shadow-md transition-shadow"
+          className="mt-4 px-4 h-9 rounded-xl text-sm font-semibold text-white shadow-sm hover:shadow-md transition-shadow"
           style={{ backgroundColor: 'var(--trip-base)' }}
         >
           Add Transit
@@ -304,7 +312,7 @@ export function TransitsModule({ tripId, defaultCurrency = 'USD', days, hotels, 
                       onRetry={() => {
                         setSuggestionErrors((prev) => ({ ...prev, [pair.id]: null }));
                         setSuggestionLoading((prev) => ({ ...prev, [pair.id]: true }));
-                        routePairsVersionRef.current++;
+                        setFetchVersion((v) => v + 1);
                       }}
                     />
                   ))}

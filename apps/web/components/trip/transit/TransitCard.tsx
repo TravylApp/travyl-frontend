@@ -1,29 +1,8 @@
 'use client';
 import React from 'react';
-import { MoreHorizontal, Train, Bus, Ship, CableCar } from 'lucide-react';
+import { MoreHorizontal, Train } from 'lucide-react';
 import type { TransitCardViewModel } from './types';
-
-const VEHICLE_ICONS: Record<string, React.ReactNode> = {
-  train: <Train size={16} />,
-  bus: <Bus size={16} />,
-  subway: <Train size={16} />,
-  tram: <Train size={16} />,
-  light_rail: <Train size={16} />,
-  ferry: <Ship size={16} />,
-  cable_car: <CableCar size={16} />,
-  funicular: <CableCar size={16} />,
-};
-
-const VEHICLE_COLORS: Record<string, string> = {
-  train: '#10B981',
-  bus: '#F59E0B',
-  subway: '#3B82F6',
-  tram: '#8B5CF6',
-  light_rail: '#8B5CF6',
-  ferry: '#06B6D4',
-  cable_car: '#EC4899',
-  funicular: '#EC4899',
-};
+import { VEHICLE_ICONS, VEHICLE_COLORS } from './transitIcons';
 
 interface TransitCardProps {
   booking: TransitCardViewModel;
@@ -59,7 +38,7 @@ export function TransitCard({ booking, onEdit, onDelete }: TransitCardProps) {
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
+              <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                 {booking.provider || 'Transit'}
               </span>
               <span className="text-[11px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded capitalize">
@@ -67,7 +46,7 @@ export function TransitCard({ booking, onEdit, onDelete }: TransitCardProps) {
               </span>
             </div>
             {booking.routeName && (
-              <p className="text-[13px] text-gray-600 dark:text-gray-400 mt-0.5 truncate">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5 truncate">
                 {booking.routeName}
               </p>
             )}
@@ -85,13 +64,13 @@ export function TransitCard({ booking, onEdit, onDelete }: TransitCardProps) {
             <div className="absolute right-0 top-8 z-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg py-1 min-w-[120px]">
               <button
                 onClick={() => { onEdit(); setShowMenu(false); }}
-                className="w-full text-left px-3 py-1.5 text-[13px] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 Edit
               </button>
               <button
                 onClick={() => { onDelete(); setShowMenu(false); }}
-                className="w-full text-left px-3 py-1.5 text-[13px] text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                className="w-full text-left px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
               >
                 Delete
               </button>
@@ -100,7 +79,7 @@ export function TransitCard({ booking, onEdit, onDelete }: TransitCardProps) {
         </div>
       </div>
 
-      <div className="mt-3 flex items-center gap-3 text-[13px]">
+      <div className="mt-3 flex items-center gap-3 text-sm">
         <div className="flex-1">
           <p className="text-gray-900 dark:text-white font-medium">{booking.origin}</p>
           <p className="text-gray-500 dark:text-gray-400">{booking.departureDisplay || '\u2014'}</p>

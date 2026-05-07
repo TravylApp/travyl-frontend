@@ -1,32 +1,9 @@
 'use client';
 import React from 'react';
-import { Train, Bus, Ship, CableCar } from 'lucide-react';
+import { Train } from 'lucide-react';
 import type { RoutePair } from './detectRoutePairs';
 import type { TransitDirectionResult } from '@travyl/shared';
-
-// ─── Vehicle icons & colors (mirrored from TransitCard.tsx) ───
-
-const VEHICLE_ICONS: Record<string, React.ReactNode> = {
-  train: <Train size={16} />,
-  bus: <Bus size={16} />,
-  subway: <Train size={16} />,
-  tram: <Train size={16} />,
-  light_rail: <Train size={16} />,
-  ferry: <Ship size={16} />,
-  cable_car: <CableCar size={16} />,
-  funicular: <CableCar size={16} />,
-};
-
-const VEHICLE_COLORS: Record<string, string> = {
-  train: '#10B981',
-  bus: '#F59E0B',
-  subway: '#3B82F6',
-  tram: '#8B5CF6',
-  light_rail: '#8B5CF6',
-  ferry: '#06B6D4',
-  cable_car: '#EC4899',
-  funicular: '#EC4899',
-};
+import { VEHICLE_ICONS, VEHICLE_COLORS } from './transitIcons';
 
 // ─── Helpers ───────────────────────────────────────────────────
 
@@ -89,11 +66,11 @@ export function TransitRoutePairCard({
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
       {/* Header: Origin → Destination */}
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
+        <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">
           {routePair.origin.label}
         </span>
         <span className="text-gray-300 dark:text-gray-600 shrink-0">&rarr;</span>
-        <span className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
+        <span className="text-sm font-semibold text-gray-900 dark:text-white truncate">
           {routePair.destination.label}
         </span>
       </div>
@@ -104,7 +81,7 @@ export function TransitRoutePairCard({
       {/* Error state */}
       {!isLoading && error && (
         <div className="flex items-center justify-between">
-          <p className="text-[13px] text-red-500">{error}</p>
+          <p className="text-sm text-red-500">{error}</p>
           <button
             onClick={onRetry}
             className="px-3 h-8 rounded-lg text-[12px] font-semibold text-white shadow-sm hover:shadow-md transition-shadow"
@@ -117,7 +94,7 @@ export function TransitRoutePairCard({
 
       {/* Empty / no routes found */}
       {!isLoading && !error && results.length === 0 && (
-        <p className="text-[13px] text-gray-500 dark:text-gray-400 text-center py-4">
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
           No transit routes found
         </p>
       )}
@@ -148,7 +125,7 @@ export function TransitRoutePairCard({
 
                 {/* Duration + line name */}
                 <div className="flex-1 min-w-0">
-                  <span className="text-[13px] font-semibold text-gray-900 dark:text-white">
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
                     {formatDuration(result.total_duration_minutes)}
                   </span>
                   <p className="text-[12px] text-gray-500 dark:text-gray-400 truncate">
