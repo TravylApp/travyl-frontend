@@ -469,17 +469,7 @@ function TripLayoutContent({
   const hasMarkers = mapMarkers.length > 0;
   const dir = directionRef.current;
 
-  // Track if we just came from/going to calendar to suppress the inner tab animation
-  // (the outer layout crossfade already handles the transition)
-  const wasCalendarRef = useRef(isCalendar);
-  useEffect(() => { wasCalendarRef.current = isCalendar; }, [isCalendar]);
-  const fromCalendar = wasCalendarRef.current && !isCalendar;
-
-  const pageVariants = fromCalendar ? {
-    initial: { opacity: 1, y: 0 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0 },
-  } : {
+  const pageVariants = {
     initial: { opacity: 0, y: dir > 0 ? 14 : -14 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: dir > 0 ? -8 : 8 },
@@ -487,29 +477,13 @@ function TripLayoutContent({
 
   return (
     <AnimatePresence mode="sync">
-    {isCalendar ? (
-      <motion.div
-        key="calendar-layout"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="w-screen overflow-hidden relative"
-        style={{ height: '100vh', position: 'fixed', inset: 0, top: 0, zIndex: 40 }}
-      >
-        <TripRail tripId={tripId} variant={isMagazine ? 'dark' : 'light'} />
-        <div className={`h-full transition-[padding] duration-200 ease-out ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'}`}>
-          {children}
-        </div>
-      </motion.div>
-    ) : (
     <motion.div
-      key="standard-layout"
+      key="trip-layout"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className={`pb-14 md:pb-0 ${isMagazine ? 'relative' : 'bg-white dark:bg-background'}`}
+      className={`${isCalendar ? 'flex flex-col h-[calc(100vh-48px)] overflow-hidden' : 'pb-14 md:pb-0'} ${isMagazine ? 'relative' : 'bg-white dark:bg-background'}`}
     >
       {/* Sidebar */}
       <TripRail tripId={tripId} variant={isMagazine ? 'dark' : 'light'} />
@@ -523,9 +497,9 @@ function TripLayoutContent({
       )}
 
       {/* Content area */}
-      <div className="relative z-10">
-        <div className={isMagazine ? '' : 'mx-auto max-w-[1800px]'}>
-          {!isMagazine && (
+      <div className={`relative z-10 ${isCalendar ? 'flex-1 flex flex-col min-h-0' : ''}`}>
+        <div className={isCalendar ? 'flex-1 flex flex-col min-h-0 w-full' : isMagazine ? '' : 'mx-auto max-w-[1800px]'}>
+          {!isMagazine && !isCalendar && (
             <ContentHeader
               tripId={tripId}
               trip={trip}
@@ -536,9 +510,15 @@ function TripLayoutContent({
 
           {isOverview && <TripOnboardingBanner />}
 
-          <div className="flex">
+          <div className={`flex ${isCalendar ? 'flex-1 min-h-0' : ''}`}>
             {/* Main content */}
-            <div className={`flex-1 min-w-0 relative overflow-hidden transition-[padding] duration-200 ease-out ${isMagazine ? `px-6 sm:px-10 ${railCollapsed ? 'md:pl-[96px]' : 'md:pl-[260px]'} md:pr-10` : `px-5 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} pt-4 pb-5`}`}>
+            <div className={`flex-1 min-w-0 relative overflow-hidden transition-[padding] duration-200 ease-out ${
+              isCalendar
+                ? `${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} flex flex-col`
+                : isMagazine
+                  ? `px-6 sm:px-10 ${railCollapsed ? 'md:pl-[96px]' : 'md:pl-[260px]'} md:pr-10`
+                  : `px-5 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} pt-4 pb-5`
+            }`}>
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.div
                   key={`tab-${currentSegment}`}
@@ -546,14 +526,21 @@ function TripLayoutContent({
                   animate={pageVariants.animate}
                   exit={pageVariants.exit}
                   transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
-                  className={isMagazine ? (isOverview ? 'pt-2' : 'bg-white/85 backdrop-blur-xl rounded-2xl p-5 sm:p-6 mt-4 mb-8') : ''}
+                  className={
+                    isCalendar
+                      ? 'flex-1 min-h-0 flex flex-col'
+                      : isMagazine
+                        ? (isOverview ? 'pt-2' : 'bg-white/85 backdrop-blur-xl rounded-2xl p-5 sm:p-6 mt-4 mb-8')
+                        : ''
+                  }
                 >
                   {children}
                 </motion.div>
               </AnimatePresence>
             </div>
 
-            {/* Map side panel */}
+            {/* Map side panel — hidden on calendar (it has its own Map tab in the right panel) */}
+            {!isCalendar && (
             <AnimatePresence>
               {mapOpen && (
                 <motion.div
@@ -616,12 +603,13 @@ function TripLayoutContent({
                 </motion.div>
               )}
             </AnimatePresence>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Below-the-fold content */}
-      {isOverview && (
+      {/* Below-the-fold content — overview only, never calendar */}
+      {isOverview && !isCalendar && (
         <div className="relative z-10">
           {isMagazine ? (
             <div className={`px-6 sm:px-10 ${railCollapsed ? 'md:pl-[96px]' : 'md:pl-[260px]'} md:pr-10 mt-4 pb-8 transition-[padding] duration-200 ease-out`}>
@@ -636,12 +624,11 @@ function TripLayoutContent({
       )}
 
       {/* Magazine footer — gradient floor so the page has a defined end */}
-      {isMagazine && (
+      {isMagazine && !isCalendar && (
         <div className="relative z-10 h-40 pointer-events-none"
           style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.85) 100%)' }} />
       )}
     </motion.div>
-    )}
     </AnimatePresence>
   );
 }
