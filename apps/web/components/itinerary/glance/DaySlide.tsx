@@ -53,7 +53,7 @@ export function DaySlide({
             aria-label="Previous day"
             onClick={onPrev}
             disabled={isFirst}
-            className="hidden lg:flex absolute -left-6 top-1/2 -translate-y-1/2 w-[52px] h-[52px] rounded-full bg-white border border-gray-200 dark:bg-gray-900 dark:border-white/10 items-center justify-center z-10 shadow-lg text-gray-900 dark:text-white text-2xl transition-all hover:scale-105 hover:border-[var(--trip-base)] dark:hover:border-[var(--trip-base)] disabled:opacity-30 disabled:cursor-not-allowed"
+            className="hidden lg:flex absolute left-4 top-1/2 -translate-y-1/2 w-[44px] h-[44px] rounded-full bg-white/90 backdrop-blur-md border border-gray-200 dark:bg-gray-900/85 dark:border-white/10 items-center justify-center z-20 shadow-lg text-gray-900 dark:text-white text-xl transition-all hover:scale-105 hover:bg-white hover:border-[var(--trip-base)] dark:hover:border-[var(--trip-base)] disabled:opacity-0 disabled:cursor-not-allowed disabled:pointer-events-none"
           >
             ‹
           </button>
@@ -62,7 +62,7 @@ export function DaySlide({
             aria-label="Next day"
             onClick={onNext}
             disabled={isLast}
-            className="hidden lg:flex absolute -right-6 top-1/2 -translate-y-1/2 w-[52px] h-[52px] rounded-full bg-white border border-gray-200 dark:bg-gray-900 dark:border-white/10 items-center justify-center z-10 shadow-lg text-gray-900 dark:text-white text-2xl transition-all hover:scale-105 hover:border-[var(--trip-base)] dark:hover:border-[var(--trip-base)] disabled:opacity-30 disabled:cursor-not-allowed"
+            className="hidden lg:flex absolute right-4 top-1/2 -translate-y-1/2 w-[44px] h-[44px] rounded-full bg-white/90 backdrop-blur-md border border-gray-200 dark:bg-gray-900/85 dark:border-white/10 items-center justify-center z-20 shadow-lg text-gray-900 dark:text-white text-xl transition-all hover:scale-105 hover:bg-white hover:border-[var(--trip-base)] dark:hover:border-[var(--trip-base)] disabled:opacity-0 disabled:cursor-not-allowed disabled:pointer-events-none"
           >
             ›
           </button>

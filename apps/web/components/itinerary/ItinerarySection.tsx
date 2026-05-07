@@ -700,54 +700,21 @@ export default function ItinerarySection({ tripId }: { tripId: string }) {
   if (!isLoading && days.length === 0) return <ItineraryEmpty />;
 
   return (
-    <div className="relative overflow-hidden">
+    <div className="relative">
       <div className="relative z-10 pb-8">
 
-        {/* ── Day selector — draggable to reorder ── */}
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-2 mb-4">
-          {days.map((d, i) => (
-            <button
-              key={`day-${i}`}
-              draggable
-              onDragStart={() => { dragDayRef.current = i; }}
-              onDragOver={(e) => { e.preventDefault(); setDragOverIdx(i); }}
-              onDragLeave={() => setDragOverIdx(null)}
-              onDrop={() => {
-                if (dragDayRef.current !== null && dragDayRef.current !== i) {
-                  swapDays(dragDayRef.current, i);
-                  setSelectedDayIndex(i);
-                }
-                dragDayRef.current = null;
-                setDragOverIdx(null);
-              }}
-              onDragEnd={() => { dragDayRef.current = null; setDragOverIdx(null); }}
-              onClick={() => setSelectedDayIndex(i)}
-              className={`shrink-0 px-3 py-1.5 rounded-lg text-center transition-all cursor-grab active:cursor-grabbing border ${
-                dragOverIdx === i ? 'ring-2 ring-gray-400 dark:ring-white/40 scale-105' : ''
-              } ${
-                i === selectedDayIndex
-                  ? 'bg-gray-800 dark:bg-white/[0.15] border-gray-700 dark:border-white/[0.25] shadow-sm'
-                  : dragOverIdx === i
-                    ? 'bg-gray-100 dark:bg-white/[0.08] border-transparent'
-                    : 'bg-white/60 dark:bg-transparent border-gray-200 dark:border-transparent hover:bg-white/80 dark:hover:bg-white/[0.06]'
-              }`}
-            >
-              <span className={`block text-[10px] font-bold ${i === selectedDayIndex ? 'text-gray-300 dark:text-white/50' : 'text-gray-500 dark:text-white/50'}`}>{d.dayLabel.replace('Day ', 'D')}</span>
-              <span className={`block text-[11px] font-medium ${i === selectedDayIndex ? 'text-white dark:text-white/80' : 'text-gray-700 dark:text-white/80'}`}>{d.dateLabel.replace(/,.*/, '')}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* ── AT A GLANCE section ── */}
+        {/* ── AT A GLANCE — consolidated full-width header ── */}
         <section>
-          <div className="mb-4 flex items-end justify-between">
-            <div>
-              <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-gray-500 dark:text-white/70">Your Itinerary</p>
-              <h2 className="text-2xl sm:text-3xl font-normal text-gray-800 dark:text-white tracking-wide font-serif">At a Glance</h2>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <TripHistoryToggle tripId={tripId} variant="pill" />
-              <div className="relative shrink-0" ref={regenMenuRef}>
+          <div className="mb-6 flex flex-col gap-4">
+            {/* Row 1 — title + action cluster */}
+            <div className="flex items-end justify-between gap-4 flex-wrap">
+              <div>
+                <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-gray-500 dark:text-white/70">Your Itinerary</p>
+                <h2 className="text-2xl sm:text-3xl font-normal text-gray-800 dark:text-white tracking-wide font-serif">At a Glance</h2>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <TripHistoryToggle tripId={tripId} variant="pill" />
+                <div className="relative shrink-0" ref={regenMenuRef}>
               <button
                 onClick={() => !regenerating && setRegenMenuOpen(v => !v)}
                 disabled={regenerating}
@@ -809,45 +776,89 @@ export default function ItinerarySection({ tripId }: { tripId: string }) {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-md bg-gray-100/80 dark:bg-black/30">
-              <span className="text-[11px] tabular-nums mr-1 text-gray-600 dark:text-white/70">
-                {selectedDayIndex + 1} / {days.length}
-              </span>
-              <button onClick={() => selectedDayIndex > 0 && setSelectedDayIndex(selectedDayIndex - 1)} disabled={selectedDayIndex === 0}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-300 dark:border-white/[0.25]">
-                <ChevronDown size={14} className="rotate-90 text-gray-600 dark:text-white/70" />
-              </button>
-              <button onClick={() => selectedDayIndex < days.length - 1 && setSelectedDayIndex(selectedDayIndex + 1)} disabled={selectedDayIndex === days.length - 1}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-300 dark:border-white/[0.25]">
-                <ChevronDown size={14} className="-rotate-90 text-gray-600 dark:text-white/70" />
-              </button>
-              <a
-                href={`/trip/${tripId}/calendar`}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-300 dark:border-white/[0.25]"
-                title="Calendar view"
-              >
-                <Calendar size={13} className="text-gray-600 dark:text-white/70" />
-              </a>
-              <button
-                onClick={() => setCompactOpen((v) => !v)}
-                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-300 dark:border-white/[0.25] ${
-                  compactOpen ? 'bg-gray-200 dark:bg-white/[0.2] text-gray-900 dark:text-white' : 'text-gray-600 dark:text-white/70'
-                }`}
-                title={compactOpen ? 'Hide day details' : 'Show day details'}
-              >
-                <LayoutList size={13} />
-              </button>
-              <div className="w-px h-4 mx-1 bg-gray-300 dark:bg-white/20" />
-              <button
-                onClick={() => setRequestMapOpen((v: boolean) => !v)}
-                className={`w-7 h-7 rounded-full flex items-center justify-center transition-all border border-gray-300 dark:border-white/[0.25] ${
-                  requestMapOpen ? 'bg-gray-200 dark:bg-white/[0.2] text-gray-900 dark:text-white' : 'text-gray-600 dark:text-white/70'
-                }`}
-                title="Toggle map"
-              >
-                <Map size={13} />
-              </button>
+                {/* View toggles — calendar / compact / map */}
+                <div className="flex items-center gap-1.5 pl-1.5 ml-0.5 border-l border-gray-200 dark:border-white/10">
+                  <a
+                    href={`/trip/${tripId}/calendar`}
+                    className="w-8 h-8 rounded-full flex items-center justify-center transition-all border border-gray-200 dark:border-white/[0.2] hover:border-[var(--trip-base)] hover:text-[var(--trip-base)] text-gray-600 dark:text-white/70"
+                    title="Calendar view"
+                  >
+                    <Calendar size={13} />
+                  </a>
+                  <button
+                    onClick={() => setCompactOpen((v) => !v)}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all border ${
+                      compactOpen
+                        ? 'bg-[var(--trip-base)] border-[var(--trip-base)] text-white'
+                        : 'border-gray-200 dark:border-white/[0.2] text-gray-600 dark:text-white/70 hover:border-[var(--trip-base)] hover:text-[var(--trip-base)]'
+                    }`}
+                    title={compactOpen ? 'Hide day details' : 'Show day details'}
+                  >
+                    <LayoutList size={13} />
+                  </button>
+                  <button
+                    onClick={() => setRequestMapOpen((v: boolean) => !v)}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all border ${
+                      requestMapOpen
+                        ? 'bg-[var(--trip-base)] border-[var(--trip-base)] text-white'
+                        : 'border-gray-200 dark:border-white/[0.2] text-gray-600 dark:text-white/70 hover:border-[var(--trip-base)] hover:text-[var(--trip-base)]'
+                    }`}
+                    title="Toggle map"
+                  >
+                    <Map size={13} />
+                  </button>
+                </div>
+              </div>
             </div>
+
+            {/* Row 2 — draggable day strip + page nav */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto scrollbar-hide py-1">
+                {days.map((d, i) => (
+                  <button
+                    key={`day-${i}`}
+                    draggable
+                    onDragStart={() => { dragDayRef.current = i; }}
+                    onDragOver={(e) => { e.preventDefault(); setDragOverIdx(i); }}
+                    onDragLeave={() => setDragOverIdx(null)}
+                    onDrop={() => {
+                      if (dragDayRef.current !== null && dragDayRef.current !== i) {
+                        swapDays(dragDayRef.current, i);
+                        setSelectedDayIndex(i);
+                      }
+                      dragDayRef.current = null;
+                      setDragOverIdx(null);
+                    }}
+                    onDragEnd={() => { dragDayRef.current = null; setDragOverIdx(null); }}
+                    onClick={() => setSelectedDayIndex(i)}
+                    className={`shrink-0 px-3 py-1.5 rounded-lg text-center transition-all cursor-grab active:cursor-grabbing border ${
+                      dragOverIdx === i ? 'ring-2 ring-[var(--trip-base)]/40 scale-105' : ''
+                    } ${
+                      i === selectedDayIndex
+                        ? 'bg-[var(--trip-base)] border-[var(--trip-base)] shadow-sm'
+                        : dragOverIdx === i
+                          ? 'bg-gray-100 dark:bg-white/[0.08] border-transparent'
+                          : 'bg-white/60 dark:bg-transparent border-gray-200 dark:border-transparent hover:bg-white/80 dark:hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    <span className={`block text-[10px] font-bold ${i === selectedDayIndex ? 'text-white/70' : 'text-gray-500 dark:text-white/50'}`}>{d.dayLabel.replace('Day ', 'D')}</span>
+                    <span className={`block text-[11px] font-medium ${i === selectedDayIndex ? 'text-white' : 'text-gray-700 dark:text-white/80'}`}>{d.dateLabel.replace(/,.*/, '')}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full backdrop-blur-md bg-gray-100/80 dark:bg-black/30">
+                <span className="text-[11px] tabular-nums px-1 text-gray-600 dark:text-white/70">
+                  {selectedDayIndex + 1} / {days.length}
+                </span>
+                <button onClick={() => selectedDayIndex > 0 && setSelectedDayIndex(selectedDayIndex - 1)} disabled={selectedDayIndex === 0}
+                  className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-300 dark:border-white/[0.25] hover:border-[var(--trip-base)] hover:text-[var(--trip-base)]">
+                  <ChevronDown size={14} className="rotate-90" />
+                </button>
+                <button onClick={() => selectedDayIndex < days.length - 1 && setSelectedDayIndex(selectedDayIndex + 1)} disabled={selectedDayIndex === days.length - 1}
+                  className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-300 dark:border-white/[0.25] hover:border-[var(--trip-base)] hover:text-[var(--trip-base)]">
+                  <ChevronDown size={14} className="-rotate-90" />
+                </button>
+              </div>
             </div>
           </div>
 
