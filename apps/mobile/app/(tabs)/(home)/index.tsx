@@ -59,20 +59,20 @@ import { TakeoffTransition } from '@/components/home/TakeoffTransition';
 // Includes the same images used on the web app + additional variety
 const STOCK_HERO_SLIDES = [
   // ── All web images included ──
-  'https://images.pexels.com/photos/30978583/pexels-photo-30978583.jpeg?auto=compress&cs=tinysrgb&w=1200', // tropical beach (web hero fallback)
-  'https://images.pexels.com/photos/29213215/pexels-photo-29213215.jpeg?auto=compress&cs=tinysrgb&w=1200', // mountain lake (web parallax)
-  'https://images.pexels.com/photos/34600662/pexels-photo-34600662.jpeg?auto=compress&cs=tinysrgb&w=1200', // hot air balloons (web parallax)
-  'https://images.pexels.com/photos/35134885/pexels-photo-35134885.jpeg?auto=compress&cs=tinysrgb&w=1200', // misty mountains (web parallax)
-  'https://images.pexels.com/photos/37297741/pexels-photo-37297741.jpeg?auto=compress&cs=tinysrgb&w=1200', // road trip (web parallax)
-  'https://images.pexels.com/photos/29081769/pexels-photo-29081769.jpeg?auto=compress&cs=tinysrgb&w=1200', // travel planning map (web HowItWorks)
-  'https://images.pexels.com/photos/38841507/pexels-photo-38841507.jpeg?auto=compress&cs=tinysrgb&w=1200', // Rome Colosseum (web HowItWorks)
-  'https://images.pexels.com/photos/24995221/pexels-photo-24995221.jpeg?auto=compress&cs=tinysrgb&w=1200', // Bali temple (web HowItWorks)
+  'https://images.pexels.com/photos/30978583/pexels-photo-30978583.jpeg?auto=compress&cs=tinysrgb&w=2400', // tropical beach (web hero fallback)
+  'https://images.pexels.com/photos/29213215/pexels-photo-29213215.jpeg?auto=compress&cs=tinysrgb&w=2400', // mountain lake (web parallax)
+  'https://images.pexels.com/photos/34600662/pexels-photo-34600662.jpeg?auto=compress&cs=tinysrgb&w=2400', // hot air balloons (web parallax)
+  'https://images.pexels.com/photos/35134885/pexels-photo-35134885.jpeg?auto=compress&cs=tinysrgb&w=2400', // misty mountains (web parallax)
+  'https://images.pexels.com/photos/37297741/pexels-photo-37297741.jpeg?auto=compress&cs=tinysrgb&w=2400', // road trip (web parallax)
+  'https://images.pexels.com/photos/29081769/pexels-photo-29081769.jpeg?auto=compress&cs=tinysrgb&w=2400', // travel planning map (web HowItWorks)
+  'https://images.pexels.com/photos/38841507/pexels-photo-38841507.jpeg?auto=compress&cs=tinysrgb&w=2400', // Rome Colosseum (web HowItWorks)
+  'https://images.pexels.com/photos/24995221/pexels-photo-24995221.jpeg?auto=compress&cs=tinysrgb&w=2400', // Bali temple (web HowItWorks)
   // ── Mobile extra variety ──
-  'https://images.pexels.com/photos/33800139/pexels-photo-33800139.jpeg?auto=compress&cs=tinysrgb&w=1200', // Paris Eiffel Tower
-  'https://images.pexels.com/photos/427747/pexels-photo-427747.jpeg?auto=compress&cs=tinysrgb&w=1200', // Tokyo skyline
-  'https://images.pexels.com/photos/29081769/pexels-photo-29081769.jpeg?auto=compress&cs=tinysrgb&w=1200', // Santorini blue domes
-  'https://images.pexels.com/photos/373076/pexels-photo-373076.jpeg?auto=compress&cs=tinysrgb&w=1200', // Dubai skyline
-  'https://images.pexels.com/photos/461064/pexels-photo-461064.jpeg?auto=compress&cs=tinysrgb&w=1200', // Sydney Opera House
+  'https://images.pexels.com/photos/33800139/pexels-photo-33800139.jpeg?auto=compress&cs=tinysrgb&w=2400', // Paris Eiffel Tower
+  'https://images.pexels.com/photos/427747/pexels-photo-427747.jpeg?auto=compress&cs=tinysrgb&w=2400', // Tokyo skyline
+  'https://images.pexels.com/photos/29081769/pexels-photo-29081769.jpeg?auto=compress&cs=tinysrgb&w=2400', // Santorini blue domes
+  'https://images.pexels.com/photos/373076/pexels-photo-373076.jpeg?auto=compress&cs=tinysrgb&w=2400', // Dubai skyline
+  'https://images.pexels.com/photos/461064/pexels-photo-461064.jpeg?auto=compress&cs=tinysrgb&w=2400', // Sydney Opera House
 ];
 const SHUFFLED_STOCK = shuffle(STOCK_HERO_SLIDES).slice(0, 5);
 
@@ -265,13 +265,22 @@ export default function HomeScreen() {
   const { data: heroConfig } = useHeroConfig();
   const planner = useTripPlanner();
 
-  // Trending destinations — used for suggestion pills, NOT for hero images
+  // Trending destinations — feeds both suggestion pills AND hero rotation.
+  // Thumbnails are SerpAPI-backed (via /api/trending-destinations on the web layer),
+  // so when trending is loaded we get fresh, contextual hero imagery instead of
+  // hardcoded stock. Falls back to SHUFFLED_STOCK while loading or if empty.
   const { data: trending } = useTrendingDestinations();
+  const trendingHeroImages = useMemo(
+    () => (trending ?? []).map((d) => d.thumbnail).filter((u): u is string => !!u),
+    [trending]
+  );
 
-  // Hero slideshow — always high-res: admin config or Unsplash stock
+  // Hero slideshow — admin config > SerpAPI trending > stock fallback
   const heroSlides = heroConfig?.background_image_url
     ? [heroConfig.background_image_url]
-    : SHUFFLED_STOCK;
+    : trendingHeroImages.length >= 3
+      ? trendingHeroImages.slice(0, 5)
+      : SHUFFLED_STOCK;
   const [heroSlide, setHeroSlide] = useState(0);
   useEffect(() => {
     if (heroSlides.length <= 1) return;
@@ -342,8 +351,11 @@ export default function HomeScreen() {
   }, []);
 
   const sendButtonRef = useRef<View>(null);
-  const clarifyRetries = useRef(0);
   const [showTakeoff, setShowTakeoff] = useState(false);
+  // Clarifying-question UI state — mirrors web's pattern in apps/web/app/(main)/page.tsx
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string[]>>({});
+  const [currentQIdx, setCurrentQIdx] = useState(0);
+  const clarifySubmittedRef = useRef(false);
   const buttonLayoutRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
   const [buttonLayout, setButtonLayout] = useState<{
     x: number;
@@ -357,25 +369,13 @@ export default function HomeScreen() {
     if (__DEV__) console.log('[HOME] planner phase:', planner.state.phase, 'showTakeoff:', showTakeoff);
     if (!showTakeoff) return;
     const s = planner.state;
-    // Auto-answer clarifying questions during takeoff — pick first option for each (max 1 retry)
+    // Clarifying phase — surface questions to the user via the overlay UI.
+    // Reset selection state once per arrival in this phase.
     if (s.phase === 'clarifying' && s.questions?.length) {
-      if (clarifyRetries.current >= 3) {
-        if (__DEV__) console.log('[HOME] Max clarify retries — forcing plan');
-        // Instead of giving up, force plan with whatever we have
-        const autoAnswers: Record<string, string> = {};
-        for (const q of s.questions) {
-          autoAnswers[q.id] = q.options?.[0] ?? 'flexible';
-        }
-        planner.submitAnswers(autoAnswers);
-        return;
+      if (!clarifySubmittedRef.current) {
+        // No-op here: the overlay JSX below renders the questions and
+        // calls planner.submitAnswers when the user finishes.
       }
-      clarifyRetries.current += 1;
-      if (__DEV__) console.log('[HOME] Auto-answering clarifying questions (attempt', clarifyRetries.current, ')');
-      const autoAnswers: Record<string, string> = {};
-      for (const q of s.questions) {
-        autoAnswers[q.id] = q.options?.[0] ?? '';
-      }
-      planner.submitAnswers(autoAnswers);
       return;
     }
     if (s.phase === 'complete' && s.plan) {
@@ -458,9 +458,59 @@ export default function HomeScreen() {
     setTripQuery(query);
     setButtonLayout(buttonLayoutRef.current);
     setShowTakeoff(true);
-    clarifyRetries.current = 0;
+    clarifySubmittedRef.current = false;
+    setSelectedAnswers({});
+    setCurrentQIdx(0);
     planner.submitPrompt(query);
   }, [setTripQuery, planner]);
+
+  const flattenAnswers = useCallback((answers: Record<string, string[]>) => {
+    const flat: Record<string, string> = {};
+    for (const [k, v] of Object.entries(answers)) flat[k] = v.join(', ');
+    return flat;
+  }, []);
+
+  const submitClarifyingAnswers = useCallback((finalAnswers: Record<string, string[]>) => {
+    if (clarifySubmittedRef.current) return;
+    clarifySubmittedRef.current = true;
+    planner.submitAnswers(flattenAnswers(finalAnswers));
+  }, [planner, flattenAnswers]);
+
+  const handleOptionToggle = useCallback((questionId: string, option: string, totalQuestions: number) => {
+    setSelectedAnswers((prev) => {
+      const current = prev[questionId] ?? [];
+      const isDeselecting = current.includes(option);
+      const next = isDeselecting ? current.filter((o) => o !== option) : [...current, option];
+      const updated = { ...prev, [questionId]: next };
+      // Auto-advance after a select (not deselect)
+      if (!isDeselecting) {
+        setTimeout(() => {
+          setCurrentQIdx((i) => {
+            if (i < totalQuestions - 1) return i + 1;
+            submitClarifyingAnswers(updated);
+            return i;
+          });
+        }, 450);
+      }
+      return updated;
+    });
+  }, [submitClarifyingAnswers]);
+
+  // Custom-answer path — when the user types their own response and submits,
+  // treat it as a single-element answer for that question and advance/submit.
+  const handleCustomAnswer = useCallback((questionId: string, text: string, totalQuestions: number) => {
+    setSelectedAnswers((prev) => {
+      const updated = { ...prev, [questionId]: [text] };
+      setTimeout(() => {
+        setCurrentQIdx((i) => {
+          if (i < totalQuestions - 1) return i + 1;
+          submitClarifyingAnswers(updated);
+          return i;
+        });
+      }, 200);
+      return updated;
+    });
+  }, [submitClarifyingAnswers]);
 
   const onSearch = () => {
     const val = tripQuery.trim();
@@ -901,12 +951,261 @@ export default function HomeScreen() {
     <TakeoffTransition
       visible={showTakeoff}
       buttonLayout={buttonLayout}
+      completed={planner.state.phase === 'complete'}
       onComplete={() => {
         // Animation done — keep overlay visible while planner works
         // The useEffect below handles navigation when plan completes
       }}
     />
 
+    {/* ─── Clarifying-question overlay (above takeoff) ──────── */}
+    <ClarifyingOverlay
+      visible={planner.state.phase === 'clarifying' && !clarifySubmittedRef.current}
+      questions={planner.state.questions ?? []}
+      currentQIdx={currentQIdx}
+      selectedAnswers={selectedAnswers}
+      onSelectOption={handleOptionToggle}
+      onSkip={() => {
+        const total = planner.state.questions?.length ?? 0;
+        setCurrentQIdx((i) => {
+          if (i < total - 1) return i + 1;
+          submitClarifyingAnswers(selectedAnswers);
+          return i;
+        });
+      }}
+      onSubmitAll={() => submitClarifyingAnswers(selectedAnswers)}
+      onCustomAnswer={handleCustomAnswer}
+      colors={colors}
+    />
+
     </View>
+  );
+}
+
+// ─── Clarifying-question overlay ──────────────────────────────────────
+// Mirrors the web pattern in apps/web/app/(main)/page.tsx. Renders above
+// the takeoff animation; lets the user select options and auto-advances
+// after each pick. On the final pick, submitClarifyingAnswers fires and
+// the overlay disappears as the planner moves out of the 'clarifying' phase.
+type FollowUpQuestion = { id: string; question: string; options: string[] };
+type ClarifyingOverlayProps = {
+  visible: boolean;
+  questions: FollowUpQuestion[];
+  currentQIdx: number;
+  selectedAnswers: Record<string, string[]>;
+  onSelectOption: (questionId: string, option: string, totalQuestions: number) => void;
+  onSkip: () => void;
+  onSubmitAll: () => void;
+  onCustomAnswer: (questionId: string, text: string, totalQuestions: number) => void;
+  colors: any;
+};
+
+function ClarifyingOverlay({
+  visible,
+  questions,
+  currentQIdx,
+  selectedAnswers,
+  onSelectOption,
+  onSkip,
+  onSubmitAll,
+  onCustomAnswer,
+}: ClarifyingOverlayProps) {
+  // NOTE: hooks must be called before any early return to keep the call order stable
+  // across renders (visible can flip multiple times for the same overlay instance).
+  const [customText, setCustomText] = useState('');
+
+  // Reset the custom-answer field whenever we navigate to a new question.
+  useEffect(() => { setCustomText(''); }, [currentQIdx]);
+
+  if (!visible || !questions.length) return null;
+  const q = questions[Math.min(currentQIdx, questions.length - 1)];
+  if (!q) return null;
+  if (__DEV__) console.log('[CLARIFY] q=', JSON.stringify(q));
+  const selected = selectedAnswers[q.id] ?? [];
+  const isLast = currentQIdx >= questions.length - 1;
+  const hasAny = selected.length > 0 || customText.trim().length > 0;
+  const letters = ['A', 'B', 'C', 'D', 'E'];
+
+  return (
+    <Animated.View
+      entering={FadeIn.duration(220)}
+      exiting={FadeOut.duration(180)}
+      pointerEvents="auto"
+      style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        zIndex: 1000,
+        elevation: 1000,
+        justifyContent: 'center',
+        paddingHorizontal: 18,
+      }}
+    >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
+        <Animated.View
+          entering={FadeIn.duration(260).delay(40)}
+          style={{
+            backgroundColor: 'rgba(10,18,40,0.92)',
+            borderRadius: 22,
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.18)',
+            padding: 18,
+            shadowColor: '#000',
+            shadowOpacity: 0.45,
+            shadowRadius: 20,
+            shadowOffset: { width: 0, height: 10 },
+          }}
+        >
+          {/* Header: progress dots */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {questions.map((_, i) => (
+                <View
+                  key={i}
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: '#fff',
+                    opacity: i === currentQIdx ? 1 : i < currentQIdx ? 0.7 : 0.2,
+                  }}
+                />
+              ))}
+            </View>
+            <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11 }}>
+              {currentQIdx + 1} / {questions.length}
+            </Text>
+          </View>
+
+          {/* Question — use the bold family variant rather than fontWeight to avoid
+              the iOS RN bug where Satoshi-Regular + fontWeight:'600' renders empty. */}
+          <Text
+            style={{
+              color: '#fff',
+              fontSize: 16,
+              fontFamily: FontFamily.sansBold,
+              marginBottom: 14,
+              lineHeight: 22,
+            }}
+          >
+            {q.question}
+          </Text>
+
+          {/* Option cards */}
+          <View style={{ gap: 8 }}>
+            {q.options.map((opt, i) => {
+              const isOn = selected.includes(opt);
+              return (
+                <Pressable
+                  key={opt}
+                  onPress={() => onSelectOption(q.id, opt, questions.length)}
+                  style={{
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    borderRadius: 14,
+                    borderWidth: isOn ? 0 : 1,
+                    borderColor: 'rgba(255,255,255,0.25)',
+                    backgroundColor: isOn ? '#1e3a5f' : 'rgba(0,0,0,0.45)',
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: 8,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
+                        backgroundColor: isOn ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.15)',
+                      }}
+                    >
+                      <Text style={{
+                        color: '#fff',
+                        fontSize: 12,
+                        fontFamily: FontFamily.sansBold,
+                      }}>
+                        {isOn ? '✓' : (letters[i] ?? String(i + 1))}
+                      </Text>
+                    </View>
+                    <Text
+                      style={{ color: '#fff', fontSize: 14, fontFamily: FontFamily.sans, flexShrink: 1 }}
+                      numberOfLines={3}
+                    >
+                      {opt}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Custom answer field — mirrors web's "Or type your own" affordance */}
+          <View style={{ marginTop: 10 }}>
+            <TextInput
+              value={customText}
+              onChangeText={setCustomText}
+              placeholder="Or type your own answer…"
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                const t = customText.trim();
+                if (!t) return;
+                onCustomAnswer(q.id, t, questions.length);
+                setCustomText('');
+              }}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.08)',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.18)',
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                color: '#fff',
+                fontSize: 14,
+                fontFamily: FontFamily.sans,
+              }}
+            />
+          </View>
+
+          {/* Footer: skip / submit */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+            <Pressable
+              onPress={onSkip}
+              style={({ pressed }) => ({ paddingVertical: 6, paddingHorizontal: 4, opacity: pressed ? 0.5 : 0.7 })}
+            >
+              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontFamily: FontFamily.sans }}>
+                Skip
+              </Text>
+            </Pressable>
+            {isLast && hasAny ? (
+              <Pressable
+                onPress={() => {
+                  const t = customText.trim();
+                  if (t) onCustomAnswer(q.id, t, questions.length);
+                  else onSubmitAll();
+                  setCustomText('');
+                }}
+                style={({ pressed }) => ({
+                  paddingVertical: 9,
+                  paddingHorizontal: 16,
+                  borderRadius: 999,
+                  backgroundColor: '#fff',
+                  opacity: pressed ? 0.8 : 1,
+                })}
+              >
+                <Text style={{ color: '#0A1228', fontSize: 13, fontFamily: FontFamily.sansBold }}>
+                  Plan my trip
+                </Text>
+              </Pressable>
+            ) : (
+              <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontFamily: FontFamily.sans }}>
+                Tap an option or type your answer
+              </Text>
+            )}
+          </View>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </Animated.View>
   );
 }
