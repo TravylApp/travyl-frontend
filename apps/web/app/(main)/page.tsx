@@ -92,6 +92,41 @@ const TRAVEL_STYLE_PILLS = [
   { id: "ts-4", label: "Wellness retreat" },
 ];
 
+/**
+ * Upgrade a hero background image URL to a 4K-width variant when the source
+ * CDN supports query-param resizing. Pexels and Unsplash both honor `w=`;
+ * we set `w=3840` (4K width). For Pexels we also bump `dpr` to 2 to hit
+ * retina densities. Returns the original URL untouched when the host isn't
+ * a known resizer, so the hero never breaks if the API returns a third-
+ * party CDN that ignores the params.
+ */
+function upgradeHeroImageUrl(url: string): string {
+  // Pexels CDN — `w` controls resize width, `dpr` is density.
+  if (url.includes('images.pexels.com')) {
+    if (!url.includes('?')) return `${url}?auto=compress&cs=tinysrgb&w=3840&dpr=2`;
+    let next = url;
+    next = /w=\d+/.test(next) ? next.replace(/w=\d+/, 'w=3840') : `${next}&w=3840`;
+    next = /dpr=\d+/.test(next) ? next.replace(/dpr=\d+/, 'dpr=2') : `${next}&dpr=2`;
+    // The default Pexels `h=650` keeps the height locked, defeating the
+    // wider `w` upgrade. Drop it so the CDN keeps the source aspect ratio.
+    next = next.replace(/[?&]h=\d+/, '');
+    return next;
+  }
+  // Unsplash CDN — `w` resize, `q` quality, `auto=format` lets the CDN pick
+  // AVIF/WebP. Default home-page lookups come back at w=1080 (sub-1080p),
+  // which looked blurry on retina displays.
+  if (url.includes('images.unsplash.com')) {
+    let next = url;
+    if (!next.includes('?')) {
+      return `${next}?auto=format&fit=max&q=80&w=3840`;
+    }
+    next = /w=\d+/.test(next) ? next.replace(/w=\d+/, 'w=3840') : `${next}&w=3840`;
+    next = /q=\d+/.test(next) ? next.replace(/q=\d+/, 'q=85') : `${next}&q=85`;
+    return next;
+  }
+  return url;
+}
+
 const ACTIVITY_PILLS = [
   { id: "ac-1", label: "Food & wine tour" },
   { id: "ac-2", label: "Ski holiday" },
@@ -420,18 +455,7 @@ export default function Home() {
     const loaded = heroImageQueries
       .map((q) => q.data?.url)
       .filter((url): url is string => !!url)
-      .map((url) => {
-        // Pexels — 4K width via CDN params (works with or without existing params)
-        if (url.includes('images.pexels.com')) {
-          if (url.includes('?')) {
-            // Already has CDN params (large/large2x variant) — replace width & dpr
-            return url.replace(/w=\d+/, 'w=3840').replace(/dpr=\d+/, 'dpr=2');
-          }
-          // Bare URL (original variant) — add params from scratch
-          return `${url}?auto=compress&cs=tinysrgb&w=3840&dpr=2`;
-        }
-        return url;
-      });
+      .map(upgradeHeroImageUrl);
     return loaded.length > 0 ? loaded : [
       `https://images.pexels.com/photos/30978583/pexels-photo-30978583.jpeg?auto=compress&cs=tinysrgb&w=3840&dpr=2`
     ];
@@ -943,9 +967,14 @@ export default function Home() {
                     </div>
                     {/* Live travel quote */}
                     {quote && (
-                      <p className="text-[11px] text-white/40 italic max-w-md text-center leading-relaxed mt-2">
+                      <p
+                        className="text-[12px] text-white/90 italic max-w-md text-center leading-relaxed mt-3"
+                        style={{
+                          textShadow: '0 1px 2px rgba(0,0,0,0.55), 0 0 8px rgba(0,0,0,0.35)',
+                        }}
+                      >
                         &ldquo;{quote.content}&rdquo;
-                        <span className="not-italic text-white/30"> — {quote.author}</span>
+                        <span className="not-italic text-white/70"> — {quote.author}</span>
                       </p>
                     )}
                   </div>

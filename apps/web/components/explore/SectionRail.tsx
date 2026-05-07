@@ -51,7 +51,7 @@ export function SectionRail({
 
   return (
     <section className="mb-10 sm:mb-14">
-      <div className="flex items-end justify-between gap-4 mb-4 px-4 sm:px-6 lg:px-10">
+      <div className="flex items-end justify-between gap-4 mb-4">
         <div>
           {eyebrow && (
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 mb-1">{eyebrow}</p>
@@ -91,13 +91,13 @@ export function SectionRail({
       </div>
 
       {isEmpty && !isLoading && emptyText ? (
-        <div className="mx-4 sm:mx-6 lg:mx-10 rounded-2xl border border-dashed border-gray-200 dark:border-white/[0.08] bg-gray-50/40 dark:bg-white/[0.015] py-10 px-6 text-center">
+        <div className="rounded-2xl border border-dashed border-gray-200 dark:border-white/[0.08] bg-gray-50/40 dark:bg-white/[0.015] py-10 px-6 text-center">
           <p className="text-sm text-gray-500 dark:text-white/50">{emptyText}</p>
         </div>
       ) : (
         <div
           ref={trackRef}
-          className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 px-4 sm:px-6 lg:px-10 scroll-smooth snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex gap-3 sm:gap-4 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {isLoading ? (
             Array.from({ length: 6 }).map((_, i) => (

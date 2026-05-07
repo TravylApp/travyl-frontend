@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
       if (fallbackRes.ok) {
         const fallbackData: PexelsResponse = await fallbackRes.json()
         if (fallbackData.photos?.length) {
-          const images = fallbackData.photos.map((p) => p.src.large2x)
+          const images = fallbackData.photos.map((p) => p.src.original)
           return NextResponse.json({
             url: images[0],
             images,
@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ url: null, images: [] })
     }
 
-    const images = data.photos.map((p) => p.src.large2x)
+    const images = data.photos.map((p) => p.src.original)
 
     return NextResponse.json({
       url: images[0],        // primary hero image

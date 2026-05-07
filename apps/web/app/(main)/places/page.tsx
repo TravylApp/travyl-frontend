@@ -217,7 +217,7 @@ export default function ExplorePage() {
           )}
         </div>
       ) : (
-        <div className="max-w-7xl mx-auto pt-4 pb-20">
+        <div className="max-w-7xl mx-auto pt-4 pb-20 px-4 sm:px-6 lg:px-10">
           {/* Trending trips */}
           <SectionRail
             eyebrow="Community"
