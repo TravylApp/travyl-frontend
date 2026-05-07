@@ -75,6 +75,8 @@ function planToData(plan: PlanResponse) {
         notes: slot.poi.description || null,
         source: 'ai' as any,
         timeOfDay: tod,
+        latitude: slot.poi.lat ?? null,
+        longitude: slot.poi.lng ?? null,
       };
 
       const list = groupMap.get(tod) ?? [];
