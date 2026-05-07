@@ -96,20 +96,12 @@ export function CarsModule({ tripId, cars, defaultCurrency, formatPrice, tripDes
     }
   }
 
-  if (cars.length === 0 && !adding) {
-    return (
-      <CarSearchPanel
-        tripDestination={tripDestination}
-        tripStartDate={tripStartDate}
-        tripEndDate={tripEndDate}
-        onAdd={handleAdd}
-        onAddManually={() => setAdding(true)}
-      />
-    )
-  }
-
+  // Render the saved cars list above the search panel so the panel survives
+  // adding a rental — users want to keep browsing/comparing rates after
+  // saving one without losing their search state.
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
+      {/* Manual-add form (entered via "+ Rental" header button) */}
       {adding && (
         <CarForm
           defaultCurrency={defaultCurrency}
@@ -117,29 +109,46 @@ export function CarsModule({ tripId, cars, defaultCurrency, formatPrice, tripDes
           onCancel={() => setAdding(false)}
         />
       )}
-      {sorted.map((c) => {
-        if (editingId === c.id) {
-          return (
-            <CarForm
-              key={c.id}
-              initial={{ ...c.data, id: c.id }}
-              defaultCurrency={defaultCurrency}
-              onSubmit={(data) => handleUpdate(c.id, data)}
-              onCancel={() => setEditingId(null)}
-              onDelete={() => handleDelete(c.id)}
-            />
-          )
-        }
-        return (
-          <CarCard
-            key={c.id}
-            car={c}
-            formatPrice={formatPrice}
-            onEdit={() => setEditingId(c.id)}
-            onDelete={() => handleDelete(c.id)}
-          />
-        )
-      })}
+
+      {/* Saved rentals — list with inline edit-form swap */}
+      {sorted.length > 0 && (
+        <div className="space-y-3">
+          {sorted.map((c) => {
+            if (editingId === c.id) {
+              return (
+                <CarForm
+                  key={c.id}
+                  initial={{ ...c.data, id: c.id }}
+                  defaultCurrency={defaultCurrency}
+                  onSubmit={(data) => handleUpdate(c.id, data)}
+                  onCancel={() => setEditingId(null)}
+                  onDelete={() => handleDelete(c.id)}
+                />
+              )
+            }
+            return (
+              <CarCard
+                key={c.id}
+                car={c}
+                formatPrice={formatPrice}
+                onEdit={() => setEditingId(c.id)}
+                onDelete={() => handleDelete(c.id)}
+              />
+            )
+          })}
+        </div>
+      )}
+
+      {/* Search panel — always available unless the manual-add form is open */}
+      {!adding && (
+        <CarSearchPanel
+          tripDestination={tripDestination}
+          tripStartDate={tripStartDate}
+          tripEndDate={tripEndDate}
+          onAdd={handleAdd}
+          onAddManually={() => setAdding(true)}
+        />
+      )}
     </div>
   )
 }

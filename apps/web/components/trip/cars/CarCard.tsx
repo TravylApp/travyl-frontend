@@ -44,21 +44,27 @@ const SUPPLIER_HOMES: Record<string, string> = {
 }
 
 function cleanVendor(vendor: string): string {
-  return vendor
-    .replace(/\s*Rent[- ]?A[- ]?Car/gi, '')
-    .replace(/\s*Car Rental/gi, '')
-    .replace(/\s*Corporation/gi, '')
-    .trim()
+  // First word, lowercased, normalized for diacritics. Most car-rental brand
+  // names ("Avis Rent a Car", "Hertz Gold Plus", "Enterprise Holdings") share
+  // a single distinctive first token, so this is more reliable than trying to
+  // strip suffixes with a regex.
+  const first = vendor.toLowerCase().split(/\s+/)[0] ?? ''
+  return first.normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
 function supplierUrl(vendor: string): string | null {
   if (!vendor) return null
-  const cleaned = cleanVendor(vendor).toLowerCase()
-  if (SUPPLIER_HOMES[cleaned]) return SUPPLIER_HOMES[cleaned]
-  // Try the first word — handles "Avis Rent a Car" → "avis", "Hertz Gold" → "hertz".
-  const firstWord = cleaned.split(/\s+/)[0]
-  if (firstWord && SUPPLIER_HOMES[firstWord]) return SUPPLIER_HOMES[firstWord]
+  const key = cleanVendor(vendor)
+  if (key && SUPPLIER_HOMES[key]) return SUPPLIER_HOMES[key]
   return `https://www.google.com/search?q=${encodeURIComponent(`${vendor} car rental`)}`
+}
+
+function vendorLabel(vendor: string): string {
+  // Display label for the "View on <vendor>" button. Use the first word
+  // capitalized so "Avis Rent a Car" → "Avis", "HERTZ" → "Hertz".
+  const first = vendor.split(/\s+/)[0] ?? ''
+  if (!first) return 'supplier'
+  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase()
 }
 
 export function CarCard({ car, formatPrice, onEdit, onDelete }: CarCardProps) {
@@ -106,9 +112,9 @@ export function CarCard({ car, formatPrice, onEdit, onDelete }: CarCardProps) {
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
                   className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 dark:text-gray-400 hover:text-[var(--trip-base)] transition-colors px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-white/[0.06]"
-                  title={`Open ${cleanVendor(data.vendor) || 'supplier'} site`}
+                  title={`Open ${vendorLabel(data.vendor)} site`}
                 >
-                  View on {cleanVendor(data.vendor) || 'supplier'}
+                  View on {vendorLabel(data.vendor)}
                   <ArrowUpRight size={12} />
                 </a>
               )}
