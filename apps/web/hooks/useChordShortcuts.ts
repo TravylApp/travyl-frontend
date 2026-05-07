@@ -40,6 +40,7 @@ export function useChordShortcuts() {
       // Only 'g' prefix starts a chord sequence (avoids conflicts with calendar shortcuts like T, D, W)
       if (e.key === 'g') {
         e.preventDefault()
+        e.stopImmediatePropagation()
         // If chord mode is already active (pressing 'g' again), clear and restart
         if (isChordActive()) clearChord()
         pushChord('g')
@@ -50,6 +51,7 @@ export function useChordShortcuts() {
       // If chord mode is active, accept second key (single character)
       if (isChordActive() && e.key.length === 1) {
         e.preventDefault()
+        e.stopImmediatePropagation()
         const match = pushChord(e.key.toLowerCase())
         if (match) {
           // Chord matched — execute and clear
