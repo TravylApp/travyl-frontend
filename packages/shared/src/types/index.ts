@@ -1182,3 +1182,33 @@ export type {
   TransitData, TransitSegment, VehicleType, TransitMode,
   TransitDirectionStep, TransitDirectionResult, CreateTransitInput, CreateTransitBookingInput,
 } from './transit';
+
+/** Editorial summary for one day in the At-a-Glance slide. */
+export interface DayStory {
+  /** Short serif headline. May contain `<em>...</em>` around the last 1–2 words. */
+  headline: string;
+  /** 1–2 sentence narrative intro (plain text). */
+  narrative: string;
+  /** Optional URL of the image to feature for the day. */
+  featuredImageUrl?: string;
+  /** Index into the day's flattened activity list — the "starring" moment. */
+  featuredActivityIndex?: number;
+  /** Whether this story was AI-generated or a templated fallback. */
+  source: 'bedrock' | 'template';
+}
+
+/** Input contract for /api/day-story. */
+export interface DayStoryRequest {
+  tripId: string;
+  dayIndex: number;
+  destination: string;
+  dateLabel: string;
+  isFirstDay: boolean;
+  isLastDay: boolean;
+  activities: Array<{
+    name: string;
+    type: string;
+    startHour: number;
+    image?: string;
+  }>;
+}
