@@ -11,6 +11,8 @@ import { SpotlightSearch } from './spotlight/SpotlightSearch';
 import GlobalNavbar from './GlobalNavbar';
 import { Toaster } from './ui/sonner';
 import { OnboardingOverlay } from './onboarding';
+import { useChordShortcuts } from '@/hooks/useChordShortcuts';
+import { ChordHUD } from '@/components/ChordHUD';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const queryClientRef = useRef(new QueryClient({
@@ -54,11 +56,19 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClientRef.current}>
-      <GlobalNavbar />
-      {children}
-      <SpotlightSearch />
-      <OnboardingOverlay />
+      <ChordShortcutProvider>
+        <GlobalNavbar />
+        {children}
+        <SpotlightSearch />
+        <OnboardingOverlay />
+        <ChordHUD />
+      </ChordShortcutProvider>
       <Toaster />
     </QueryClientProvider>
   );
+}
+
+function ChordShortcutProvider({ children }: { children: React.ReactNode }) {
+  useChordShortcuts()
+  return <>{children}</>
 }
