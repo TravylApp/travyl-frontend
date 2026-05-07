@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import dynamic from 'next/dynamic'
 import {
   X,
   Building2,
@@ -30,6 +31,10 @@ import {
   Leaf,
 } from 'lucide-react'
 import type { SerpHotel } from './hotelSearch'
+
+// Same Leaflet/CARTO map used on /explore and elsewhere — ssr disabled
+// because Leaflet touches `window` at import time.
+const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false })
 
 export interface HotelResultDetailModalProps {
   hotel: SerpHotel
@@ -60,14 +65,6 @@ function transportIcon(type: string): typeof Footprints {
   if (/taxi|car|drive/.test(t)) return CarIcon
   if (/plane|flight|air/.test(t)) return Plane
   return Clock
-}
-
-/** Build an OpenStreetMap embed URL with marker centered on lat/lng. */
-function osmEmbedUrl(lat: number, lng: number): string {
-  const dlat = 0.005
-  const dlng = 0.006
-  const bbox = `${lng - dlng},${lat - dlat},${lng + dlng},${lat + dlat}`
-  return `https://www.openstreetmap.org/export/embed.html?bbox=${encodeURIComponent(bbox)}&layer=mapnik&marker=${lat},${lng}`
 }
 
 export function HotelResultDetailModal({
@@ -117,7 +114,6 @@ export function HotelResultDetailModal({
   }
 
   const hasCoords = hotel.lat !== 0 && hotel.lng !== 0
-  const mapSrc = useMemo(() => (hasCoords ? osmEmbedUrl(hotel.lat, hotel.lng) : null), [hasCoords, hotel.lat, hotel.lng])
   const mapsLink = `https://www.google.com/maps/search/?api=1&query=${hotel.lat},${hotel.lng}`
 
   if (!mounted) return null
@@ -347,96 +343,103 @@ export function HotelResultDetailModal({
             )}
           </div>
 
-          {/* RIGHT — sticky booking + facts (independent scroll) */}
-          <aside className="lg:border-l border-gray-100 dark:border-white/[0.06] bg-gray-50/50 dark:bg-white/[0.02] overflow-y-auto p-5 space-y-5">
-            {/* Price + CTA card */}
-            <div className="rounded-xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] p-4 space-y-3 shadow-sm">
-              {hotel.price != null ? (
-                <div className="flex items-baseline gap-1">
-                  <span className="text-[28px] font-bold text-gray-900 dark:text-white tabular-nums leading-none">
-                    {formatPrice(hotel.price, hotel.currency)}
-                  </span>
-                  <span className="text-[12px] text-gray-500 dark:text-gray-400">/ night</span>
-                </div>
-              ) : (
-                <p className="text-[13px] text-gray-400">Price not available</p>
-              )}
-              {hotel.totalRate != null && hotel.price != null && hotel.totalRate !== hotel.price && (
-                <p className="text-[12px] text-gray-500 dark:text-gray-400 tabular-nums">
-                  {formatPrice(hotel.totalRate, hotel.currency)} total
-                </p>
-              )}
-              <button
-                onClick={handleAdd}
-                disabled={busy || alreadySaved}
-                className={`w-full inline-flex items-center justify-center gap-1.5 px-4 h-11 rounded-lg text-[14px] font-semibold text-white shadow-sm hover:shadow-md transition disabled:opacity-50 ${
-                  alreadySaved ? 'bg-gray-500' : ''
-                }`}
-                style={!alreadySaved ? { backgroundColor: 'var(--trip-base)' } : undefined}
-              >
-                {alreadySaved ? (
-                  <>
-                    <Check size={15} /> Added to trip
-                  </>
+          {/* RIGHT — booking + facts. Flex column so the map fills the
+              remaining height down to the modal floor. */}
+          <aside className="lg:border-l border-gray-100 dark:border-white/[0.06] bg-gray-50/50 dark:bg-white/[0.02] flex flex-col min-h-0">
+            <div className="p-5 space-y-5 shrink-0">
+              {/* Price + CTA card */}
+              <div className="rounded-xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] p-4 space-y-3 shadow-sm">
+                {hotel.price != null ? (
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-[28px] font-bold text-gray-900 dark:text-white tabular-nums leading-none">
+                      {formatPrice(hotel.price, hotel.currency)}
+                    </span>
+                    <span className="text-[12px] text-gray-500 dark:text-gray-400">/ night</span>
+                  </div>
                 ) : (
-                  <>
-                    <Plus size={15} /> Add to trip
-                  </>
+                  <p className="text-[13px] text-gray-400">Price not available</p>
                 )}
-              </button>
-              {hotel.link && (
-                <a
-                  href={hotel.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 h-9 rounded-lg border border-gray-200 dark:border-white/[0.10] text-[12.5px] font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
+                {hotel.totalRate != null && hotel.price != null && hotel.totalRate !== hotel.price && (
+                  <p className="text-[12px] text-gray-500 dark:text-gray-400 tabular-nums">
+                    {formatPrice(hotel.totalRate, hotel.currency)} total
+                  </p>
+                )}
+                <button
+                  onClick={handleAdd}
+                  disabled={busy || alreadySaved}
+                  className={`w-full inline-flex items-center justify-center gap-1.5 px-4 h-11 rounded-lg text-[14px] font-semibold text-white shadow-sm hover:shadow-md transition disabled:opacity-50 ${
+                    alreadySaved
+                      ? 'bg-gray-500'
+                      : 'bg-[#1e3a5f] hover:bg-[#162d4a]'
+                  }`}
                 >
-                  View on Google
-                  <ExternalLink size={11} className="text-gray-400" />
-                </a>
-              )}
-            </div>
-
-            {/* Quick facts */}
-            <div className="rounded-xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] divide-y divide-gray-100 dark:divide-white/[0.06]">
-              <FactRow icon={LogIn} label="Check-in" value={hotel.checkIn} />
-              <FactRow icon={LogOut} label="Check-out" value={hotel.checkOut} />
-              {hotel.neighborhood && (
-                <FactRow icon={MapPin} label="Neighborhood" value={hotel.neighborhood} />
-              )}
-              {hotel.reviews > 0 && (
-                <FactRow
-                  icon={Star}
-                  label="Reviews"
-                  value={`${hotel.reviews.toLocaleString()} on Google`}
-                />
-              )}
-            </div>
-
-            {/* Map */}
-            {mapSrc && (
-              <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03]">
-                <div className="relative w-full aspect-[4/3]">
-                  <iframe
-                    src={mapSrc}
-                    title="Map"
-                    loading="lazy"
-                    className="absolute inset-0 w-full h-full border-0"
-                  />
-                </div>
-                <div className="px-3 py-2 flex items-center justify-between gap-2">
-                  <span className="text-[10.5px] text-gray-400 dark:text-gray-500 tabular-nums">
-                    {hotel.lat.toFixed(4)}, {hotel.lng.toFixed(4)}
-                  </span>
+                  {alreadySaved ? (
+                    <>
+                      <Check size={15} /> Added to trip
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={15} /> Add to trip
+                    </>
+                  )}
+                </button>
+                {hotel.link && (
                   <a
-                    href={mapsLink}
+                    href={hotel.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[11.5px] font-medium text-[var(--trip-base)] hover:underline"
+                    className="w-full inline-flex items-center justify-center gap-1.5 px-3 h-9 rounded-lg border border-gray-200 dark:border-white/[0.10] text-[12.5px] font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
                   >
-                    Open in Maps
-                    <ExternalLink size={10} />
+                    View on Google
+                    <ExternalLink size={11} className="text-gray-400" />
                   </a>
+                )}
+              </div>
+
+              {/* Quick facts */}
+              <div className="rounded-xl bg-white dark:bg-white/[0.03] border border-gray-200 dark:border-white/[0.08] divide-y divide-gray-100 dark:divide-white/[0.06]">
+                <FactRow icon={LogIn} label="Check-in" value={hotel.checkIn} />
+                <FactRow icon={LogOut} label="Check-out" value={hotel.checkOut} />
+                {hotel.neighborhood && (
+                  <FactRow icon={MapPin} label="Neighborhood" value={hotel.neighborhood} />
+                )}
+                {hotel.reviews > 0 && (
+                  <FactRow
+                    icon={Star}
+                    label="Reviews"
+                    value={`${hotel.reviews.toLocaleString()} on Google`}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Map fills remaining vertical space down to the modal floor */}
+            {hasCoords && (
+              <div className="px-5 pb-5 flex-1 min-h-[260px] flex flex-col">
+                <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] flex-1 flex flex-col min-h-0">
+                  <div className="flex-1 min-h-0 relative">
+                    <LeafletMap
+                      lat={hotel.lat}
+                      lng={hotel.lng}
+                      label={hotel.name}
+                      height="100%"
+                      zoom={15}
+                    />
+                  </div>
+                  <div className="px-3 py-2 flex items-center justify-between gap-2 border-t border-gray-100 dark:border-white/[0.06]">
+                    <span className="text-[10.5px] text-gray-400 dark:text-gray-500 tabular-nums">
+                      {hotel.lat.toFixed(4)}, {hotel.lng.toFixed(4)}
+                    </span>
+                    <a
+                      href={mapsLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11.5px] font-medium text-[#1e3a5f] dark:text-blue-400 hover:underline"
+                    >
+                      Open in Maps
+                      <ExternalLink size={10} />
+                    </a>
+                  </div>
                 </div>
               </div>
             )}
