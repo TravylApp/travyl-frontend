@@ -412,16 +412,12 @@ function TripLayoutContent({
       {/* Header — magazine hero or compact (hidden on calendar for full-height view) */}
       {!isCalendar && (
         isMagazine ? (
-          <TripMagazineHero tripId={tripId} trip={trip} compact={!isOverview} onTripUpdate={refetch}
+          <TripMagazineHero trip={trip} compact={!isOverview}
             overrideImage={destImageData?.url ?? undefined} suppressFallback={destImageLoading} />
         ) : (
           <CompactTripHeader
-            tripId={tripId}
             trip={trip}
-            onTripUpdate={refetch}
             overrideImage={destImageData?.url ?? undefined}
-            mapOpen={mapOpen}
-            onToggleMap={() => setMapOpen(!mapOpen)}
           />
         )
       )}

@@ -1,64 +1,21 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
-import { Pencil, X, Check, Calendar, Users, ChevronDown, Share2, Map } from 'lucide-react';
+import { Calendar, Users, ChevronDown } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import { formatDateRange, updateTripDetails, useWeather, ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
+import { formatDateRange, useWeather } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
 import { useRailCollapsed } from '@/components/trip-rail';
 
 
 export function CompactTripHeader({
-  tripId,
   trip,
-  onTripUpdate,
   overrideImage,
-  mapOpen,
-  onToggleMap,
 }: {
-  tripId: string;
   trip: Trip | null;
-  onTripUpdate?: () => void;
   overrideImage?: string;
-  mapOpen?: boolean;
-  onToggleMap?: () => void;
 }) {
-  const [shareBusy, setShareBusy] = useState(false);
-
-  const handleShare = useCallback(async () => {
-    if (!trip?.id || shareBusy) return;
-    setShareBusy(true);
-    try {
-      const token = await ensureShareLinkToken(trip.id);
-      if (trip.visibility === 'private') {
-        try { await updateTripVisibility(trip.id, 'link'); } catch {}
-      }
-      const url = `${window.location.origin}/trip/${trip.id}/share/${token}`;
-      const message = `Join me planning my trip to ${trip.destination} on Travyl: ${url}`;
-      const title = trip.title ?? `Trip to ${trip.destination}`;
-      if (typeof navigator !== 'undefined' && (navigator as any).share) {
-        try { await (navigator as any).share({ title, text: message, url }); return; } catch {}
-      }
-      try {
-        await navigator.clipboard.writeText(url);
-        window.alert(`Link copied to clipboard:\n${url}`);
-      } catch {
-        window.alert(`Share link:\n${url}`);
-      }
-    } catch (e: any) {
-      window.alert(`Share failed: ${e?.message ?? 'unknown error'}`);
-    } finally {
-      setShareBusy(false);
-    }
-  }, [trip?.id, trip?.destination, trip?.title, trip?.visibility, shareBusy]);
-
-  const [editing, setEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  const [editStart, setEditStart] = useState('');
-  const [editEnd, setEditEnd] = useState('');
-  const [editTravelers, setEditTravelers] = useState(1);
-  const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [railCollapsed] = useRailCollapsed();
 
@@ -143,33 +100,6 @@ export function CompactTripHeader({
   }
   if (nextHoliday) infoPills.push({ label: `${nextHoliday.name} · ${new Date(nextHoliday.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` });
 
-  const openEditor = useCallback(() => {
-    setEditTitle(trip?.title || '');
-    setEditStart(trip?.start_date || '');
-    setEditEnd(trip?.end_date || '');
-    setEditTravelers(trip?.travelers || 1);
-    setEditing(true);
-  }, [trip]);
-
-  const saveEdits = useCallback(async () => {
-    if (!tripId || saving) return;
-    setSaving(true);
-    try {
-      await updateTripDetails(tripId, {
-        title: editTitle || undefined,
-        start_date: editStart || undefined,
-        end_date: editEnd || undefined,
-        travelers: editTravelers,
-      });
-      setEditing(false);
-      onTripUpdate?.();
-    } catch (e) {
-      console.error('Failed to update trip:', e);
-    } finally {
-      setSaving(false);
-    }
-  }, [tripId, editTitle, editStart, editEnd, editTravelers, saving, onTripUpdate]);
-
   const hasExpandContent = !!(forecast?.length || wiki);
 
   return (
@@ -200,34 +130,6 @@ export function CompactTripHeader({
         <div className="absolute inset-0 pointer-events-none" style={{
           background: 'linear-gradient(to right, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.1) 45%, transparent 70%)',
         }} />
-
-        {/* Floating action buttons — circular Share + Map, overlaid on hero */}
-        <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
-          <button
-            onClick={handleShare}
-            disabled={!trip?.id || shareBusy}
-            title="Share this trip"
-            aria-label="Share this trip"
-            className="w-10 h-10 rounded-full flex items-center justify-center bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/25 text-white shadow-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
-          >
-            <Share2 size={16} />
-          </button>
-          {onToggleMap && (
-            <button
-              onClick={onToggleMap}
-              title={mapOpen ? 'Hide map' : 'Show map'}
-              aria-label={mapOpen ? 'Hide map' : 'Show map'}
-              aria-pressed={mapOpen}
-              className={`w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-md border shadow-lg transition-all duration-200 hover:scale-105 ${
-                mapOpen
-                  ? 'bg-white text-gray-900 border-white'
-                  : 'bg-white/15 hover:bg-white/25 border-white/25 text-white'
-              }`}
-            >
-              <Map size={16} />
-            </button>
-          )}
-        </div>
 
         {/* Content — all on the hero image */}
         <div className={`relative z-10 flex flex-col justify-end max-w-7xl mx-auto px-6 sm:px-10 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[180px]'} pb-5 transition-[padding] duration-200 ease-out`} style={{ minHeight: 300 }}>
@@ -265,35 +167,26 @@ export function CompactTripHeader({
             )}
           </div>
 
-          {/* Meta row — dates + travelers + edit */}
-          {!editing && (
-            <div
-              className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-3 text-[13px] text-white/90"
-              style={{ textShadow: '0 1px 6px rgba(0,0,0,0.45)' }}
-            >
-              {dateStr && (
-                <span className="flex items-center gap-1.5">
-                  <Calendar size={13} className="text-white/65" />
-                  <span className="tabular-nums">{dateStr}</span>
-                </span>
-              )}
-              <span aria-hidden className="text-white/30">·</span>
+          {/* Meta row — dates + travelers */}
+          <div
+            className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-3 text-[13px] text-white/90"
+            style={{ textShadow: '0 1px 6px rgba(0,0,0,0.45)' }}
+          >
+            {dateStr && (
               <span className="flex items-center gap-1.5">
-                <Users size={13} className="text-white/65" />
-                {travelersCount} {travelersCount === 1 ? 'traveler' : 'travelers'}
+                <Calendar size={13} className="text-white/65" />
+                <span className="tabular-nums">{dateStr}</span>
               </span>
-              <button
-                onClick={openEditor}
-                className="ml-0.5 p-1.5 rounded-full hover:bg-white/15 text-white/55 hover:text-white transition-colors"
-                title="Edit trip details"
-              >
-                <Pencil size={12} />
-              </button>
-            </div>
-          )}
+            )}
+            <span aria-hidden className="text-white/30">·</span>
+            <span className="flex items-center gap-1.5">
+              <Users size={13} className="text-white/65" />
+              {travelersCount} {travelersCount === 1 ? 'traveler' : 'travelers'}
+            </span>
+          </div>
 
           {/* Quick info — glass-effect pills for readability */}
-          {infoPills.length > 0 && !editing && (
+          {infoPills.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5 mt-3">
               {infoPills.map((pill, i) => (
                 <span
@@ -349,27 +242,6 @@ export function CompactTripHeader({
             </div>
           )}
 
-          {/* Inline editor */}
-          {editing && (
-            <div className="flex flex-wrap items-end gap-2.5 mt-2">
-              <input type="text" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="Trip title"
-                className="bg-white/10 border border-white/20 rounded-lg px-2.5 py-1 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-1 focus:ring-white/40 w-40" />
-              <input type="date" value={editStart} onChange={(e) => setEditStart(e.target.value)}
-                className="bg-white/10 border border-white/20 rounded-lg px-2.5 py-1 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/40 [color-scheme:dark]" />
-              <input type="date" value={editEnd} onChange={(e) => setEditEnd(e.target.value)}
-                className="bg-white/10 border border-white/20 rounded-lg px-2.5 py-1 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/40 [color-scheme:dark]" />
-              <input type="number" min={1} max={20} value={editTravelers} onChange={(e) => setEditTravelers(Number(e.target.value))}
-                className="bg-white/10 border border-white/20 rounded-lg px-2.5 py-1 text-sm text-white focus:outline-none focus:ring-1 focus:ring-white/40 w-16" />
-              <button onClick={saveEdits} disabled={saving}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white text-[#0f1f33] text-sm font-semibold hover:bg-white/90 transition-colors disabled:opacity-50">
-                <Check size={13} /> {saving ? '...' : 'Save'}
-              </button>
-              <button onClick={() => setEditing(false)}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20 transition-colors border border-white/20">
-                <X size={13} /> Cancel
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -1,30 +1,11 @@
 'use client'
 
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useDraggable, useDndMonitor } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
 import type { SuggestionCard as SuggestionCardType } from './types'
-
-/** Derive a consistent card height from suggestion metadata to avoid layout shifts. */
-function getCardHeight(suggestion: SuggestionCardType): number {
-  const baseHeights: Record<string, number> = {
-    sightseeing: 160,
-    dining: 130,
-    tours: 150,
-    culture: 155,
-    shopping: 120,
-    nightlife: 140,
-    outdoor: 165,
-    attractions: 150,
-    entertainment: 145,
-    wellness: 135,
-  }
-  const base = baseHeights[suggestion.category.toLowerCase()] ?? 145
-  const offset = (suggestion.name.length % 5) * 6
-  return base + offset
-}
 
 interface SuggestionCardProps {
   suggestion: SuggestionCardType
@@ -32,20 +13,34 @@ interface SuggestionCardProps {
   onSelect?: (suggestion: SuggestionCardType) => void
 }
 
+function formatPrice(price: number | null, currency: string) {
+  if (price === null || price === 0) return 'Free'
+  return `${currency}${price}`
+}
+
+function formatDuration(hours: number) {
+  if (hours < 1) return `${Math.round(hours * 60)}m`
+  if (hours % 1 === 0) return `${hours}h`
+  return `${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`
+}
+
+function formatCategory(category: string) {
+  return category.charAt(0).toUpperCase() + category.slice(1).toLowerCase()
+}
+
 export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: `suggestion-${suggestion.id}`,
-      data: { type: 'suggestion' as const, suggestion },
-    })
+  const draggableId = `suggestion-${suggestion.id}`
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: draggableId,
+    data: { type: 'suggestion' as const, suggestion },
+  })
 
   useEffect(() => {
     onVisible?.()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Drag vs. click detection: reset on pointer down, set when dnd-kit activates drag
+  // Drag vs. click detection
   const didDragRef = useRef(false)
-  const draggableId = `suggestion-${suggestion.id}`
   useDndMonitor({
     onDragStart(event) {
       if (event.active.id === draggableId) didDragRef.current = true
@@ -61,12 +56,14 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
       }
     : {}
 
-  const [isHovered, setIsHovered] = useState(false)
   const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set())
-  const cardHeight = useMemo(() => getCardHeight(suggestion), [suggestion])
 
-  const rawImages = suggestion.imageUrls?.length ? suggestion.imageUrls : suggestion.imageUrl ? [suggestion.imageUrl] : []
-  const images = rawImages.filter(u => !failedUrls.has(u))
+  const rawImages = suggestion.imageUrls?.length
+    ? suggestion.imageUrls
+    : suggestion.imageUrl
+      ? [suggestion.imageUrl]
+      : []
+  const heroImage = rawImages.find((u) => !failedUrls.has(u)) ?? null
 
   const style: React.CSSProperties = {
     transform: CSS.Translate.toString(transform),
@@ -74,17 +71,6 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
   }
 
   const tagColor = getActivityColor(suggestion.category)
-
-  const formatPrice = (price: number | null, currency: string) => {
-    if (price === null || price === 0) return 'Free'
-    return `${currency}${price}`
-  }
-
-  const formatDuration = (hours: number) => {
-    if (hours < 1) return `${Math.round(hours * 60)}m`
-    if (hours % 1 === 0) return `${hours}h`
-    return `${Math.floor(hours)}h${Math.round((hours % 1) * 60)}m`
-  }
 
   const handleClick = () => {
     if (didDragRef.current) {
@@ -100,151 +86,69 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
       style={style}
       {...attributes}
       {...extendedListeners}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       onClick={handleClick}
       className={[
-        'group masonry-item mb-2 rounded-[10px] overflow-hidden cursor-grab active:cursor-grabbing',
-        'relative transition-all duration-200',
-        isDragging ? '' : 'hover:-translate-y-0.5 hover:shadow-[0_6px_24px_rgba(0,0,0,0.4)]',
+        'group relative flex gap-3 p-2 rounded-xl border border-cal-border bg-cal-surface',
+        'cursor-grab active:cursor-grabbing transition-all duration-150',
+        isDragging
+          ? ''
+          : 'hover:border-cal-text-tertiary/40 hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] hover:-translate-y-px',
       ].join(' ')}
     >
-      {/* Image section — collage layout when multiple images, full width when single */}
+      {/* Thumbnail */}
       <div
-        className="relative w-full overflow-hidden"
-        style={{ height: cardHeight }}
+        className="relative shrink-0 w-[88px] h-[88px] rounded-lg overflow-hidden"
+        style={{
+          background: `linear-gradient(135deg, ${tagColor}28 0%, ${tagColor}55 100%)`,
+        }}
       >
-        {/* Always show gradient behind images as fallback for broken loads */}
-        <div
-          className="absolute inset-0"
-          style={{ background: `linear-gradient(135deg, ${tagColor}28 0%, ${tagColor}55 100%)` }}
-        />
-
-        {images.length === 0 ? null : images.length === 1 ? (
+        {heroImage && (
           <Image
-            src={images[0]}
+            src={heroImage}
             alt=""
             fill
             loading="lazy"
             className="object-cover"
             draggable={false}
-            sizes="(max-width: 640px) 100vw, 300px"
-            onError={() => setFailedUrls(prev => new Set(prev).add(images[0]))}
+            sizes="88px"
+            onError={() => setFailedUrls((prev) => new Set(prev).add(heroImage))}
           />
-        ) : (
-          <div className="flex w-full h-full">
-            {/* 2 images: 50/50 split — 3+ images: first image takes left half */}
-            <div className="relative w-[calc(50%-1px)] h-full overflow-hidden">
-              <Image
-                src={images[0]}
-                alt=""
-                fill
-                loading="lazy"
-                className="object-cover"
-                draggable={false}
-                sizes="150px"
-                onError={() => setFailedUrls(prev => new Set(prev).add(images[0]))}
-              />
-            </div>
+        )}
+      </div>
 
-            {/* Divider between columns */}
-            <div className="w-[2px] h-full bg-black/20 relative z-10 shrink-0" />
-
-            {images.length === 2 ? (
-              <div className="relative w-[calc(50%-1px)] h-full overflow-hidden">
-                <Image
-                  src={images[1]}
-                  alt=""
-                  fill
-                  loading="lazy"
-                  className="object-cover"
-                  draggable={false}
-                  sizes="150px"
-                  onError={() => setFailedUrls(prev => new Set(prev).add(images[1]))}
-                />
-              </div>
-            ) : (
-              <div className="flex flex-col w-[calc(50%-1px)] h-full">
-                <div className="relative w-full h-[calc(50%-1px)] overflow-hidden">
-                  <Image
-                    src={images[1]}
-                    alt=""
-                    fill
-                    loading="lazy"
-                    className="object-cover"
-                    draggable={false}
-                    sizes="150px"
-                    onError={() => setFailedUrls(prev => new Set(prev).add(images[1]))}
-                  />
-                </div>
-                {/* Divider between rows */}
-                <div className="w-full h-[2px] bg-black/20 relative z-10 shrink-0" />
-                <div className="relative w-full h-[calc(50%-1px)] overflow-hidden">
-                  <Image
-                    src={images[2]}
-                    alt=""
-                    fill
-                    loading="lazy"
-                    className="object-cover"
-                    draggable={false}
-                    sizes="150px"
-                    onError={() => setFailedUrls(prev => new Set(prev).add(images[2]))}
-                  />
-                  {images.length > 3 && (
-                    <div className="absolute bottom-[5px] right-[5px] bg-black/60 backdrop-blur-sm rounded-md px-[6px] py-[2px] z-10">
-                      <span className="text-white text-[10px] font-semibold">+{images.length - 3}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
+      {/* Content */}
+      <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+        <div className="min-w-0">
+          <div className="text-[13px] font-semibold text-cal-text leading-snug line-clamp-2">
+            {suggestion.name}
+          </div>
+          <div className="mt-1 flex items-center gap-1.5 text-[10.5px] text-cal-text-tertiary">
+            <span
+              className="font-medium px-1.5 py-px rounded"
+              style={{
+                background: `${tagColor}1f`,
+                color: tagColor,
+              }}
+            >
+              {formatCategory(suggestion.category)}
+            </span>
+            {suggestion.rating != null && (
+              <span className="flex items-center gap-0.5 text-amber-500 font-medium">
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.56 5.82 22 7 14.14l-5-4.87 6.91-1.01L12 2z" />
+                </svg>
+                {suggestion.rating.toFixed(1)}
+              </span>
             )}
           </div>
-        )}
-
-        {/* Gradient overlay at bottom for text readability */}
-        <div className="absolute bottom-0 left-0 right-0 h-1/3 pointer-events-none z-10"
-          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)' }}
-        />
-      </div>
-
-      {/* Price badge — top left */}
-      <div className="absolute top-[7px] left-[7px] bg-black/55 backdrop-blur-[8px] rounded-md px-[7px] py-[2px] text-[11px] font-semibold text-white">
-        {formatPrice(suggestion.price, suggestion.currency)}
-      </div>
-
-      {/* Rating badge — top right */}
-      {suggestion.rating != null && (
-        <div className="absolute top-[7px] right-[7px] bg-black/55 backdrop-blur-[8px] rounded-md px-[7px] py-[2px] text-[10px] font-semibold text-amber-400 flex items-center gap-[3px]">
-          ★ {suggestion.rating}
         </div>
-      )}
-
-      {/* Bottom gradient with metadata */}
-      <div
-        className="absolute bottom-0 left-0 right-0 px-[10px] pb-[9px] pt-8"
-        style={{
-          background:
-            'linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.35) 60%, transparent 100%)',
-        }}
-      >
-        <div className="text-[12px] font-bold text-white leading-[1.3] [text-shadow:0_1px_3px_rgba(0,0,0,0.4)]">
-          {suggestion.name}
-        </div>
-        <div className="flex items-center gap-1 mt-[3px] text-[10px] text-white/75 [text-shadow:0_1px_2px_rgba(0,0,0,0.3)]">
-          <span
-            className="inline-flex text-[9px] font-semibold px-[5px] py-[1px] rounded-[3px] backdrop-blur-[4px]"
-            style={{
-              background: `${tagColor}40`,
-              color: `${tagColor}cc`,
-            }}
-          >
-            {suggestion.category.charAt(0).toUpperCase() + suggestion.category.slice(1)}
+        <div className="mt-1.5 flex items-center justify-between text-[11px] text-cal-text-secondary">
+          <span className="font-semibold text-cal-text">
+            {formatPrice(suggestion.price, suggestion.currency)}
           </span>
-          <span className="opacity-50">·</span>
-          <span>{formatDuration(suggestion.duration)}</span>
+          <span className="text-cal-text-tertiary">{formatDuration(suggestion.duration)}</span>
         </div>
       </div>
-
     </div>
   )
 }

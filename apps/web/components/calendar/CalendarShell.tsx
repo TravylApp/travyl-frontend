@@ -5,7 +5,8 @@ import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core'
 import { useQuery } from '@tanstack/react-query'
 import { computeTimeRange, getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
 import { fetchCollaborators } from '@travyl/shared'
-import { DEFAULT_TIME_RANGE } from './constants'
+import { DEFAULT_TIME_RANGE, HOUR_HEIGHT as DEFAULT_HOUR_HEIGHT } from './constants'
+import { HourHeightProvider } from './HourHeightContext'
 import { CalendarTopBar } from './CalendarTopBar'
 import { WeekView } from './WeekView'
 import { DayView } from './DayView'
@@ -385,8 +386,24 @@ export function CalendarShell({
     setRegenerateDaySlots([])
   }, [])
 
-  // ── Right panel resize ───────────────────────────────────
+  // ── Right panel resize + collapse ────────────────────────
   const { width: panelWidth, handleDragStart: panelDragStart, handleDrag: panelDrag, handleDragEnd: panelDragEnd, isDragging } = useResizablePanel()
+  const [panelCollapsed, setPanelCollapsed] = useState(false)
+  const togglePanelCollapsed = useCallback(() => setPanelCollapsed((v) => !v), [])
+  const effectivePanelWidth = panelCollapsed ? 0 : panelWidth
+
+  // ── Dynamic hour height ──────────────────────────────────
+  // The calendar grid stretches to fill the available height; the per-hour pixel
+  // height grows or shrinks with the viewport. Floored at the static default so
+  // rows never become smaller than their canonical size on short viewports.
+  const DAY_HEADER_HEIGHT = 28
+  const [calendarBodyHeight, setCalendarBodyHeight] = useState(0)
+  const hourCount = timeRange.endHour - timeRange.startHour
+  const dynamicHourHeight = useMemo(() => {
+    if (calendarBodyHeight <= 0 || hourCount <= 0) return DEFAULT_HOUR_HEIGHT
+    const available = calendarBodyHeight - DAY_HEADER_HEIGHT
+    return Math.max(DEFAULT_HOUR_HEIGHT, available / hourCount)
+  }, [calendarBodyHeight, hourCount])
 
   // Prevent text selection while resizing panel
   useEffect(() => {
@@ -404,13 +421,61 @@ export function CalendarShell({
 
   // ── Week navigation ──────────────────────────────────────
   const handleWeekChange = useCallback((direction: -1 | 1) => {
-    selectDay(selectedDayIndex + direction * 7)
-  }, [selectedDayIndex, selectDay])
+    const next = selectedDayIndex + direction * 7
+    const clamped = Math.max(0, Math.min(next, Math.max(0, tripTotalDays - 1)))
+    selectDay(clamped)
+  }, [selectedDayIndex, selectDay, tripTotalDays])
 
   const handleToday = useCallback(() => {
     const diffDays = Math.floor((Date.now() - parsedStartDate.getTime()) / 86400000)
-    selectDay(Math.max(0, diffDays))
-  }, [parsedStartDate, selectDay])
+    const clamped = Math.max(0, Math.min(diffDays, Math.max(0, tripTotalDays - 1)))
+    selectDay(clamped)
+  }, [parsedStartDate, selectDay, tripTotalDays])
+
+  // Week view shows up to 7 days, aligned to trip-week blocks starting at day 0.
+  // The last week of a trip whose length is not a multiple of 7 will be partial.
+  const weekStartIndex = useMemo(
+    () => Math.floor(Math.max(0, selectedDayIndex) / 7) * 7,
+    [selectedDayIndex],
+  )
+
+  const visibleWeekDays = useMemo(
+    () => allDays.slice(weekStartIndex, weekStartIndex + 7),
+    [allDays, weekStartIndex],
+  )
+
+  // ── Top-bar context label ────────────────────────────────
+  const viewLabel = useMemo(() => {
+    if (!trip) return ''
+    const dateForIndex = (idx: number) =>
+      new Date(parsedStartDate.getTime() + idx * 86400000)
+    if (viewMode === 'day') {
+      const d = dateForIndex(selectedDayIndex)
+      return d.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC',
+      })
+    }
+    const last = Math.min(weekStartIndex + 6, tripTotalDays - 1)
+    const start = dateForIndex(weekStartIndex)
+    const end = dateForIndex(last)
+    const startMonth = start.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })
+    const endMonth = end.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })
+    const startDay = start.getUTCDate()
+    const endDay = end.getUTCDate()
+    if (startMonth === endMonth) return `${startMonth} ${startDay} – ${endDay}`
+    return `${startMonth} ${startDay} – ${endMonth} ${endDay}`
+  }, [trip, parsedStartDate, viewMode, selectedDayIndex, weekStartIndex, tripTotalDays])
+
+  const visibleActivityCount = useMemo(() => {
+    if (viewMode === 'day') {
+      return scheduledActivities.filter((a) => a.day === selectedDayIndex).length
+    }
+    const end = weekStartIndex + 7
+    return scheduledActivities.filter((a) => a.day >= weekStartIndex && a.day < end).length
+  }, [scheduledActivities, viewMode, selectedDayIndex, weekStartIndex])
 
   // ── Drag-and-drop ────────────────────────────────────────
   const weekGridRef = useRef<HTMLDivElement>(null)
@@ -419,7 +484,19 @@ export function CalendarShell({
     onAddFromSuggestion: (activity) => addActivity(activity),
     scrollRef: weekGridRef,
     timeRangeStartHour: timeRange.startHour,
+    hourHeight: dynamicHourHeight,
   })
+
+  // Observe the calendar body height so dynamicHourHeight tracks the viewport.
+  useEffect(() => {
+    const el = weekGridRef.current
+    if (!el) return
+    const update = () => setCalendarBodyHeight(el.clientHeight)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   const handleSelectEvent = useCallback((id: string) => {
     selectEvent(id)
@@ -474,11 +551,11 @@ export function CalendarShell({
   if (errorMsg || !trip) return <CalendarError message={errorMsg ?? 'Failed to load trip'} />
 
   // ── Render ────────────────────────────────────────────────
-  const days = allDays
-  const selectedDayLabel = days[selectedDayIndex]?.label ?? ''
+  const selectedDayLabel = allDays[selectedDayIndex]?.label ?? ''
 
   return (
     <CalendarThemeContext.Provider value={{ isDark: theme === 'dark' }}>
+      <HourHeightProvider value={dynamicHourHeight}>
       <DndContext
         sensors={sensors}
         collisionDetection={pointerWithin}
@@ -490,24 +567,24 @@ export function CalendarShell({
         <div className={`flex flex-col h-full bg-[var(--cal-bg)] ${darkClass}`}>
           {/* Top Bar */}
           <CalendarTopBar
-            tripName={trip.title ?? 'Untitled Trip'}
-            dateRange={`${trip.start_date} – ${trip.end_date}`}
+            viewLabel={viewLabel}
+            activityCount={visibleActivityCount}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             onWeekChange={handleWeekChange}
             onToday={handleToday}
-            onNewActivity={() => {}}
-            onShare={() => {}}
+            panelCollapsed={panelCollapsed}
+            onTogglePanel={togglePanelCollapsed}
           />
 
           {/* Two-column layout (left date nav hidden) */}
           <div className="flex flex-1 min-h-0 overflow-hidden">
 
             {/* Center: Calendar Grid */}
-            <div ref={weekGridRef} className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
+            <div ref={weekGridRef} className="flex flex-col flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
               {viewMode === 'week' ? (
                 <WeekView
-                  days={days}
+                  days={visibleWeekDays}
                   activities={scheduledActivities}
                   viewers={collaboratorsWithProfiles}
                   selectedEventId={selectedEventId}
@@ -545,8 +622,13 @@ export function CalendarShell({
 
             {/* Right: Context Panel */}
             <div
-              className="flex-shrink-0 border-l border-[var(--cal-border)] bg-[var(--cal-bg)] relative"
-              style={{ width: panelWidth }}
+              aria-hidden={panelCollapsed}
+              className={[
+                'flex-shrink-0 bg-[var(--cal-bg)] relative overflow-hidden',
+                panelCollapsed ? 'border-l-0 pointer-events-none' : 'border-l border-[var(--cal-border)]',
+                isDragging ? '' : 'transition-[width] duration-200 ease-out',
+              ].join(' ')}
+              style={{ width: effectivePanelWidth }}
             >
               {/* Resize handle */}
               <div
@@ -577,7 +659,7 @@ export function CalendarShell({
               {regeneratingDayIndex !== null ? (
                 <RegenerateDayModal
                   dayIndex={regeneratingDayIndex}
-                  dayLabel={days[regeneratingDayIndex]?.label ?? ''}
+                  dayLabel={allDays[regeneratingDayIndex]?.label ?? ''}
                   slots={regenerateDaySlots}
                   originalActivities={activities.filter((a) => a.day === regeneratingDayIndex && !a.unscheduled)}
                   onApply={handleRegenerateDayApply}
@@ -668,6 +750,7 @@ export function CalendarShell({
           />
         )}
       </DndContext>
+      </HourHeightProvider>
     </CalendarThemeContext.Provider>
   )
 }

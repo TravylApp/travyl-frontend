@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Search, MapPin, Clock, Star } from 'iconoir-react'
+import { Search, MapPin } from 'iconoir-react'
 import { usePlaceImages } from '@travyl/shared'
 import { FOR_YOU_PANEL_DEFAULT_WIDTH } from './constants'
 import { SuggestionCard } from './SuggestionCard'
@@ -18,17 +18,8 @@ interface ForYouPanelProps {
   width?: number
 }
 
-const CATEGORY_ICONS: Record<string, string> = {
-  sightseeing: '🏛️',
-  dining: '🍽️',
-  tours: '🚌',
-  culture: '🎭',
-  shopping: '🛍️',
-  nightlife: '🌙',
-  outdoor: '🌲',
-  attractions: '🎡',
-  entertainment: '🎬',
-  wellness: '🧘',
+function formatCategoryLabel(category: string): string {
+  return category.charAt(0).toUpperCase() + category.slice(1).toLowerCase()
 }
 
 export function ForYouPanel({
@@ -126,18 +117,8 @@ export function ForYouPanel({
       className="relative flex flex-col shrink-0 self-stretch border-l border-cal-border-light bg-cal-surface-elevated overflow-hidden"
       aria-label="Activity suggestions"
     >
-      {/* Header */}
-      <div className="px-3.5 pt-3.5 pb-2.5">
-        <div className="flex items-center justify-between mb-2.5">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Star width={13} height={13} className="text-primary" />
-            </div>
-            <h2 className="text-sm font-semibold text-cal-text">For You</h2>
-          </div>
-        </div>
-
-        {/* Search bar */}
+      {/* Search bar */}
+      <div className="px-3.5 pt-3 pb-2">
         <div className="relative">
           <Search
             width={14}
@@ -150,14 +131,14 @@ export function ForYouPanel({
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') commitSearch() }}
             placeholder="Search activities..."
-            className="w-full bg-cal-bg border border-cal-border rounded-xl pl-9 pr-3 py-2.5 text-sm text-cal-text placeholder-cal-text-tertiary outline-none transition-all focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+            className="w-full bg-cal-bg border border-cal-border rounded-full pl-9 pr-3 py-2 text-[13px] text-cal-text placeholder-cal-text-tertiary outline-none transition-all focus:border-primary/40 focus:ring-2 focus:ring-primary/15"
           />
         </div>
       </div>
 
       {/* Filter chips */}
       {filterCategories.length > 0 && (
-        <div className="px-3.5 pb-2.5 overflow-x-auto scrollbar-none">
+        <div className="px-3.5 pb-3 overflow-x-auto scrollbar-none">
           <div className="flex gap-1.5">
             {filterCategories.map((cat) => {
               const isActive = activeFilter === cat
@@ -166,16 +147,13 @@ export function ForYouPanel({
                   key={cat}
                   onClick={() => setActiveFilter(cat as FilterCategory)}
                   className={[
-                    'flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap transition-all border',
+                    'text-[11.5px] font-medium px-3 py-1.5 rounded-full whitespace-nowrap transition-all border',
                     isActive
                       ? 'bg-primary border-primary text-white shadow-sm'
                       : 'border-cal-border text-cal-text-secondary hover:bg-cal-bg hover:text-cal-text hover:border-cal-text-tertiary',
                   ].join(' ')}
                 >
-                  {CATEGORY_ICONS[cat.toLowerCase()] && (
-                    <span className="text-[10px]">{CATEGORY_ICONS[cat.toLowerCase()]}</span>
-                  )}
-                  {cat}
+                  {formatCategoryLabel(cat)}
                 </button>
               )
             })}
@@ -246,7 +224,7 @@ export function ForYouPanel({
           </div>
         ) : (
           <>
-            <div className="masonry-grid px-0.5">
+            <div className="flex flex-col gap-2 px-1">
               {enrichedSuggestions.map((suggestion) => (
                 <SuggestionCard
                   key={suggestion.id}

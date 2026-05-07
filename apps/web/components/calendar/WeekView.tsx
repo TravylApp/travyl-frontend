@@ -7,6 +7,7 @@ import type { CalendarActivity, UserAwareness, TimeRange } from './types'
 import type { Poll } from '@travyl/shared'
 
 const MIN_COLUMN_WIDTH = 60
+const DIVIDER_WIDTH = 5
 
 interface WeekViewProps {
   days: { dayIndex: number; label: string }[]
@@ -71,7 +72,8 @@ export function WeekView({
     if (!el || days.length === 0) return
 
     const recalculate = () => {
-      const equal = el.clientWidth / days.length
+      const dividers = Math.max(0, days.length - 1) * DIVIDER_WIDTH
+      const equal = Math.max(MIN_COLUMN_WIDTH, (el.clientWidth - dividers) / days.length)
       setColumnWidths(days.map(() => equal))
     }
 
@@ -102,7 +104,7 @@ export function WeekView({
   }
 
   return (
-    <div role="grid" className="flex flex-1 min-w-0" onKeyDown={handleKeyDown}>
+    <div role="grid" className="flex flex-1 min-w-0 h-full" onKeyDown={handleKeyDown}>
       <TimeGutter timeRange={timeRange} />
       <div
         ref={(el) => {
