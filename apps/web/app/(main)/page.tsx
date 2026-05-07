@@ -668,15 +668,19 @@ export default function Home() {
     }
     if (planner.state.phase === 'clarifying' && showTakeoff) {
       clarifyRoundRef.current += 1;
-      if (clarifyRoundRef.current >= 2 && planner.state.questions?.length) {
-        // Auto-answer with first option to break the loop
+      // Only auto-answer when we're still in skip mode AND have looped twice;
+      // otherwise the auto-skip effect (above) has already taken over and is
+      // about to surface the questions UI — clobbering it here forces an
+      // unwanted loop where the user sees only a loading takeoff.
+      const stillSkipping = skipQuestionsRef.current;
+      if (stillSkipping && clarifyRoundRef.current >= 2 && planner.state.questions?.length) {
         const autoAnswers: Record<string, string> = {};
         for (const q of planner.state.questions) {
           autoAnswers[q.id] = q.options?.[0] ?? '';
         }
         planner.submitAnswers(autoAnswers);
       } else {
-        // First time — drop the overlay so user can answer
+        // Drop the overlay so the user can see and answer the clarifying questions.
         setShowTakeoff(false);
       }
     }
