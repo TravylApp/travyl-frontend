@@ -108,7 +108,7 @@ export function TransitRoutePairCard({
           <button
             onClick={onRetry}
             className="px-3 h-8 rounded-lg text-[12px] font-semibold text-white shadow-sm hover:shadow-md transition-shadow"
-            style={{ backgroundColor: 'var(--trip-base)' }}
+            style={{ backgroundColor: 'var(--trip-base, #003594)' }}
           >
             Retry
           </button>
@@ -166,7 +166,7 @@ export function TransitRoutePairCard({
                   <button
                     onClick={() => onAdd(result)}
                     className="px-3 h-8 rounded-lg text-[12px] font-semibold text-white shadow-sm hover:shadow-md transition-shadow"
-                    style={{ backgroundColor: 'var(--trip-base)' }}
+                    style={{ backgroundColor: 'var(--trip-base, #003594)' }}
                   >
                     Add
                   </button>
