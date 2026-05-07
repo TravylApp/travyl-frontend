@@ -97,8 +97,8 @@ export function GlanceView({
         />
       </div>
 
-      <div className="mt-5 flex items-center justify-center gap-2.5 text-[12px] text-blue-900 dark:text-blue-200 font-medium">
-        <span className="w-2 h-2 rounded-full bg-emerald-500 ring-4 ring-emerald-500/20" />
+      <div className="mt-5 flex items-center justify-center gap-2.5 text-[11.5px] text-[var(--trip-base)] dark:text-white/60 font-medium tracking-wide">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 ring-4 ring-emerald-500/15" />
         Story &amp; moments regenerate when activities change · ← → to navigate
       </div>
     </div>
