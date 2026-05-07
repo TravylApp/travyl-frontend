@@ -55,17 +55,24 @@ function mapRateToCarData(
   rate: any,
   pickupLocation: string,
   dropoffLocation: string,
+  fallbackLocation?: string,
 ): CarRentalData {
+  // Cascade through the most specific source down to the trip destination
+  // so the saved card never ends up with an empty pickup_location.
+  const pickup = rate.pickup_name || pickupLocation || fallbackLocation || "";
+  const dropoff = rate.dropoff_name || dropoffLocation || pickup;
   return {
     vendor: rate.supplier ?? "Unknown",
     vehicle: rate.vehicle ?? null,
-    pickup_location: rate.pickup_name ?? pickupLocation,
-    dropoff_location: rate.dropoff_name ?? dropoffLocation,
+    pickup_location: pickup,
+    dropoff_location: dropoff,
     pickup_at: "",
     dropoff_at: "",
     price: rate.total_amount ? parseFloat(rate.total_amount) : null,
     currency: rate.total_currency ?? null,
     booking_ref: null,
+    supplier_logo: rate.supplier_logo ?? null,
+    booking_url: rate.booking_url ?? null,
   };
 }
 
@@ -393,6 +400,7 @@ export function CarSearchPanel({
         rate,
         pickupLocation,
         dropoffLocation || pickupLocation,
+        tripDestination,
       );
       carData.pickup_at = new Date(
         `${pickupDate}T${rate.pickup_time || "10:00"}`,

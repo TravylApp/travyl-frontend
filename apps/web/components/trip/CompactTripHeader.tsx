@@ -3,44 +3,11 @@
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { Pencil, X, Check, Calendar, Users, ChevronDown, Share2, Map } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { formatDateRange, updateTripDetails, useWeather, ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
 import type { Trip } from '@travyl/shared';
 import { useRailCollapsed } from '@/components/trip-rail';
 
-// US state and Canadian province name → 2-letter code. We abbreviate inline in
-// the title (e.g. "San Francisco, CA") because that's the convention people
-// expect for those countries; everywhere else, the full region name reads
-// better than an opaque code.
-const US_STATE_ABBR: Record<string, string> = {
-  alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR', california: 'CA',
-  colorado: 'CO', connecticut: 'CT', delaware: 'DE', florida: 'FL', georgia: 'GA',
-  hawaii: 'HI', idaho: 'ID', illinois: 'IL', indiana: 'IN', iowa: 'IA',
-  kansas: 'KS', kentucky: 'KY', louisiana: 'LA', maine: 'ME', maryland: 'MD',
-  massachusetts: 'MA', michigan: 'MI', minnesota: 'MN', mississippi: 'MS', missouri: 'MO',
-  montana: 'MT', nebraska: 'NE', nevada: 'NV', 'new hampshire': 'NH', 'new jersey': 'NJ',
-  'new mexico': 'NM', 'new york': 'NY', 'north carolina': 'NC', 'north dakota': 'ND',
-  ohio: 'OH', oklahoma: 'OK', oregon: 'OR', pennsylvania: 'PA', 'rhode island': 'RI',
-  'south carolina': 'SC', 'south dakota': 'SD', tennessee: 'TN', texas: 'TX', utah: 'UT',
-  vermont: 'VT', virginia: 'VA', washington: 'WA', 'west virginia': 'WV', wisconsin: 'WI',
-  wyoming: 'WY', 'district of columbia': 'DC', 'washington dc': 'DC',
-};
-const CA_PROVINCE_ABBR: Record<string, string> = {
-  alberta: 'AB', 'british columbia': 'BC', manitoba: 'MB', 'new brunswick': 'NB',
-  'newfoundland and labrador': 'NL', 'nova scotia': 'NS', ontario: 'ON',
-  'prince edward island': 'PE', quebec: 'QC', 'québec': 'QC', saskatchewan: 'SK',
-  'northwest territories': 'NT', nunavut: 'NU', yukon: 'YT',
-};
-
-function abbreviateRegion(region: string, countryCode?: string): string {
-  if (!region) return '';
-  const trimmed = region.trim();
-  // Already a short code (2-3 chars, all caps) — leave as-is
-  if (trimmed.length <= 3 && trimmed === trimmed.toUpperCase()) return trimmed;
-  const key = trimmed.toLowerCase();
-  if (countryCode === 'US' && US_STATE_ABBR[key]) return US_STATE_ABBR[key];
-  if (countryCode === 'CA' && CA_PROVINCE_ABBR[key]) return CA_PROVINCE_ABBR[key];
-  return trimmed;
-}
 
 export function CompactTripHeader({
   tripId,
@@ -118,9 +85,37 @@ export function CompactTripHeader({
   const countryFlag = trip?.trip_context?.country?.flag as string | undefined;
   const countryCca2 = trip?.trip_context?.country?.cca2 as string | undefined;
   const flagUrl = countryFlag || (countryCca2 ? `https://flagcdn.com/24x18/${countryCca2.toLowerCase()}.png` : null);
-  // Abbreviate US states / Canadian provinces; everything else uses the full
-  // parsed region name (e.g. "Île-de-France", "São Paulo").
-  const regionDisplay = abbreviateRegion(rawRegionName, countryCca2);
+
+  // Many trips were saved with destination = "City, Country" (no region).
+  // When that's the case but we have lat/lng, reverse-geocode via BigDataCloud's
+  // free CORS-enabled client API (no key, designed for browser use, much more
+  // reliable than Nominatim which rate-limits hard). Coordinates don't change
+  // for a trip, so cache forever.
+  const lat = trip?.trip_context?.lat;
+  const lng = trip?.trip_context?.lng;
+  const needsRegionLookup = !rawRegionName && lat != null && lng != null;
+  const { data: lookupRegion } = useQuery<string | null>({
+    queryKey: ['reverse-region', lat, lng],
+    queryFn: async () => {
+      try {
+        const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+        // `principalSubdivision` is the state/province in full ("California",
+        // "Ontario", "Île-de-France"). The abbreviation map below converts
+        // US/CA names to 2-letter codes; everything else stays as-is.
+        return (data?.principalSubdivision as string | undefined) || null;
+      } catch {
+        return null;
+      }
+    },
+    enabled: needsRegionLookup,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
+
+  const regionDisplay = (rawRegionName || lookupRegion || '').trim();
 
   // Quick info — prefer live weather, fall back to trip_context
   const ctx = trip?.trip_context as Record<string, any> | undefined;
@@ -256,7 +251,7 @@ export function CompactTripHeader({
             >
               {cityName || trip?.title || 'Untitled Trip'}
               {regionDisplay && (
-                <span className="text-white/55 font-light">, {regionDisplay}</span>
+                <span className="text-white">, {regionDisplay}</span>
               )}
             </h1>
             {hasExpandContent && (

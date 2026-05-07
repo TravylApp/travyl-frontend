@@ -97,11 +97,25 @@ export function FlightCard({ flight, onEdit, onDelete }: FlightCardProps) {
             </div>
           </div>
 
-          {flight.priceDisplay && (
-            <div className="text-right mt-3 text-[13px] font-semibold text-gray-900 dark:text-white tabular-nums">
-              {flight.priceDisplay}
-            </div>
-          )}
+          <div className="mt-3 flex items-end justify-between gap-3">
+            {flight.bookingRef ? (
+              <div className="leading-tight">
+                <div className="text-[9px] uppercase tracking-[0.12em] text-gray-400 dark:text-gray-500 font-semibold">
+                  Confirmation
+                </div>
+                <div className="font-mono text-[12px] font-semibold text-gray-700 dark:text-gray-300 tracking-wider mt-0.5">
+                  {flight.bookingRef}
+                </div>
+              </div>
+            ) : (
+              <span />
+            )}
+            {flight.priceDisplay && (
+              <div className="text-right text-[13px] font-semibold text-gray-900 dark:text-white tabular-nums">
+                {flight.priceDisplay}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

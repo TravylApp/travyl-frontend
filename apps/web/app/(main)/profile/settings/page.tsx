@@ -9,13 +9,9 @@ import { AvatarUpload } from "@/components/AvatarUpload";
 import { PasswordStrengthMeter } from "@/components/PasswordStrengthMeter";
 import { LoadingBar } from "@/components/LoadingBar";
 import { LocationPicker, type LocationValue } from "@/components/settings/LocationPicker";
-import { AirportAutocomplete } from "@/components/trip/flights/AirportAutocomplete";
-import { searchAirports } from "@/components/trip/flights/airportSearch";
 import { useAuthStore, supabase, useSettingsStore, CURRENCIES } from "@travyl/shared";
 import { fetchProfile, updateProfile, uploadAvatar, updateUserPassword } from "@travyl/shared";
 import type { Profile } from "@travyl/shared";
-
-type AirportValue = { iata: string; name: string; city: string } | null;
 
 interface ProfileForm {
   avatar: string | null;
@@ -24,7 +20,6 @@ interface ProfileForm {
   country: string;
   lat: number | null;
   lng: number | null;
-  homeAirport: AirportValue;
 }
 
 const EMPTY_FORM: ProfileForm = {
@@ -34,7 +29,6 @@ const EMPTY_FORM: ProfileForm = {
   country: "",
   lat: null,
   lng: null,
-  homeAirport: null,
 };
 
 type SectionId = "profile" | "display" | "password";
@@ -81,8 +75,7 @@ export default function ProfileSettings() {
     form.avatar !== original.avatar ||
     form.displayName !== original.displayName ||
     form.city !== original.city ||
-    form.country !== original.country ||
-    (form.homeAirport?.iata ?? null) !== (original.homeAirport?.iata ?? null);
+    form.country !== original.country;
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -122,23 +115,6 @@ export default function ProfileSettings() {
           (user.user_metadata?.name as string | undefined) ??
           "";
 
-        // Resolve saved IATA into the full airport object for the picker.
-        let homeAirport: AirportValue = null;
-        if (profile?.home_airport) {
-          try {
-            const matches = await searchAirports(profile.home_airport);
-            const exact = matches.find((a) => a.iata === profile.home_airport);
-            if (exact) {
-              homeAirport = { iata: exact.iata, name: exact.name, city: exact.city };
-            } else {
-              homeAirport = { iata: profile.home_airport, name: "", city: "" };
-            }
-          } catch {
-            homeAirport = { iata: profile.home_airport, name: "", city: "" };
-          }
-          if (cancelled) return;
-        }
-
         let nextForm: ProfileForm = {
           avatar: effectiveAvatar,
           displayName: baseDisplayName,
@@ -146,7 +122,6 @@ export default function ProfileSettings() {
           country: profile?.country ?? "",
           lat: null,
           lng: null,
-          homeAirport,
         };
 
         // First-load IP prefill: only when no city/country saved yet.
@@ -180,7 +155,6 @@ export default function ProfileSettings() {
           country: profile?.country ?? "",
           lat: null,
           lng: null,
-          homeAirport,
         });
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load profile");
@@ -211,7 +185,7 @@ export default function ProfileSettings() {
           return;
         }
       }
-      const updates: Partial<Pick<Profile, "display_name" | "avatar_url" | "city" | "country" | "home_airport">> = {};
+      const updates: Partial<Pick<Profile, "display_name" | "avatar_url" | "city" | "country">> = {};
       if (form.displayName.trim() !== original.displayName.trim()) {
         updates.display_name = form.displayName.trim() || null;
       }
@@ -223,11 +197,6 @@ export default function ProfileSettings() {
       }
       if (form.country.trim() !== original.country.trim()) {
         updates.country = form.country.trim() || null;
-      }
-      const nextIata = form.homeAirport?.iata ?? null;
-      const prevIata = original.homeAirport?.iata ?? null;
-      if (nextIata !== prevIata) {
-        updates.home_airport = nextIata;
       }
       if (Object.keys(updates).length > 0) {
         await updateProfile(user.id, updates);
@@ -462,17 +431,6 @@ export default function ProfileSettings() {
                   </Field>
 
                   <LocationPicker value={location} onChange={onLocationChange} disabled={isSavingProfile} />
-
-                  <div>
-                    <AirportAutocomplete
-                      label="Home airport"
-                      value={form.homeAirport}
-                      onChange={(v) => setForm((f) => ({ ...f, homeAirport: v }))}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1.5">
-                      Used to pre-fill the From field when you search flights.
-                    </p>
-                  </div>
 
                   <div className="flex items-center justify-end gap-3 pt-2 border-t border-border -mx-10 px-10 pt-5">
                     {profileChanged && (
