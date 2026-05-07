@@ -23,3 +23,4 @@ export * from './viewmodels';
 
 // Day Slide (At-a-Glance) — templated story builder
 export { buildTemplatedDayStory } from './utils/buildTemplatedDayStory';
+export { fetchDayStory } from './services/dayStory';
