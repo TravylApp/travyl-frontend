@@ -482,7 +482,7 @@ function TripLayoutContent({
   const isOverview = currentSegment === '';
   const isCalendar = currentSegment === 'calendar';
 
-  const tabOrder = ['', 'itinerary', 'calendar', 'hotels', 'flights', 'restaurants', 'activities', 'packing', 'budget', 'cars', 'favorites'];
+  const tabOrder = ['', 'itinerary', 'calendar', 'hotels', 'flights', 'restaurants', 'activities', 'packing', 'budget', 'cars'];
   const prevSegmentRef = useRef(currentSegment);
   const directionRef = useRef<1 | -1>(1);
 

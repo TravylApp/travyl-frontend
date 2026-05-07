@@ -10,7 +10,7 @@ function safeDate(d: string | null | undefined): string {
   return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 import { Plus, ChevronLeft, ChevronRight, MapPin, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList } from 'lucide-react';
-import { useItineraryScreen, useWeather, useEvents, upscaleGoogleImage, supabase } from '@travyl/shared';
+import { useItineraryScreen, useWeather, useEvents, upscaleGoogleImage, supabase, useHomeCurrency } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 import type { TripContextData, PlaceItem } from '@travyl/shared';
 import { AnimatePresence } from 'motion/react';
@@ -352,42 +352,64 @@ function NearbyCitiesSection({ cities }: { cities: NonNullable<TripContextData['
 }
 
 // ── Cost of Living Section ────────────────────────────────────
-function CostOfLivingSection({ cost, currency }: { cost: NonNullable<TripContextData['cost_of_living']>; currency?: string }) {
-  const code = currency || cost.currency || 'USD';
-  const fmt = (v: number) => {
+function CostOfLivingSection({ cost, localCurrency }: { cost: NonNullable<TripContextData['cost_of_living']>; localCurrency?: string }) {
+  const { currency: homeCurrency, format, isLoading } = useHomeCurrency();
+  const code = localCurrency || cost.currency || 'USD';
+  const needsConversion = !!(localCurrency && localCurrency !== homeCurrency && !isLoading);
+
+  const fmtLocal = (v: number) => {
     try {
       return new Intl.NumberFormat('en', { style: 'currency', currency: code, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
     } catch { return `${code} ${v.toFixed(0)}`; }
   };
+
+  const fmtConverted = (v: number) => {
+    if (needsConversion) return format(v, localCurrency!);
+    return fmtLocal(v);
+  };
+
   const items = [
-    { icon: UtensilsCrossed, label: 'Budget meal', value: fmt(cost.meal_cheap) },
-    { icon: UtensilsCrossed, label: 'Mid-range meal', value: fmt(cost.meal_mid) },
-    { icon: Coffee, label: 'Coffee', value: fmt(cost.coffee) },
-    { icon: Beer, label: 'Beer', value: fmt(cost.beer) },
-    { icon: Bus, label: 'Public transport', value: fmt(cost.public_transport) },
-    { icon: Droplets, label: 'Water bottle', value: fmt(cost.water_bottle) },
+    { icon: UtensilsCrossed, label: 'Budget meal', value: fmtConverted(cost.meal_cheap), raw: cost.meal_cheap },
+    { icon: UtensilsCrossed, label: 'Mid-range meal', value: fmtConverted(cost.meal_mid), raw: cost.meal_mid },
+    { icon: Coffee, label: 'Coffee', value: fmtConverted(cost.coffee), raw: cost.coffee },
+    { icon: Beer, label: 'Beer', value: fmtConverted(cost.beer), raw: cost.beer },
+    { icon: Bus, label: 'Public transport', value: fmtConverted(cost.public_transport), raw: cost.public_transport },
+    { icon: Droplets, label: 'Water bottle', value: fmtConverted(cost.water_bottle), raw: cost.water_bottle },
   ];
+
+  const headingSuffix = needsConversion
+    ? ` · in ${homeCurrency}`
+    : isLoading && localCurrency
+      ? ' · loading rates...'
+      : '';
+
   return (
     <section>
-      <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-4 font-serif">Cost of Living</h3>
+      <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-4 font-serif">Cost of Living{headingSuffix}</h3>
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-        {items.map(({ icon: Icon, label, value }) => (
+        {items.map(({ icon: Icon, label, value, raw }) => (
           <div key={label} className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm p-3 text-center">
             <Icon size={16} className="mx-auto mb-1.5 text-[color:var(--trip-base)]" />
             <p className="text-[15px] font-bold text-gray-900 dark:text-white">{value}</p>
+            {needsConversion && (
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">≈{fmtLocal(raw)}</p>
+            )}
             <p className="text-[10px] text-gray-600 dark:text-gray-400 opacity-50">{label}</p>
           </div>
         ))}
       </div>
       <div className="flex gap-2 mt-3 rounded-xl overflow-hidden border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm">
         {[
-          { label: 'Budget', range: fmt(cost.daily_budget_low) },
-          { label: 'Mid-range', range: fmt(cost.daily_budget_mid) },
-          { label: 'Luxury', range: fmt(cost.daily_budget_high) },
-        ].map(({ label, range }, i) => (
+          { label: 'Budget', range: fmtConverted(cost.daily_budget_low), raw: cost.daily_budget_low },
+          { label: 'Mid-range', range: fmtConverted(cost.daily_budget_mid), raw: cost.daily_budget_mid },
+          { label: 'Luxury', range: fmtConverted(cost.daily_budget_high), raw: cost.daily_budget_high },
+        ].map(({ label, range, raw }, i) => (
           <div key={label} className="flex-1 py-3 text-center" style={i < 2 ? { borderRight: '1px solid rgba(0,0,0,0.08)' } : undefined}>
             <p className="text-[10px] uppercase tracking-wider font-semibold mb-1 text-gray-900 dark:text-white opacity-40">{label}</p>
             <p className="text-[16px] font-bold text-[color:var(--trip-base)]">{range}<span className="text-[11px] font-normal opacity-60">/day</span></p>
+            {needsConversion && (
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">≈{fmtLocal(raw)}/day</p>
+            )}
           </div>
         ))}
       </div>
@@ -866,7 +888,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                 )}
                 {costData && (
                   <div className="flex-1 min-w-0">
-                    <CostOfLivingSection cost={costData} currency={trip?.trip_context?.country?.currency?.code} />
+                    <CostOfLivingSection cost={costData} localCurrency={trip?.trip_context?.country?.currency?.code} />
                   </div>
                 )}
               </div>

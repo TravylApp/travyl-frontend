@@ -8,7 +8,7 @@
 
 import { supabase } from './supabase';
 import { mapToDbType, getWebApiBase } from '../utils';
-import type { Trip, Profile, SavedItem, MosaicTile, InspirationCard, ExplorePlaceRow, HeroConfig, Activity, ItineraryDayWithActivities, Flight, Hotel, TripCollaborator, TripNote, Visibility, LinkPermission, CollaboratorRole } from '../types';
+import type { Trip, Profile, SavedItem, MosaicTile, InspirationCard, ExplorePlaceRow, HeroConfig, Activity, ItineraryDayWithActivities, Flight, Hotel, TripCollaborator, TripNote, Visibility, LinkPermission, CollaboratorRole, DocumentParseResult } from '../types';
 
 /**
  * Fetches all trips owned by a user, sorted by creation date (newest first).
@@ -1106,4 +1106,64 @@ export async function savePlanToSupabase(
 
   onProgress?.('Done!', 100)
   return tripId
+}
+
+/**
+ * Gets a presigned S3 URL for uploading a document image.
+ */
+export async function fetchDocumentUploadUrl(
+  token: string,
+  contentType: string,
+  fileSize: number,
+): Promise<{ uploadUrl: string; objectKey: string }> {
+  const apiUrl = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
+  const res = await fetch(`${apiUrl}/documents/upload-url`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contentType, fileSize }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string }
+    throw new Error(err.error ?? `Upload URL error: ${res.status}`)
+  }
+  return res.json() as Promise<{ uploadUrl: string; objectKey: string }>
+}
+
+/**
+ * Uploads a file blob to S3 via a presigned URL.
+ */
+export async function uploadToS3Presigned(url: string, file: Blob): Promise<void> {
+  const res = await fetch(url, {
+    method: 'PUT',
+    body: file,
+    headers: { 'Content-Type': file.type },
+  })
+  if (!res.ok) {
+    throw new Error(`Upload failed: ${res.status}`)
+  }
+}
+
+/**
+ * Parses a document image from S3 via Claude Vision.
+ */
+export async function fetchDocumentParse(
+  token: string,
+  objectKey: string,
+  tripId?: string,
+  hint?: string,
+): Promise<DocumentParseResult> {
+  const apiUrl = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
+  const body: Record<string, unknown> = { objectKey }
+  if (tripId) body.tripId = tripId
+  if (hint) body.hint = hint
+  const res = await fetch(`${apiUrl}/documents/parse`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { error?: string }).error ?? `Parse error: ${res.status}`)
+  }
+  return res.json() as Promise<DocumentParseResult>
 }

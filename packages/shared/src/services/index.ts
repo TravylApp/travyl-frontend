@@ -48,6 +48,9 @@ export {
   joinTripViaLink,
   findPendingInviteByEmail,
   savePlanToSupabase,
+  fetchDocumentUploadUrl,
+  uploadToS3Presigned,
+  fetchDocumentParse,
 } from './api';
 export {
   fetchBudgetCategories,
