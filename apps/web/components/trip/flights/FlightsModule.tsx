@@ -58,7 +58,11 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency, fo
         if (cancelled) return
         const exact = matches.find((m) => m.iata === iata)
         if (exact) {
-          setDefaultFrom({ iata: exact.iata, name: exact.name, city: exact.city })
+          setDefaultFrom({
+            iata: exact.iata,
+            name: exact.name ?? '',
+            city: exact.city ?? '',
+          })
         } else {
           setDefaultFrom({ iata, name: '', city: '' })
         }

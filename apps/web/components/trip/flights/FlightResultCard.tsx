@@ -141,6 +141,7 @@ export function FlightResultCard({ flight, alreadySaved, busy, onAdd, formatPric
 
         {/* Metadata chips */}
         <div className="mt-4 flex flex-wrap items-center gap-1.5">
+          {flight.type && <Chip tone="blue">{flight.type}</Chip>}
           {cabin && <Chip>{cabin}</Chip>}
           {legroom && (
             <Chip>
@@ -239,14 +240,16 @@ function Chip({
   tone = 'neutral',
 }: {
   children: React.ReactNode
-  tone?: 'neutral' | 'green' | 'amber'
+  tone?: 'neutral' | 'green' | 'amber' | 'blue'
 }) {
   const toneClasses =
     tone === 'green'
       ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
       : tone === 'amber'
         ? 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'
-        : 'bg-gray-100 text-gray-700 dark:bg-white/[0.06] dark:text-gray-300'
+        : tone === 'blue'
+          ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300'
+          : 'bg-gray-100 text-gray-700 dark:bg-white/[0.06] dark:text-gray-300'
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-medium ${toneClasses}`}>
       {children}

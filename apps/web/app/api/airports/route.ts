@@ -31,9 +31,9 @@ export async function GET(req: NextRequest) {
     const data = await res.json()
     const results = (data.data ?? []).map((p: any) => ({
       iata: p.iata_code,
-      name: p.name,
-      city: p.city_name ?? p.city?.name,
-      country: p.city?.country_name,
+      name: p.name ?? '',
+      city: p.city_name ?? p.city?.name ?? '',
+      country: p.city?.country_name ?? '',
       type: p.type,
     })).filter((r: any) => r.iata)
 

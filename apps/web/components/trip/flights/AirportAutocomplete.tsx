@@ -12,13 +12,24 @@ export interface AirportAutocompleteProps {
   invalid?: boolean
 }
 
+function formatAirportLabel(v: { iata: string; city: string } | null): string {
+  if (!v) return ''
+  return v.city ? `${v.iata} · ${v.city}` : v.iata
+}
+
 export function AirportAutocomplete({ label, value, onChange, invalid }: AirportAutocompleteProps) {
-  const [query, setQuery] = useState(value ? `${value.iata} · ${value.city}` : '')
+  const [query, setQuery] = useState(formatAirportLabel(value))
   const [results, setResults] = useState<Airport[]>([])
   const [open, setOpen] = useState(false)
   const [activeIdx, setActiveIdx] = useState(0)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+
+  // Sync the input text when the parent updates the selected value
+  // (e.g. defaultFrom resolves async after profile loads).
+  useEffect(() => {
+    setQuery(formatAirportLabel(value))
+  }, [value?.iata, value?.city])
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)

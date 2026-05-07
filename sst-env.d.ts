@@ -71,6 +71,10 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
+    "PricelineRapidapiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "RecommendationApi": {
       "type": "sst.aws.ApiGatewayV2"
       "url": string
