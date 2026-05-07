@@ -2,12 +2,11 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
-import { fetchTransit } from '@travyl/shared';
+import { fetchTransit, addTransit, updateTransit, deleteTransit } from '@travyl/shared';
 import type { TransitData, TransitSegment } from '@travyl/shared';
 import { TransitCard } from './TransitCard';
 import { TransitForm } from './TransitForm';
 import { buildTransitCardViewModel } from './types';
-import { addTransit, updateTransit, deleteTransit } from './transitMutations';
 
 interface TransitsModuleProps {
   tripId: string;
@@ -49,12 +48,12 @@ export function TransitsModule({ tripId, defaultCurrency = 'USD' }: TransitsModu
   }
 
   const addMutation = useMutation({
-    mutationFn: (data: TransitData) => addTransit(tripId, data),
+    mutationFn: (data: TransitData) => addTransit(tripId, { trip_id: tripId, data }),
     onSuccess: () => { setAdding(false); invalidate(); },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: TransitData }) => updateTransit(id, data),
+    mutationFn: ({ id, data }: { id: string; data: TransitData }) => updateTransit(id, { data }),
     onSuccess: () => { setEditingId(null); invalidate(); },
   });
 
