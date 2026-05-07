@@ -3,10 +3,13 @@ import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import { fetchTransit, addTransit, updateTransit, deleteTransit } from '@travyl/shared';
-import type { TransitData, TransitSegment } from '@travyl/shared';
+import type { TransitData, TransitSegment, TransitDirectionResult } from '@travyl/shared';
 import { TransitCard } from './TransitCard';
 import { TransitForm } from './TransitForm';
 import { buildTransitCardViewModel } from './types';
+import { TransitSearchPanel, type TransitSearchParams } from './TransitSearchPanel';
+import { TransitDirectionResults } from './TransitDirectionResults';
+import { getSupabaseBrowser } from '@/lib/supabase-browser';
 
 interface TransitsModuleProps {
   tripId: string;
@@ -41,6 +44,65 @@ export function TransitsModule({ tripId, defaultCurrency = 'USD' }: TransitsModu
     window.addEventListener('transit:add', handleAdd);
     return () => window.removeEventListener('transit:add', handleAdd);
   }, []);
+
+  const [searching, setSearching] = React.useState(false);
+  const [searchResults, setSearchResults] = React.useState<TransitDirectionResult[]>([]);
+  const [searchLoading, setSearchLoading] = React.useState(false);
+  const [searchError, setSearchError] = React.useState<string | null>(null);
+  const lastSearchParamsRef = React.useRef<TransitSearchParams | null>(null);
+
+  async function getAuthToken(): Promise<string> {
+    const supabase = getSupabaseBrowser();
+    const { data } = await supabase.auth.getSession();
+    return data.session?.access_token ?? '';
+  }
+
+  async function handleSearch(params: TransitSearchParams) {
+    lastSearchParamsRef.current = params;
+    setSearchLoading(true);
+    setSearchError(null);
+    try {
+      const token = await getAuthToken();
+      const response = await fetch(
+        `/api/transit/directions?origin_lat=${params.originLat}&origin_lng=${params.originLng}` +
+        `&dest_lat=${params.destLat}&dest_lng=${params.destLng}` +
+        `&departure_time=${encodeURIComponent(params.departureTime)}`,
+        { headers: { authorization: `Bearer ${token}` } }
+      );
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Search failed');
+      }
+      setSearchResults(await response.json());
+    } catch (err: any) {
+      setSearchError(err.message);
+    } finally {
+      setSearchLoading(false);
+    }
+  }
+
+  function handleSearchWithParams(params: TransitSearchParams) {
+    handleSearch(params);
+  }
+
+  async function handleAddFromSearch(result: TransitDirectionResult) {
+    await addMutation.mutateAsync({
+      vehicleType: result.steps[0]?.mode ?? 'train',
+      provider: result.steps[0]?.carrier ?? '',
+      routeName: result.steps.map((s) => s.line).filter(Boolean).join(' → ') || 'Transit route',
+      originLabel: result.origin.label,
+      destinationLabel: result.destination.label,
+      departureAt: result.departure_at,
+      arrivalAt: result.arrival_at,
+      price: result.fare?.amount ?? null,
+      currency: result.fare?.currency ?? 'USD',
+      bookingRef: null,
+      confirmationCode: null,
+      notes: null,
+    });
+    setSearching(false);
+    setSearchResults([]);
+  }
 
   function invalidate() {
     queryClient.invalidateQueries({ queryKey: ['transit', tripId] });
@@ -112,9 +174,25 @@ export function TransitsModule({ tripId, defaultCurrency = 'USD' }: TransitsModu
     <div className="space-y-4">
       {adding && (
         <TransitForm
-          onSubmit={(data) => addMutation.mutateAsync(data)}
+          onSubmit={async (data) => { await addMutation.mutateAsync(data); }}
           onCancel={() => setAdding(false)}
           defaultCurrency={defaultCurrency}
+        />
+      )}
+      {searching && (
+        <TransitSearchPanel
+          onSearch={handleSearch}
+          onCancel={() => { setSearching(false); setSearchResults([]); setSearchError(null); }}
+          isSearching={searchLoading}
+        />
+      )}
+      {(searchResults.length > 0 || searchLoading || searchError) && (
+        <TransitDirectionResults
+          results={searchResults}
+          isLoading={searchLoading}
+          error={searchError}
+          onAddToTrip={handleAddFromSearch}
+          onRetry={() => lastSearchParamsRef.current && handleSearchWithParams(lastSearchParamsRef.current)}
         />
       )}
       {bookings.length > 0 && (
