@@ -540,7 +540,7 @@ export interface CalendarActivity {
   /** Booking confirmation reference */
   bookingRef?: string
   /** Transit vehicle type for transport activities */
-  transitVehicleType?: 'train' | 'bus' | 'ferry' | 'rideshare' | 'shuttle'
+  transitVehicleType?: import('./transit').VehicleType
 }
 
 export interface Poll {

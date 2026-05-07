@@ -33,6 +33,7 @@ interface WeekViewProps {
   onConfirmGhost?: (activity: CalendarActivity) => void
   onDismissGhost?: (id: string) => void
   tripId?: string
+  onRegenerateDay?: (dayIndex: number) => void
 }
 
 export function WeekView({
@@ -60,6 +61,7 @@ export function WeekView({
   onConfirmGhost,
   onDismissGhost,
   tripId,
+  onRegenerateDay,
 }: WeekViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [columnWidths, setColumnWidths] = useState<number[]>([])
@@ -145,6 +147,7 @@ export function WeekView({
                   onDismissGhost={onDismissGhost}
                   tripId={tripId}
                   isDayView={false}
+                  onRegenerateDay={onRegenerateDay}
                 />
               </div>
               {i < days.length - 1 && (

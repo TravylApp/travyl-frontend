@@ -6,8 +6,13 @@ import { FieldLabel, Input, Select, DateTimeInput, PrimaryButton, SecondaryButto
 
 const VEHICLE_OPTIONS: { value: VehicleType; label: string; icon: string }[] = [
   { value: 'train', label: 'Train', icon: '\u{1F686}' },
+  { value: 'subway', label: 'Subway', icon: '\u{1F687}' },
+  { value: 'tram', label: 'Tram', icon: '\u{1F68B}' },
+  { value: 'light_rail', label: 'Light Rail', icon: '\u{1F68A}' },
   { value: 'bus', label: 'Bus', icon: '\u{1F68C}' },
   { value: 'ferry', label: 'Ferry', icon: '\u26F4\uFE0F' },
+  { value: 'cable_car', label: 'Cable Car', icon: '\u{1F6A0}' },
+  { value: 'funicular', label: 'Funicular', icon: '\u{1F6A1}' },
   { value: 'rideshare', label: 'Rideshare', icon: '\u{1F695}' },
   { value: 'shuttle', label: 'Shuttle', icon: '\u{1F690}' },
 ]

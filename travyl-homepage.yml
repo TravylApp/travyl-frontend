@@ -1,0 +1,445 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - link "TRAVYL" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e5]: TRAVYL
+        - img [ref=e6]
+      - generic [ref=e11]:
+        - link "Explore" [ref=e12] [cursor=pointer]:
+          - /url: /places
+          - img [ref=e13]
+          - generic [ref=e16]: Explore
+        - link "Trips" [ref=e61] [cursor=pointer]:
+          - /url: /trips
+          - img [ref=e62]
+          - generic [ref=e67]: Trips
+        - link "Profile" [ref=e68] [cursor=pointer]:
+          - /url: /profile
+          - img [ref=e69]
+          - generic [ref=e72]: Profile
+      - generic [ref=e17]:
+        - button "Switch to dark mode" [ref=e18]:
+          - img [ref=e19]
+        - button "User menu" [ref=e74]:
+          - img "Justin Lo" [ref=e75]
+  - main [ref=e22]:
+    - generic [ref=e23]:
+      - region "Hero" [ref=e24]:
+        - generic [ref=e27]:
+          - heading "Plan your trip with AI. Plan it with friends." [level=1] [ref=e28]:
+            - text: Plan your trip with AI.
+            - text: Plan it with friends.
+          - generic [ref=e31]:
+            - generic [ref=e32]:
+              - img [ref=e33]
+              - textbox "Search destinations" [ref=e36]:
+                - /placeholder: 7 days in Paris with my partner...
+            - button "Generate trip" [ref=e37]:
+              - img [ref=e38]
+          - generic [ref=e44]:
+            - generic [ref=e45]: Destination
+            - generic [ref=e76]:
+              - button "Los Angeles" [ref=e77]
+              - button "Seattle" [ref=e78]
+              - button "San Diego" [ref=e79]
+              - button "Las Vegas" [ref=e80]
+            - paragraph [ref=e81]:
+              - text: “Once a year, go someplace you have never been before.”
+              - generic [ref=e82]: — Dalai Lama
+      - generic [ref=e84]:
+        - generic [ref=e85]:
+          - text: Curated For You
+          - heading "Trips for every travel style" [level=2] [ref=e86]
+          - paragraph [ref=e87]: Pick a vibe and let Travyl build the rest.
+        - generic [ref=e88]:
+          - button "Plan a solo adventure trip" [ref=e89] [cursor=pointer]:
+            - img "Swiss Alps" [ref=e90]
+            - generic [ref=e92]:
+              - heading "Solo adventure" [level=3] [ref=e93]
+              - paragraph [ref=e94]: Your pace, your rules
+              - generic [ref=e95]:
+                - text: Plan this trip
+                - img [ref=e96]
+              - paragraph [ref=e98]: Swiss Alps
+          - button "Plan a group getaway trip" [ref=e99] [cursor=pointer]:
+            - img "Ibiza, Spain" [ref=e100]
+            - generic [ref=e102]:
+              - heading "Group getaway" [level=3] [ref=e103]
+              - paragraph [ref=e104]: Shared moments, zero stress
+              - generic [ref=e105]:
+                - text: Plan this trip
+                - img [ref=e106]
+              - paragraph [ref=e108]: Ibiza, Spain
+          - button "Plan a family vacation trip" [ref=e109] [cursor=pointer]:
+            - img "Maui, Hawaii" [ref=e110]
+            - generic [ref=e112]:
+              - heading "Family vacation" [level=3] [ref=e113]
+              - paragraph [ref=e114]: Memories to last a lifetime
+              - generic [ref=e115]:
+                - text: Plan this trip
+                - img [ref=e116]
+              - paragraph [ref=e118]: Maui, Hawaii
+      - generic [ref=e120]:
+        - generic [ref=e121]:
+          - paragraph [ref=e122]: 10k+
+          - paragraph [ref=e123]: Trips planned
+        - generic [ref=e124]:
+          - paragraph [ref=e125]: 190+
+          - paragraph [ref=e126]: Countries covered
+        - generic [ref=e127]:
+          - paragraph [ref=e128]: 4.9★
+          - paragraph [ref=e129]: Average rating
+        - generic [ref=e130]:
+          - paragraph [ref=e131]: < 30s
+          - paragraph [ref=e132]: From idea to itinerary
+      - generic [ref=e136]:
+        - generic [ref=e137]:
+          - paragraph [ref=e138]: The Experience
+          - heading "See It In Action" [level=2] [ref=e139]
+          - paragraph [ref=e140]: Scroll through how Travyl turns a simple idea into a complete, shareable trip plan.
+        - generic [ref=e142]:
+          - 'button "Go to step 1: Describe" [ref=e144]':
+            - generic [ref=e146]: "01"
+            - generic [ref=e147]: Describe
+          - 'button "Go to step 2: We Plan" [ref=e150]':
+            - generic [ref=e152]: "02"
+            - generic [ref=e153]: We Plan
+          - 'button "Go to step 3: Itinerary" [ref=e156]':
+            - generic [ref=e158]: "03"
+            - generic [ref=e159]: Itinerary
+        - generic [ref=e160]:
+          - paragraph [ref=e161]: "01"
+          - heading "Describe your ideal trip" [level=3] [ref=e162]
+          - paragraph [ref=e163]: Tell Travyl where you want to go, when, and with whom — in plain English. It understands natural language, so just type it like you'd say it.
+        - generic [ref=e169]:
+          - generic [ref=e170]:
+            - paragraph [ref=e171]: Search
+            - generic [ref=e172]:
+              - img [ref=e173]
+              - generic [ref=e176]: 5 days in Tokyo with friends
+          - generic:
+            - paragraph [ref=e177]: Refine your trip
+            - generic [ref=e178]:
+              - generic [ref=e179]: Street food tour
+              - generic [ref=e180]: Temple & shrines
+              - generic [ref=e181]: Shibuya nightlife
+              - generic [ref=e182]: Day trip to Hakone
+              - generic [ref=e183]: Budget-friendly
+            - generic [ref=e184]:
+              - img [ref=e185]
+              - generic [ref=e188]: Tap any suggestion to refine, or scroll down to plan
+        - generic [ref=e190]:
+          - img [ref=e192]
+          - generic [ref=e194]: Scroll
+      - generic [ref=e196]:
+        - generic [ref=e197]:
+          - text: Loved by Travelers
+          - heading "Real travelers, real results" [level=2] [ref=e198]
+          - paragraph [ref=e199]: Here's what people are saying about planning with Travyl.
+        - generic [ref=e200]:
+          - generic [ref=e201]:
+            - generic [ref=e202]:
+              - img [ref=e203]
+              - img [ref=e205]
+              - img [ref=e207]
+              - img [ref=e209]
+              - img [ref=e211]
+            - generic [ref=e213]:
+              - paragraph [ref=e214]: "\"The real-time collaboration saved us from the endless 'can you add this to the spreadsheet' back-and-forth.\""
+              - button "Read the full story" [ref=e215]:
+                - text: Read the full story
+                - img [ref=e216]
+            - generic [ref=e218]:
+              - img "Alex Chen" [ref=e219]
+              - generic [ref=e220]:
+                - paragraph [ref=e221]: Alex Chen
+                - paragraph [ref=e222]: San Francisco, CA
+          - generic [ref=e223]:
+            - generic [ref=e224]:
+              - img [ref=e225]
+              - img [ref=e227]
+              - img [ref=e229]
+              - img [ref=e231]
+              - img [ref=e233]
+            - generic [ref=e235]:
+              - paragraph [ref=e236]: "\"I typed '3 days in Rome with good pasta and art' and it built a complete itinerary.\""
+              - button "Read the full story" [ref=e237]:
+                - text: Read the full story
+                - img [ref=e238]
+            - generic [ref=e240]:
+              - img "Sarah Mitchell" [ref=e241]
+              - generic [ref=e242]:
+                - paragraph [ref=e243]: Sarah Mitchell
+                - paragraph [ref=e244]: London, UK
+          - generic [ref=e245]:
+            - generic [ref=e246]:
+              - img [ref=e247]
+              - img [ref=e249]
+              - img [ref=e251]
+              - img [ref=e253]
+              - img [ref=e255]
+            - generic [ref=e257]:
+              - paragraph [ref=e258]: "\"Planning a family vacation with kids is usually chaos. Travyl's day-by-day calendar made it so simple.\""
+              - button "Read the full story" [ref=e259]:
+                - text: Read the full story
+                - img [ref=e260]
+            - generic [ref=e262]:
+              - img "Marcus Johnson" [ref=e263]
+              - generic [ref=e264]:
+                - paragraph [ref=e265]: Marcus Johnson
+                - paragraph [ref=e266]: New York, NY
+          - generic [ref=e267]:
+            - generic [ref=e268]:
+              - img [ref=e269]
+              - img [ref=e271]
+              - img [ref=e273]
+              - img [ref=e275]
+              - img [ref=e277]
+            - generic [ref=e279]:
+              - paragraph [ref=e280]: "\"I mainly travel solo and Travyl is perfect for that. I just tell it what I'm looking for and get a solid plan.\""
+              - button "Read the full story" [ref=e281]:
+                - text: Read the full story
+                - img [ref=e282]
+            - generic [ref=e284]:
+              - img "Priya Patel" [ref=e285]
+              - generic [ref=e286]:
+                - paragraph [ref=e287]: Priya Patel
+                - paragraph [ref=e288]: Toronto, Canada
+      - generic [ref=e290]:
+        - heading "Tag us on your Next Trip" [level=2] [ref=e291]
+        - generic [ref=e292]:
+          - button "Scroll left":
+            - img
+          - generic [ref=e293]:
+            - generic [ref=e295]:
+              - img "San Francisco" [ref=e297]
+              - generic [ref=e299]:
+                - img "@jessexplores" [ref=e300]
+                - generic [ref=e301]: "@jessexplores"
+              - generic [ref=e302]:
+                - paragraph [ref=e303]: San Francisco
+                - paragraph [ref=e304]: "@jessexploresParadise found. Can't believe this is real!"
+                - paragraph [ref=e305]: 677 likes
+            - generic [ref=e307]:
+              - img "Atlanta" [ref=e309]
+              - generic [ref=e311]:
+                - img "@marcoromano" [ref=e312]
+                - generic [ref=e313]: "@marcoromano"
+              - generic [ref=e314]:
+                - paragraph [ref=e315]: Atlanta
+                - paragraph [ref=e316]: "@marcoromanoTake me back already. Best trip ever."
+                - paragraph [ref=e317]: 227 likes
+            - generic [ref=e319]:
+              - img "Orlando" [ref=e321]
+              - generic [ref=e323]:
+                - img "@sophieinparis" [ref=e324]
+                - generic [ref=e325]: "@sophieinparis"
+              - generic [ref=e326]:
+                - paragraph [ref=e327]: Orlando
+                - paragraph [ref=e328]: "@sophieinparisEvery corner here feels like a postcard."
+                - paragraph [ref=e329]: 748 likes
+            - generic [ref=e331]:
+              - img "Miami" [ref=e333]
+              - generic [ref=e335]:
+                - img "@nomad.nick" [ref=e336]
+                - generic [ref=e337]: "@nomad.nick"
+              - generic [ref=e338]:
+                - paragraph [ref=e339]: Miami
+                - paragraph [ref=e340]: "@nomad.nickWhen the view is this good, no filter needed."
+                - paragraph [ref=e341]: 102 likes
+            - generic [ref=e343]:
+              - img "Los Angeles" [ref=e345]
+              - generic [ref=e347]:
+                - img "@lena.travels" [ref=e348]
+                - generic [ref=e349]: "@lena.travels"
+              - generic [ref=e350]:
+                - paragraph [ref=e351]: Los Angeles
+                - paragraph [ref=e352]: "@lena.travelsChasing sunsets and memories with the best crew."
+                - paragraph [ref=e353]: 353 likes
+            - generic [ref=e355]:
+              - img "Seattle" [ref=e357]
+              - generic [ref=e359]:
+                - img "@theadventuresofkai" [ref=e360]
+                - generic [ref=e361]: "@theadventuresofkai"
+              - generic [ref=e362]:
+                - paragraph [ref=e363]: Seattle
+                - paragraph [ref=e364]: "@theadventuresofkaiThis place has my whole heart."
+                - paragraph [ref=e365]: 737 likes
+            - generic [ref=e367]:
+              - img "San Diego" [ref=e369]
+              - generic [ref=e371]:
+                - img "@_oliviaexplores" [ref=e372]
+                - generic [ref=e373]: "@_oliviaexplores"
+              - generic [ref=e374]:
+                - paragraph [ref=e375]: San Diego
+                - paragraph [ref=e376]: "@_oliviaexploresDay 3 and I never want to leave."
+                - paragraph [ref=e377]: 205 likes
+            - generic [ref=e379]:
+              - img "Las Vegas" [ref=e381]
+              - generic [ref=e383]:
+                - img "@dani.vagabond" [ref=e384]
+                - generic [ref=e385]: "@dani.vagabond"
+              - generic [ref=e386]:
+                - paragraph [ref=e387]: Las Vegas
+                - paragraph [ref=e388]: "@dani.vagabondBucket-list moment checked off the list."
+                - paragraph [ref=e389]: 774 likes
+            - generic [ref=e391]:
+              - img "Boston" [ref=e393]
+              - generic [ref=e395]:
+                - img "@jessexplores" [ref=e396]
+                - generic [ref=e397]: "@jessexplores"
+              - generic [ref=e398]:
+                - paragraph [ref=e399]: Boston
+                - paragraph [ref=e400]: "@jessexploresParadise found. Can't believe this is real!"
+                - paragraph [ref=e401]: 358 likes
+            - generic [ref=e403]:
+              - img "Chicago" [ref=e405]
+              - generic [ref=e407]:
+                - img "@marcoromano" [ref=e408]
+                - generic [ref=e409]: "@marcoromano"
+              - generic [ref=e410]:
+                - paragraph [ref=e411]: Chicago
+                - paragraph [ref=e412]: "@marcoromanoTake me back already. Best trip ever."
+                - paragraph [ref=e413]: 541 likes
+            - generic [ref=e415]:
+              - img "Toronto" [ref=e417]
+              - generic [ref=e419]:
+                - img "@sophieinparis" [ref=e420]
+                - generic [ref=e421]: "@sophieinparis"
+              - generic [ref=e422]:
+                - paragraph [ref=e423]: Toronto
+                - paragraph [ref=e424]: "@sophieinparisEvery corner here feels like a postcard."
+                - paragraph [ref=e425]: 243 likes
+            - generic [ref=e427]:
+              - img "New Orleans" [ref=e429]
+              - generic [ref=e431]:
+                - img "@nomad.nick" [ref=e432]
+                - generic [ref=e433]: "@nomad.nick"
+              - generic [ref=e434]:
+                - paragraph [ref=e435]: New Orleans
+                - paragraph [ref=e436]: "@nomad.nickWhen the view is this good, no filter needed."
+                - paragraph [ref=e437]: 116 likes
+          - button "Scroll right" [ref=e438]:
+            - img [ref=e439]
+      - generic [ref=e442]:
+        - heading "Your next trip starts here." [level=2] [ref=e443]
+        - paragraph [ref=e444]: Tell Travyl where you want to go and we'll plan the rest. Hotels, flights, restaurants, and a day-by-day itinerary in seconds.
+        - link "Start planning" [ref=e445] [cursor=pointer]:
+          - /url: /
+      - generic [ref=e451]:
+        - generic [ref=e452]:
+          - heading "Take Travyl anywhere" [level=2] [ref=e453]
+          - paragraph [ref=e454]: Plan on the web, travel with the app. Your itineraries sync everywhere — offline maps, real-time collaboration, and travel companions in your pocket.
+          - generic [ref=e455]:
+            - generic [ref=e456]:
+              - img [ref=e457]
+              - img [ref=e459]
+              - img [ref=e461]
+              - img [ref=e463]
+              - img [ref=e465]
+            - generic [ref=e467]: 4.9 · 2.4k+ ratings
+          - generic [ref=e468]:
+            - link "Download on the App Store" [ref=e469] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e470]
+              - generic [ref=e473]:
+                - generic [ref=e474]: Download on the
+                - generic [ref=e475]: App Store
+            - generic [ref=e476]:
+              - img "QR code to download Travyl" [ref=e478]
+              - generic [ref=e479]:
+                - generic [ref=e480]: Scan to download
+                - generic [ref=e481]: Free on the App Store
+        - generic [ref=e485]:
+          - generic [ref=e489]: 9:41
+          - generic [ref=e492]:
+            - generic [ref=e493]:
+              - generic [ref=e495]: T
+              - generic [ref=e496]: Travyl
+            - generic [ref=e497]: AJ
+          - generic [ref=e498]:
+            - img [ref=e499]
+            - generic [ref=e502]: Search destinations...
+          - generic [ref=e503]:
+            - generic [ref=e504]: Your Trips
+            - generic [ref=e505]: See all
+          - generic [ref=e506]:
+            - generic [ref=e508]:
+              - img "Tokyo" [ref=e510]
+              - generic [ref=e511]:
+                - paragraph [ref=e512]: Tokyo Weekend
+                - paragraph [ref=e513]: Japan · Mar 15-20
+                - generic [ref=e516]: Active
+            - generic [ref=e518]:
+              - img "Paris" [ref=e520]
+              - generic [ref=e521]:
+                - paragraph [ref=e522]: Paris Getaway
+                - paragraph [ref=e523]: France · Apr 8-14
+                - generic [ref=e526]: Planning
+          - generic [ref=e528]:
+            - img "QR code" [ref=e530]
+            - generic [ref=e531]:
+              - paragraph [ref=e532]: Share your trip
+              - paragraph [ref=e533]: Scan to view itinerary
+            - img [ref=e535]
+          - generic [ref=e537]:
+            - generic [ref=e538]:
+              - img [ref=e540]
+              - generic [ref=e542]: Home
+            - generic [ref=e543]:
+              - img [ref=e545]
+              - generic [ref=e547]: Saved
+            - generic [ref=e548]:
+              - img [ref=e550]
+              - generic [ref=e552]: Trips
+            - generic [ref=e553]:
+              - img [ref=e555]
+              - generic [ref=e557]: Profile
+      - generic [ref=e560]:
+        - generic [ref=e561]:
+          - generic [ref=e562]:
+            - generic [ref=e563]:
+              - generic [ref=e564]: TRAVYL
+              - img [ref=e565]
+            - paragraph [ref=e570]: Discover and plan your perfect trip from one place. Explore destinations, find the best hotels and flights, and create unforgettable itineraries.
+          - generic [ref=e571]:
+            - heading "Company" [level=4] [ref=e572]
+            - list [ref=e573]:
+              - listitem [ref=e574]:
+                - link "About Us" [ref=e575] [cursor=pointer]:
+                  - /url: /about
+              - listitem [ref=e576]:
+                - link "Privacy Policy" [ref=e577] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=e578]:
+                - link "Terms of Service" [ref=e579] [cursor=pointer]:
+                  - /url: /terms
+          - generic [ref=e580]:
+            - heading "Explore" [level=4] [ref=e581]
+            - list [ref=e582]:
+              - listitem [ref=e583]:
+                - link "Destinations" [ref=e584] [cursor=pointer]:
+                  - /url: /explore
+              - listitem [ref=e585]:
+                - link "Trip Planner" [ref=e586] [cursor=pointer]:
+                  - /url: /
+          - generic [ref=e587]:
+            - heading "Resources" [level=4] [ref=e588]
+            - list [ref=e589]:
+              - listitem [ref=e590]:
+                - link "Travel Blog" [ref=e591] [cursor=pointer]:
+                  - /url: /blog
+          - generic [ref=e592]:
+            - heading "Connect" [level=4] [ref=e593]
+            - generic [ref=e594]:
+              - link "instagram" [ref=e595] [cursor=pointer]:
+                - /url: https://instagram.com/travyl
+                - img [ref=e596]
+              - button "English" [ref=e601]:
+                - img "English" [ref=e602]
+        - paragraph [ref=e604]: © 2026 Travyl. All rights reserved.
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e57] [cursor=pointer]:
+    - img [ref=e58]
+  - alert [ref=e605]

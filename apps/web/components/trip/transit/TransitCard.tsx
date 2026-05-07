@@ -4,7 +4,9 @@ import { MoreHorizontal } from 'lucide-react'
 import type { TransitViewModel } from '@travyl/shared'
 
 const VEHICLE_ICONS: Record<string, string> = {
-  train: '\u{1F686}', bus: '\u{1F68C}', ferry: '\u{26F4}\uFE0F', rideshare: '\u{1F695}', shuttle: '\u{1F690}',
+  train: '\u{1F686}', subway: '\u{1F687}', tram: '\u{1F68B}', light_rail: '\u{1F68A}',
+  bus: '\u{1F68C}', ferry: '\u{26F4}\uFE0F', cable_car: '\u{1F6A0}', funicular: '\u{1F6A1}',
+  rideshare: '\u{1F695}', shuttle: '\u{1F690}',
 }
 
 export interface TransitCardProps {

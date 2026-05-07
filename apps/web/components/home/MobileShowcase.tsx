@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
-import { Apple, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import { EASE_OUT_EXPO } from "@travyl/shared";
 
 export function MobileShowcase() {
@@ -71,7 +71,9 @@ export function MobileShowcase() {
                 href="#"
                 className="inline-flex items-center gap-3 px-6 py-3 rounded-xl bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-sm font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-all duration-300 shadow-xl shadow-gray-900/20 dark:shadow-white/10"
               >
-                <Apple size={22} />
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-[22px] h-[22px]">
+                  <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                </svg>
                 <div className="text-left leading-tight">
                   <div className="text-[9px] opacity-70 font-normal">Download on the</div>
                   <div className="text-sm font-semibold -mt-0.5">App Store</div>
@@ -81,7 +83,7 @@ export function MobileShowcase() {
               <div className="flex items-center gap-3">
                 <div className="w-14 h-14 bg-white/90 dark:bg-white/10 rounded-xl border border-gray-200 dark:border-white/10 flex items-center justify-center overflow-hidden shadow-sm backdrop-blur-md">
                   <img
-                    src="https://api.qrserver.com/v1/create-qr-code/?size=56x56&data=https://travyl.app/download"
+                    src="/qr-code.png"
                     alt="QR code to download Travyl"
                     className="w-12 h-12"
                   />
@@ -254,27 +256,6 @@ export function MobileShowcase() {
                   </div>
                 </div>
 
-                {/* QR code section */}
-                <div className="px-4 mt-auto mb-1">
-                  <div className="rounded-xl border border-gray-200 bg-gray-50/80 p-3 flex items-center gap-3">
-                    <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-sm shrink-0">
-                      <img
-                        src="https://api.qrserver.com/v1/create-qr-code/?size=44x44&data=https://travyl.app/download"
-                        alt="QR code"
-                        className="w-[44px] h-[44px]"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-bold text-gray-900 leading-tight">Share your trip</p>
-                      <p className="text-[8px] text-gray-500 mt-0.5 leading-tight">Scan to view itinerary</p>
-                    </div>
-                    <div className="w-6 h-6 rounded-full bg-[#c4a882] flex items-center justify-center shrink-0">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" className="w-3 h-3">
-                        <path d="M5 12h14M12 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
 
                 {/* Bottom nav */}
                 <div className="flex items-center justify-around py-2.5 px-2 border-t border-gray-100 bg-white">

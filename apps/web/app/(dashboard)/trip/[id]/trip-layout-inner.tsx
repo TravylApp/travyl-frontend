@@ -409,19 +409,21 @@ function TripLayoutContent({
       {/* Sidebar */}
       <TripRail tripId={tripId} variant={isMagazine ? 'dark' : 'light'} />
 
-      {/* Header — magazine hero or compact */}
-      {isMagazine ? (
-        <TripMagazineHero tripId={tripId} trip={trip} compact={!isOverview} onTripUpdate={refetch}
-          overrideImage={destImageData?.url ?? undefined} suppressFallback={destImageLoading} />
-      ) : (
-        <CompactTripHeader
-          tripId={tripId}
-          trip={trip}
-          onTripUpdate={refetch}
-          overrideImage={destImageData?.url ?? undefined}
-          mapOpen={mapOpen}
-          onToggleMap={isCalendar ? undefined : () => setMapOpen(!mapOpen)}
-        />
+      {/* Header — magazine hero or compact (hidden on calendar for full-height view) */}
+      {!isCalendar && (
+        isMagazine ? (
+          <TripMagazineHero tripId={tripId} trip={trip} compact={!isOverview} onTripUpdate={refetch}
+            overrideImage={destImageData?.url ?? undefined} suppressFallback={destImageLoading} />
+        ) : (
+          <CompactTripHeader
+            tripId={tripId}
+            trip={trip}
+            onTripUpdate={refetch}
+            overrideImage={destImageData?.url ?? undefined}
+            mapOpen={mapOpen}
+            onToggleMap={() => setMapOpen(!mapOpen)}
+          />
+        )
       )}
 
       {/* Content area */}

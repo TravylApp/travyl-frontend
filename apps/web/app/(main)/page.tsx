@@ -775,7 +775,7 @@ export default function Home() {
             transition={{ duration: 0.7, delay: 0.2, ease: EASE_OUT_EXPO }}
             className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif font-normal text-white mb-4 leading-tight tracking-wide"
           >
-            Plan your trip with AI.<br />
+            Plan your trip with us.<br />
             <span className="italic">Plan it with friends.</span>
           </motion.h1>
 

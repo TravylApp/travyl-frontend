@@ -28,13 +28,25 @@ Add comprehensive public transit support to Travyl — covering trains, buses, s
 
 ## 2. Architecture
 
-### API Strategy (Hybrid)
+### API Strategy (Self-hosted OTP + GTFS)
 
 | Provider | Role | Coverage | Cost |
 |----------|------|----------|------|
-| Google Routes API | Primary transit directions | Global (incl. Japan, EU, US) | ~$10-20/1K requests |
-| Transitland | Stop/route metadata enrichment (line colors, stop IDs) | 5,000+ agencies | Free tier |
+| OpenTripPlanner (self-hosted) | Primary transit routing engine | Anywhere with GTFS data loaded | Server costs only (~$30-60/mo) |
+| GTFS (Mobility Database) | Transit schedule/route data source | 6,000+ feeds from 99+ countries | Free |
+| ODPT (Japan) | Japan GTFS feed source | JR East, Tokyo Metro, private railways | Free |
+| Transitland | GTFS feed discovery + metadata | Catalog of 5,000+ agencies | Free tier |
 | GraphHopper | Walking/cycling/driving fallback | Already integrated | Already have key |
+
+### Infrastructure: OpenTripPlanner Server
+
+An OTP server runs on AWS, consuming GTFS schedules + OSM street maps:
+
+- **Platform:** AWS ECS Fargate (Docker container) or EC2
+- **Specs:** 4GB-8GB RAM for regional graphs; Japan needs ~12GB for full graph
+- **Graph building:** Scheduled job downloads GTFS feeds + OSM extracts, builds OTP graph
+- **Regional strategy:** Separate OTP instance per region (Japan, US, Europe) or one large instance
+- **API:** OTP exposes REST + GraphQL routing endpoints. SST Lambda calls these internally.
 
 ### Data Flow
 
@@ -47,23 +59,26 @@ Next.js API Route (/api/transit/search)
     ▼
 SST Lambda (services/transit-search.ts)
     │
-    ├── Check DynamoDB cache (30min TTL)
-    │   └── Hit → return cached
+    ├── 1. Determine which OTP region covers the search area
     │
-    └── Miss → Google Routes API (computeRoutes, travelMode=TRANSIT)
+    ├── 2. Check DynamoDB cache (30min TTL)
+    │   └── Hit → return cached result
+    │
+    └── 3. Miss → OTP routing API on ECS/EC2
         │
-        ├── Success → optionally enrich stop metadata via Transitland → cache → return
-        └── Fail → error (no transit fallback; Transitland is enrichment-only)
+        ├── Success → cache result → return
+        └── Fail → GraphHopper fallback (non-transit directions only)
 ```
 
-**Note on Transitland:** Transitland provides stop/route metadata (line colors, stop IDs, agency names) for enriching Google Routes results. It is NOT a directions fallback — it cannot do point-to-point routing. Enrichment is optional; if Transitland is unavailable, results are returned with Google's native metadata.
+### GTFS Data Sources by Region
 
-**Transitland enrichment flow (in transit-search.ts):**
-1. After successful Google Routes response, extract route/stop identifiers from each step
-2. Call Transitland `/api/v1/stops` by stop ID or lat/lng proximity to find matching route metadata
-3. Merge returned metadata (line colors, stop names) into the `TransitDirectionStep`
-4. Store the fully **enriched** result in DynamoDB cache (so cache hits return enriched data)
-5. If Transitland call fails or times out, store un-enriched Google data gracefully (no user-facing error)
+| Region | Data Source | Update Cadence |
+|--------|-------------|---------------|
+| Japan | ODPT GTFS (odpt.org) — JR East, Tokyo Metro, Toei, private railways | Weekly |
+| US — SF Bay Area | 511.org regional feed (Muni, BART, Caltrain, AC Transit, VTA) | Monthly |
+| US — NYC | MTA developer portal (subway, bus, LIRR, Metro-North) | Monthly |
+| US — general | Transitland / Mobility Database | As needed |
+| Europe | Open data portals + Transitland | As needed |
 
 **Data flow for useTransit hook:**
 - `useTransit(tripId)` calls Next.js proxy at `/api/transit/bookings?trip_id=xxx`
@@ -146,7 +161,7 @@ export interface TransitDirectionResult {
   fare?: { amount: number; currency: string };
   steps: TransitDirectionStep[];
   leg_count: number;
-  provider: 'google_routes';
+  provider: 'otp';
 }
 
 export interface TransitBookingData {
@@ -178,8 +193,8 @@ export type CreateTransitBookingInput = Omit<TransitBookingData, 'id' | 'user_id
 - **Params:** `origin_lat`, `origin_lng`, `dest_lat`, `dest_lng`, `departure_time` (ISO), `modes` (comma-separated, optional)
 - **Logic:**
   1. Check DynamoDB cache → return if fresh
-  2. Call Google Routes API `computeRoutes` with `travelMode: TRANSIT`
-  3. Parse response into `TransitDirectionResult`
+  2. Call OTP routing API (REST endpoint on ECS/EC2) with origin, destination, departure time
+  3. Parse OTP response into `TransitDirectionResult`
   4. Cache result in DynamoDB (30min TTL)
   5. Return result
 - **Auth:** Call `validateAuth()` at the start (matching `services/transit.ts`)
@@ -215,8 +230,9 @@ api.route('DELETE /transit/book/{id}', 'services/transit-bookings.deleteHandler'
 ```
 
 ### Secrets
-- `googleRoutesApiKey` — new SST secret in `infra/secrets.ts` for Google Routes API
-- `transitlandApiKey` — new SST secret in `infra/secrets.ts` for Transitland enrichment API (if using paid tier; free tier may not require a key)
+- `otpServerUrl` — new SST secret in `infra/secrets.ts` for the OTP server endpoint URL
+- `otpApiKey` — new SST secret for authenticating between Lambda and OTP server
+- No external paid API keys needed (GTFS data is free/open; OTP is self-hosted)
 
 ---
 
@@ -423,15 +439,15 @@ function useTransitSearch(params: TransitSearchParams) {
 
 ## 10. Costs & Operations
 
-### Google Routes API Pricing
-- Transit requests: ~$10-20 per 1,000 requests
-- With caching (30min TTL), most repeated searches hit cache
-- Estimated 500-2,000 transit searches/month for early usage = $10-40/month
+### OTP Server (Self-hosted)
+- **ECS Fargate:** ~$30-60/month for a 4GB-8GB RAM task running continuously
+- **EC2 alternative:** ~$20-40/month for a t3.medium/large spot instance
+- **Graph builds:** One-time cost per region (compute-heavy, ~5-30 min each)
+- **No per-query costs** (unlike Google Routes at $10-20/1K requests)
 
 ### DynamoDB Cache
 - Reuses existing `RecommendationCache` table
 - Negligible additional cost
 
 ### Transitland
-- Free tier sufficient for metadata lookups
-- No additional cost initially
+- Free tier sufficient for feed discovery and metadata lookups

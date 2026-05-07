@@ -1,0 +1,446 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e3]:
+      - link "TRAVYL" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e5]: TRAVYL
+        - img [ref=e6]
+      - generic [ref=e11]:
+        - link "Explore" [ref=e12] [cursor=pointer]:
+          - /url: /places
+          - img [ref=e13]
+          - generic [ref=e16]: Explore
+        - link "Trips" [ref=e175] [cursor=pointer]:
+          - /url: /trips
+          - img [ref=e176]
+          - generic [ref=e181]: Trips
+        - link "Profile" [ref=e182] [cursor=pointer]:
+          - /url: /profile
+          - img [ref=e183]
+          - generic [ref=e186]: Profile
+      - generic [ref=e17]:
+        - button "Switch to dark mode" [ref=e18]:
+          - img [ref=e19]
+        - button "User menu" [ref=e188]:
+          - img "Justin Lo" [ref=e189]
+  - main [ref=e23]:
+    - generic [ref=e24]:
+      - complementary "Trip navigation" [ref=e25]:
+        - generic [ref=e26]:
+          - generic [ref=e27]: Auckland, New Zealand
+          - generic [ref=e28]: May 31 – Jun 6·1 traveler
+        - navigation [ref=e29]:
+          - generic [ref=e30]:
+            - link "Overview" [ref=e31] [cursor=pointer]:
+              - /url: /trip/3faca4a6-f5bb-42b9-b249-729c15dd9ee5
+              - img [ref=e32]
+              - generic [ref=e35]: Overview
+            - link "Itinerary" [ref=e36] [cursor=pointer]:
+              - /url: /trip/3faca4a6-f5bb-42b9-b249-729c15dd9ee5/itinerary
+              - img [ref=e37]
+              - generic [ref=e39]: Itinerary
+            - link "Calendar" [ref=e40] [cursor=pointer]:
+              - /url: /trip/3faca4a6-f5bb-42b9-b249-729c15dd9ee5/calendar
+              - img [ref=e42]
+              - generic [ref=e44]: Calendar
+          - generic [ref=e45]:
+            - link "Hotels" [ref=e46] [cursor=pointer]:
+              - /url: /trip/3faca4a6-f5bb-42b9-b249-729c15dd9ee5/hotels
+              - img [ref=e47]
+              - generic [ref=e51]: Hotels
+            - link "Flights" [ref=e52] [cursor=pointer]:
+              - /url: /trip/3faca4a6-f5bb-42b9-b249-729c15dd9ee5/flights
+              - img [ref=e53]
+              - generic [ref=e55]: Flights
+            - link "Cars" [ref=e56] [cursor=pointer]:
+              - /url: /trip/3faca4a6-f5bb-42b9-b249-729c15dd9ee5/cars
+              - img [ref=e57]
+              - generic [ref=e61]: Cars
+          - generic [ref=e62]:
+            - link "Explore" [ref=e63] [cursor=pointer]:
+              - /url: /trip/3faca4a6-f5bb-42b9-b249-729c15dd9ee5/activities
+              - img [ref=e64]
+              - generic [ref=e67]: Explore
+            - link "Packing" [ref=e68] [cursor=pointer]:
+              - /url: /trip/3faca4a6-f5bb-42b9-b249-729c15dd9ee5/packing
+              - img [ref=e69]
+              - generic [ref=e74]: Packing
+            - link "Budget" [ref=e75] [cursor=pointer]:
+              - /url: /trip/3faca4a6-f5bb-42b9-b249-729c15dd9ee5/budget
+              - img [ref=e76]
+              - generic [ref=e79]: Budget
+        - generic [ref=e80]:
+          - link "Settings" [ref=e81] [cursor=pointer]:
+            - /url: /trip/3faca4a6-f5bb-42b9-b249-729c15dd9ee5/settings
+            - img [ref=e82]
+            - generic [ref=e85]: Settings
+          - button "Trip History" [ref=e86]:
+            - img [ref=e87]
+            - generic [ref=e91]: Trip History
+          - button "Collapse sidebar" [ref=e92]:
+            - generic [ref=e93]: Collapse
+            - img [ref=e94]
+      - generic [ref=e192]:
+        - generic [ref=e194]:
+          - img "Justin Lo" [ref=e196]
+          - generic [ref=e198]:
+            - generic [ref=e199]: Auckland, New Zealand
+            - generic [ref=e200]: Jun 1 – Jun 7, 2026
+            - generic [ref=e201]: · Auckland, New Zealand
+          - button "New N" [ref=e202]:
+            - img [ref=e203]
+            - generic [ref=e205]: New
+            - generic [ref=e206]: "N"
+          - button "Change history" [ref=e207]:
+            - img [ref=e208]
+          - button "Share" [ref=e211]:
+            - img [ref=e212]
+            - text: Share
+        - generic [ref=e219]:
+          - button "Mon 1 Jun" [ref=e220]:
+            - generic [ref=e221]: Mon
+            - generic [ref=e222]: "1"
+            - generic [ref=e223]: Jun
+          - button "Tue 2 Jun" [ref=e230]:
+            - generic [ref=e231]: Tue
+            - generic [ref=e232]: "2"
+            - generic [ref=e233]: Jun
+          - button "Wed 3 Jun" [ref=e238]:
+            - generic [ref=e239]: Wed
+            - generic [ref=e240]: "3"
+            - generic [ref=e241]: Jun
+          - button "Thu 4 Jun" [ref=e246]:
+            - generic [ref=e247]: Thu
+            - generic [ref=e248]: "4"
+            - generic [ref=e249]: Jun
+          - button "Fri 5 Jun" [ref=e253]:
+            - generic [ref=e254]: Fri
+            - generic [ref=e255]: "5"
+            - generic [ref=e256]: Jun
+          - button "Sat 6 Jun" [ref=e262]:
+            - generic [ref=e263]: Sat
+            - generic [ref=e264]: "6"
+            - generic [ref=e265]: Jun
+        - generic [ref=e272]:
+          - generic [ref=e273]:
+            - generic [ref=e274]:
+              - generic [ref=e275]:
+                - button "Previous month" [ref=e276]:
+                  - img [ref=e277]
+                - generic [ref=e279]: June 2026
+                - button "Next month" [ref=e280]:
+                  - img [ref=e281]
+              - generic [ref=e283]:
+                - generic [ref=e284]: S
+                - generic [ref=e285]: M
+                - generic [ref=e286]: T
+                - generic [ref=e287]: W
+                - generic [ref=e288]: T
+                - generic [ref=e289]: F
+                - generic [ref=e290]: S
+              - generic [ref=e291]:
+                - generic [ref=e292]:
+                  - button "May 31, trip day" [ref=e293]:
+                    - generic [ref=e294]: "31"
+                  - button "Jun 1, trip day" [ref=e295] [cursor=pointer]:
+                    - generic [ref=e296]: "1"
+                  - button "Jun 2, trip day" [ref=e298] [cursor=pointer]:
+                    - generic [ref=e299]: "2"
+                  - button "Jun 3, trip day" [ref=e301] [cursor=pointer]:
+                    - generic [ref=e302]: "3"
+                  - button "Jun 4, trip day" [ref=e304] [cursor=pointer]:
+                    - generic [ref=e305]: "4"
+                  - button "Jun 5, trip day" [ref=e307] [cursor=pointer]:
+                    - generic [ref=e308]: "5"
+                  - button "Jun 6, trip day" [ref=e310] [cursor=pointer]:
+                    - generic [ref=e311]: "6"
+                - generic [ref=e313]:
+                  - button "Jun 7" [disabled] [ref=e314]:
+                    - generic [ref=e315]: "7"
+                  - button "Jun 8" [disabled] [ref=e316]:
+                    - generic [ref=e317]: "8"
+                  - button "Jun 9" [disabled] [ref=e318]:
+                    - generic [ref=e319]: "9"
+                  - button "Jun 10" [disabled] [ref=e320]:
+                    - generic [ref=e321]: "10"
+                  - button "Jun 11" [disabled] [ref=e322]:
+                    - generic [ref=e323]: "11"
+                  - button "Jun 12" [disabled] [ref=e324]:
+                    - generic [ref=e325]: "12"
+                  - button "Jun 13" [disabled] [ref=e326]:
+                    - generic [ref=e327]: "13"
+                - generic [ref=e328]:
+                  - button "Jun 14" [disabled] [ref=e329]:
+                    - generic [ref=e330]: "14"
+                  - button "Jun 15" [disabled] [ref=e331]:
+                    - generic [ref=e332]: "15"
+                  - button "Jun 16" [disabled] [ref=e333]:
+                    - generic [ref=e334]: "16"
+                  - button "Jun 17" [disabled] [ref=e335]:
+                    - generic [ref=e336]: "17"
+                  - button "Jun 18" [disabled] [ref=e337]:
+                    - generic [ref=e338]: "18"
+                  - button "Jun 19" [disabled] [ref=e339]:
+                    - generic [ref=e340]: "19"
+                  - button "Jun 20" [disabled] [ref=e341]:
+                    - generic [ref=e342]: "20"
+                - generic [ref=e343]:
+                  - button "Jun 21" [disabled] [ref=e344]:
+                    - generic [ref=e345]: "21"
+                  - button "Jun 22" [disabled] [ref=e346]:
+                    - generic [ref=e347]: "22"
+                  - button "Jun 23" [disabled] [ref=e348]:
+                    - generic [ref=e349]: "23"
+                  - button "Jun 24" [disabled] [ref=e350]:
+                    - generic [ref=e351]: "24"
+                  - button "Jun 25" [disabled] [ref=e352]:
+                    - generic [ref=e353]: "25"
+                  - button "Jun 26" [disabled] [ref=e354]:
+                    - generic [ref=e355]: "26"
+                  - button "Jun 27" [disabled] [ref=e356]:
+                    - generic [ref=e357]: "27"
+                - generic [ref=e358]:
+                  - button "Jun 28" [disabled] [ref=e359]:
+                    - generic [ref=e360]: "28"
+                  - button "Jun 29" [disabled] [ref=e361]:
+                    - generic [ref=e362]: "29"
+                  - button "Jun 30" [disabled] [ref=e363]:
+                    - generic [ref=e364]: "30"
+                  - button "Jul 1" [disabled] [ref=e365]:
+                    - generic [ref=e366]: "1"
+                  - button "Jul 2" [disabled] [ref=e367]:
+                    - generic [ref=e368]: "2"
+                  - button "Jul 3" [disabled] [ref=e369]:
+                    - generic [ref=e370]: "3"
+                  - button "Jul 4" [disabled] [ref=e371]:
+                    - generic [ref=e372]: "4"
+            - generic [ref=e373]:
+              - generic [ref=e374]: Trip Summary
+              - generic [ref=e375]:
+                - generic [ref=e376]:
+                  - generic [ref=e377]: Days
+                  - generic [ref=e378]: "6"
+                - generic [ref=e379]:
+                  - generic [ref=e380]: Activities
+                  - generic [ref=e381]: "34"
+                - generic [ref=e382]:
+                  - generic [ref=e383]: Unscheduled
+                  - generic [ref=e384]: "0"
+                - generic [ref=e385]:
+                  - generic [ref=e386]: Collaborators
+                  - generic [ref=e387]: "0"
+          - generic [ref=e388]:
+            - grid [ref=e392]:
+              - generic [ref=e393]:
+                - generic [ref=e395]: 7 AM
+                - generic [ref=e397]: 8 AM
+                - generic [ref=e399]: 9 AM
+                - generic [ref=e401]: 10 AM
+                - generic [ref=e403]: 11 AM
+                - generic [ref=e405]: 12 PM
+                - generic [ref=e407]: 1 PM
+                - generic [ref=e409]: 2 PM
+                - generic [ref=e411]: 3 PM
+                - generic [ref=e413]: 4 PM
+                - generic [ref=e415]: 5 PM
+                - generic [ref=e417]: 6 PM
+                - generic [ref=e419]: 7 PM
+                - generic [ref=e421]: 8 PM
+                - generic [ref=e423]: 9 PM
+                - generic [ref=e425]: 10 PM
+                - generic [ref=e427]: 11 PM
+              - generic [ref=e429]:
+                - generic [ref=e431]:
+                  - text: Mon, Jun 1
+                  - generic "No conflicts" [ref=e704]
+                - generic [ref=e432]:
+                  - gridcell "Onslow, 9 AM – 10:15 AM" [ref=e433]:
+                    - generic [ref=e436]:
+                      - generic [ref=e437]: Onslow
+                      - generic [ref=e438]: 9 AM – 10:15 AM
+                      - generic [ref=e439]: Onslow
+                  - gridcell "Albert Park, 10:26 AM – 11:26 AM" [ref=e444]:
+                    - generic [ref=e447]:
+                      - generic [ref=e448]: Albert Park
+                      - generic [ref=e449]: 10:26 AM – 11:26 AM
+                      - generic [ref=e450]: Albert Park
+                  - gridcell "Auckland Art Gallery, 11:37 AM – 12:37 PM" [ref=e455]:
+                    - generic [ref=e458]:
+                      - generic [ref=e459]: Auckland Art Gallery
+                      - generic [ref=e460]: 11:37 AM – 12:37 PM
+                      - generic [ref=e461]: Auckland Art Gallery
+                  - gridcell "AJ Hackett Auckland SkyJump & SkyWalk, 2 PM – 3 PM" [ref=e466]:
+                    - generic [ref=e469]:
+                      - generic [ref=e470]: AJ Hackett Auckland SkyJump & SkyWalk
+                      - generic [ref=e471]: 2 PM – 3 PM
+                      - generic [ref=e472]: AJ Hackett Auckland SkyJump & SkyWalk
+                  - gridcell "Auckland Zoo, 4:45 PM – 5:45 PM" [ref=e477]:
+                    - generic [ref=e480]:
+                      - generic [ref=e481]: Auckland Zoo
+                      - generic [ref=e482]: 4:45 PM – 5:45 PM
+                      - generic [ref=e483]: Auckland Zoo
+                  - gridcell "Maungauika / North Head Historic Reserve, 6:25 PM – 7:25 PM" [ref=e488]:
+                    - generic [ref=e491]:
+                      - generic [ref=e492]: Maungauika / North Head Historic Reserve
+                      - generic [ref=e493]: 6:25 PM – 7:25 PM
+                      - generic [ref=e494]: Maungauika / North Head Historic Reserve
+                  - gridcell "Maungawhau / Mount Eden, 3:21 PM – 4:21 PM" [ref=e499]:
+                    - generic [ref=e502]:
+                      - generic [ref=e503]: Maungawhau / Mount Eden
+                      - generic [ref=e504]: 3:21 PM – 4:21 PM
+                      - generic [ref=e505]: Maungawhau / Mount Eden
+                  - gridcell "Sky Tower, 12:49 PM – 1:49 PM" [ref=e510]:
+                    - generic [ref=e513]:
+                      - generic [ref=e514]: Sky Tower
+                      - generic [ref=e515]: 12:49 PM – 1:49 PM
+                      - generic [ref=e516]: Sky Tower
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                        - text: 1 min
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                        - text: 1 min
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                        - text: 5 min
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                        - text: 6 min
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                        - text: 14 min
+            - generic [ref=e524]:
+              - generic [ref=e525]:
+                - button "For You" [ref=e526]:
+                  - img [ref=e527]
+                  - generic [ref=e533]: For You
+                - button "Events" [ref=e535]:
+                  - img [ref=e536]
+                  - generic [ref=e540]: Events
+                - button "Map" [ref=e541]:
+                  - img [ref=e542]
+                  - generic [ref=e545]: Map
+              - complementary "Activity suggestions" [ref=e547]:
+                - generic [ref=e548]:
+                  - generic [ref=e550]:
+                    - img [ref=e552]
+                    - heading "For You" [level=2] [ref=e554]
+                  - generic [ref=e555]:
+                    - img
+                    - textbox "Search activities..." [ref=e556]
+                - generic [ref=e558]:
+                  - button "All" [ref=e559]
+                  - button "🏛️ Sightseeing" [ref=e560]:
+                    - generic [ref=e561]: 🏛️
+                    - text: Sightseeing
+                  - button "🍽️ Dining" [ref=e562]:
+                    - generic [ref=e563]: 🍽️
+                    - text: Dining
+                  - button "🚌 Tours" [ref=e564]:
+                    - generic [ref=e565]: 🚌
+                    - text: Tours
+                  - button "🎭 Culture" [ref=e566]:
+                    - generic [ref=e567]: 🎭
+                    - text: Culture
+                  - button "🛍️ Shopping" [ref=e568]:
+                    - generic [ref=e569]: 🛍️
+                    - text: Shopping
+                  - button "🌙 Nightlife" [ref=e570]:
+                    - generic [ref=e571]: 🌙
+                    - text: Nightlife
+                  - button "🌲 Outdoor" [ref=e572]:
+                    - generic [ref=e573]: 🌲
+                    - text: Outdoor
+                - generic [ref=e574]:
+                  - img [ref=e575]
+                  - text: Auckland picks
+                - generic [ref=e578]:
+                  - generic [ref=e579]:
+                    - button "Free ★ 4.6 Sky Tower All · 2h" [ref=e580]:
+                      - generic [ref=e583]: Free
+                      - generic [ref=e584]: ★ 4.6
+                      - generic [ref=e585]:
+                        - generic [ref=e586]: Sky Tower
+                        - generic [ref=e587]
+                    - button "Free ★ 4.7 Auckland Domain All · 2h" [ref=e591]:
+                      - generic [ref=e594]: Free
+                      - generic [ref=e595]: ★ 4.7
+                      - generic [ref=e596]:
+                        - generic [ref=e597]: Auckland Domain
+                        - generic [ref=e598]
+                    - button "Free ★ 4.6 Albert Park All · 2h" [ref=e602]:
+                      - generic [ref=e605]: Free
+                      - generic [ref=e606]: ★ 4.6
+                      - generic [ref=e607]:
+                        - generic [ref=e608]: Albert Park
+                        - generic [ref=e609]
+                    - button "Free ★ 4.8 Weta Workshop Unleashed All · 2h" [ref=e613]:
+                      - generic [ref=e616]: Free
+                      - generic [ref=e617]: ★ 4.8
+                      - generic [ref=e618]:
+                        - generic [ref=e619]: Weta Workshop Unleashed
+                        - generic [ref=e620]
+                    - button "Free ★ 4.4 Aotea Square All · 2h" [ref=e624]:
+                      - generic [ref=e627]: Free
+                      - generic [ref=e628]: ★ 4.4
+                      - generic [ref=e629]:
+                        - generic [ref=e630]: Aotea Square
+                        - generic [ref=e631]
+                    - button "Free ★ 4.5 Silo Park All · 2h" [ref=e635]:
+                      - generic [ref=e638]: Free
+                      - generic [ref=e639]: ★ 4.5
+                      - generic [ref=e640]:
+                        - generic [ref=e641]: Silo Park
+                        - generic [ref=e642]
+                    - button "Free ★ 4.5 Victoria Park All · 2h" [ref=e646]:
+                      - generic [ref=e649]: Free
+                      - generic [ref=e650]: ★ 4.5
+                      - generic [ref=e651]:
+                        - generic [ref=e652]: Victoria Park
+                        - generic [ref=e653]
+                    - button "Free ★ 4.6 Auckland Art Gallery All · 2h" [ref=e657]:
+                      - generic [ref=e660]: Free
+                      - generic [ref=e661]: ★ 4.6
+                      - generic [ref=e662]:
+                        - generic [ref=e663]: Auckland Art Gallery
+                        - generic [ref=e664]
+                    - button "Free ★ 4.9 AJ Hackett Auckland SkyJump & SkyWalk All · 2h" [ref=e668]:
+                      - generic [ref=e671]: Free
+                      - generic [ref=e672]: ★ 4.9
+                      - generic [ref=e673]:
+                        - generic [ref=e674]: AJ Hackett Auckland SkyJump & SkyWalk
+                        - generic [ref=e675]
+                    - button "Free ★ 4.4 Myers Park All · 2h" [ref=e679]:
+                      - generic [ref=e682]: Free
+                      - generic [ref=e683]: ★ 4.4
+                      - generic [ref=e684]:
+                        - generic [ref=e685]: Myers Park
+                        - generic [ref=e686]
+                  - button "Load more suggestions" [ref=e690]
+                - generic [ref=e691]: Drag cards onto the calendar
+          - status [ref=e692]
+  - region "Notifications alt+T"
+  - generic [ref=e170] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e171]:
+      - img [ref=e172]
+    - generic [ref=e693]:
+      - button "Open issues overlay" [ref=e694]:
+        - generic [ref=e695]:
+          - generic [ref=e696]: "3"
+          - generic [ref=e697]: "4"
+        - generic [ref=e698]:
+          - text: Issue
+          - generic [ref=e699]: s
+      - button "Collapse issues badge" [ref=e700]:
+        - img [ref=e701]
+  - alert [ref=e703]
