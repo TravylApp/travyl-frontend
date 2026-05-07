@@ -20,6 +20,7 @@ import {
 } from '@/components/trip/BookingFormPrimitives'
 import { searchHotels, type HotelSearchInput, type SerpHotel } from './hotelSearch'
 import { HotelResultCard } from './HotelResultCard'
+import { HotelResultDetailModal } from './HotelResultDetailModal'
 
 type SortMode = 'price-asc' | 'price-desc' | 'rating-desc' | 'reviews-desc' | 'stars-desc'
 
@@ -76,6 +77,8 @@ export function HotelSearchPanel({
   const [amenityFilter, setAmenityFilter] = useState<string[]>([])
   const [propertyTypeFilter, setPropertyTypeFilter] = useState<string[]>([])
   const [page, setPage] = useState(1)
+
+  const [openHotelId, setOpenHotelId] = useState<string | null>(null)
 
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
   const toggleSection = (n: string) => {
@@ -564,6 +567,7 @@ export function HotelSearchPanel({
                         busy={busyOfferId === hotel.id}
                         onAdd={onAdd}
                         formatPrice={formatPrice}
+                        onOpen={() => setOpenHotelId(hotel.id)}
                       />
                     ))}
                   </div>
@@ -595,6 +599,25 @@ export function HotelSearchPanel({
           </div>
         </>
       )}
+
+      {/* Detail modal — opened from a search result card. Portals to body. */}
+      {openHotelId && (() => {
+        const open = results.find((h) => h.id === openHotelId)
+        if (!open) return null
+        return (
+          <HotelResultDetailModal
+            hotel={open}
+            alreadySaved={savedOfferIds.has(open.id)}
+            busy={busyOfferId === open.id}
+            onClose={() => setOpenHotelId(null)}
+            onAdd={async (h) => {
+              await onAdd(h)
+              setOpenHotelId(null)
+            }}
+            formatPrice={formatPrice}
+          />
+        )
+      })()}
     </div>
   )
 }

@@ -27,6 +27,9 @@ export interface HotelResultCardProps {
   busy: boolean
   onAdd: (hotel: SerpHotel) => Promise<void>
   formatPrice: (n: number, currency?: string | null) => string
+  /** Open the detail modal. The card body is clickable; the Add and View
+      links inside stop propagation so they keep working. */
+  onOpen?: () => void
 }
 
 // Map common amenity strings → icon. Falls back to a sparkle for unknown ones.
@@ -43,7 +46,7 @@ function amenityIcon(name: string): { Icon: typeof Wifi; label: string } {
   return { Icon: Sparkles, label: name }
 }
 
-export function HotelResultCard({ hotel, alreadySaved, busy, onAdd, formatPrice }: HotelResultCardProps) {
+export function HotelResultCard({ hotel, alreadySaved, busy, onAdd, formatPrice, onOpen }: HotelResultCardProps) {
   const [imgIdx, setImgIdx] = useState(0)
   const [imgFailed, setImgFailed] = useState(false)
   const images = hotel.images.filter(Boolean)
@@ -68,7 +71,10 @@ export function HotelResultCard({ hotel, alreadySaved, busy, onAdd, formatPrice 
   const topAmenities = hotel.amenities.slice(0, 4)
 
   return (
-    <div className="group rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] overflow-hidden hover:border-gray-300 dark:hover:border-white/[0.12] hover:shadow-sm transition-all flex flex-col">
+    <div
+      onClick={onOpen}
+      className={`group rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] overflow-hidden hover:border-gray-300 dark:hover:border-white/[0.12] hover:shadow-sm transition-all flex flex-col ${onOpen ? 'cursor-pointer' : ''}`}
+    >
       {/* Image carousel */}
       <div className="relative aspect-[16/10] bg-gradient-to-br from-gray-100 to-gray-200 dark:from-white/[0.03] dark:to-white/[0.06]">
         {currentImage && !imgFailed ? (
