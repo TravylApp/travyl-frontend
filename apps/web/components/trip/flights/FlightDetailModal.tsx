@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useQueries } from '@tanstack/react-query'
 import {
   X,
@@ -97,6 +98,12 @@ function formatDuration(min: number): string {
 export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, formatPrice }: FlightDetailModalProps) {
   const first = flight.legs[0]
   const last = flight.legs[flight.legs.length - 1]
+  const [mounted, setMounted] = useState(false)
+
+  // Portal target only available client-side
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Esc closes + body scroll lock
   useEffect(() => {
@@ -145,9 +152,17 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
     await onAdd(flight)
   }
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
+  if (!mounted) return null
+
+  const modal = (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      // Stop clicks from bubbling up to whatever parent (e.g., the search
+      // result card's onClick that opened the modal) would otherwise
+      // re-trigger us right after onClose runs.
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Backdrop — click anywhere outside the panel closes the modal */}
       <div
         aria-hidden
         onClick={onClose}
@@ -368,6 +383,8 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
       </div>
     </div>
   )
+
+  return createPortal(modal, document.body)
 }
 
 function AirportCard({
