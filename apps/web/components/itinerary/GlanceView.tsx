@@ -6,6 +6,21 @@ import type { ItineraryDayViewModel } from '@travyl/shared';
 import { DaySlide } from './glance/DaySlide';
 import { DayPipPager } from './glance/DayPipPager';
 
+/**
+ * Parse a formatted start time (e.g. "9:00 AM", "1:30 PM") into a 24-hour
+ * integer hour. Returns 12 (noon-ish) if the value is null or unparseable.
+ */
+function parseStartHour(startTime: string | null): number {
+  if (!startTime) return 12;
+  const match = /^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)?$/i.exec(startTime.trim());
+  if (!match) return 12;
+  let hour = Number.parseInt(match[1], 10);
+  const meridiem = match[3]?.toUpperCase();
+  if (meridiem === 'PM' && hour < 12) hour += 12;
+  if (meridiem === 'AM' && hour === 12) hour = 0;
+  return hour;
+}
+
 type Props = {
   tripId: string;
   days: ItineraryDayViewModel[];
@@ -38,8 +53,8 @@ export function GlanceView({
         g.activities.map((a) => ({
           name: a.name,
           type: a.category,
-          startHour: a.startHour,
-          image: undefined as string | undefined, // TODO: thread through ItineraryDayViewModel if available
+          startHour: parseStartHour(a.startTime),
+          image: a.image ?? undefined,
         })),
       ),
     };
