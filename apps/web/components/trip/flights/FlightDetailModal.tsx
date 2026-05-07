@@ -18,7 +18,7 @@ import {
   Globe,
 } from 'lucide-react'
 import type { SerpFlight } from './flightSearch'
-import { airlineHomepage, googleFlightsSearchUrl } from '@/lib/airlineLinks'
+import { airlineBookingUrl, googleFlightsSearchUrl } from '@/lib/airlineLinks'
 
 interface AirportInfo {
   iata: string
@@ -171,12 +171,12 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
       />
 
-      {/* Modal panel */}
+      {/* Modal panel — grows on wider viewports so airport cards have room */}
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Flight details"
-        className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-[#0e1620] shadow-2xl"
+        className="relative w-full max-w-3xl lg:max-w-5xl xl:max-w-6xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white dark:bg-[#0e1620] shadow-2xl"
       >
         {/* Sticky header */}
         <div className="sticky top-0 z-10 flex items-start justify-between gap-3 px-6 pt-5 pb-4 bg-white/95 dark:bg-[#0e1620]/95 backdrop-blur border-b border-gray-100 dark:border-white/[0.06]">
@@ -236,18 +236,24 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
             </div>
           )}
 
-          {/* Outbound booking links — airline website + Google Flights search */}
+          {/* Outbound booking links — deep-link to carrier search + Google Flights fallback */}
           {(() => {
             const carrier = first?.airline ?? ''
-            const carrierUrl = airlineHomepage(carrier)
-            const googleUrl =
+            // SerpAPI's google_flights endpoint returns outbound options only;
+            // return-leg dates would need a follow-up booking_token call we
+            // don't make. So all carrier links default to the outbound date
+            // and the user can add the return on the airline's site.
+            const linkCtx =
               first?.departure.id && last?.arrival.id && first?.departure.time
-                ? googleFlightsSearchUrl({
+                ? {
                     origin: first.departure.id,
                     destination: last.arrival.id,
                     date: first.departure.time,
-                  })
+                    returnDate: null,
+                  }
                 : null
+            const carrierUrl = linkCtx ? airlineBookingUrl(carrier, linkCtx) : null
+            const googleUrl = linkCtx ? googleFlightsSearchUrl(linkCtx) : null
             if (!carrierUrl && !googleUrl) return null
             return (
               <div className="flex flex-wrap items-center gap-2">
@@ -399,7 +405,7 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
               <h3 className="text-[11px] font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-3">
                 Airports
               </h3>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {airports.map((a, i) => (
                   <AirportCard
                     key={a.iata}
