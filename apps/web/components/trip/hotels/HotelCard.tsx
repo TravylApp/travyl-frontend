@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Building2, MapPin, Star, MoreHorizontal } from 'lucide-react'
 import type { HotelViewModel } from '@travyl/shared'
 
@@ -10,18 +11,22 @@ export interface HotelCardProps {
 }
 
 export function HotelCard({ hotel, onEdit, onDelete }: HotelCardProps) {
+  const [imgFailed, setImgFailed] = useState(false)
+  const showImage = hotel.imageUrl && !imgFailed
   return (
     <div
       onClick={onEdit}
       className="group rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4 transition-colors cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.04]"
     >
       <div className="flex gap-4">
-        {hotel.imageUrl ? (
+        {showImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={hotel.imageUrl}
+            src={hotel.imageUrl!}
             alt={hotel.name}
-            className="w-[88px] h-[88px] rounded-xl object-cover shrink-0"
+            referrerPolicy="no-referrer"
+            onError={() => setImgFailed(true)}
+            className="w-[88px] h-[88px] rounded-xl object-cover shrink-0 bg-gray-100 dark:bg-white/[0.04]"
           />
         ) : (
           <div

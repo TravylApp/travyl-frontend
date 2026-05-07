@@ -197,7 +197,9 @@ export function HotelResultCard({ hotel, alreadySaved, busy, onAdd, formatPrice,
           <p className="text-[12px] text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">{hotel.description}</p>
         )}
 
-        <div className="border-t border-gray-100 dark:border-white/[0.06] my-2" />
+        {/* mt-auto pushes the divider + price row to the bottom regardless
+            of description length, so all cards in a row have aligned prices */}
+        <div className="border-t border-gray-100 dark:border-white/[0.06] mt-auto pt-2" />
 
         {/* Price + CTA */}
         <div className="flex items-end justify-between gap-2">
