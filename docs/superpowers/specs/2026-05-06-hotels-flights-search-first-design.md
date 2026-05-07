@@ -127,7 +127,7 @@ apps/web/components/trip/hotels/HotelsModule.tsx
 apps/web/components/trip/hotels/HotelForm.tsx
   — gut. Becomes "edit saved hotel" only.
   — Read-only: name, address, latitude, longitude, image_url, rating, star_rating
-  — Editable: check_in, check_out, price_per_night, total_price, currency, booking_ref, notes
+  — Editable: check_in, check_out, price_per_night, total_price, currency, booking_ref
   — No "Add hotel" path through this form
 
 apps/web/components/trip/flights/FlightsModule.tsx
