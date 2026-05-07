@@ -965,7 +965,7 @@ export default function Home() {
       <UseCases onPlanTrip={handlePlanTrip} />
 
       {/* ─── Stats — trust signals ────────────────────────── */}
-      <PressStats statsOnly />
+      <PressStats />
 
       {/* ─── Press Marquee — As Seen In ──────────────────── */}
 
@@ -993,7 +993,7 @@ export default function Home() {
       {/* ─── Takeoff Animation Overlay ─────────────────────────── */}
       <TakeoffTransition
         visible={showTakeoff}
-        buttonRect={buttonRect}
+        buttonRect={null}
         statusMessage={plannerStatusMessage}
         completed={takeoffCompleted}
         error={loadingError}

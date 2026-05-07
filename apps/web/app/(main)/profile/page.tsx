@@ -62,16 +62,14 @@ export default function ProfilePage() {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-6">
               {/* Avatar */}
-              <div className="w-24 h-24 rounded-full shadow-lg overflow-hidden shrink-0">
-                {profile?.avatar_url ? (
-                  <img
-                    src={profile.avatar_url}
-                    alt={displayName}
-                    className="w-full h-full rounded-full object-cover"
-                  />
-                ) : (
-                  <PlaceholderAvatar userId={user?.id} size={96} />
-                )}
+              <div className="shadow-lg rounded-full shrink-0">
+                <PlaceholderAvatar
+                  userId={user?.id}
+                  name={displayName}
+                  email={user?.email}
+                  avatarUrl={profile?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null}
+                  size={96}
+                />
               </div>
 
               {/* User Info */}

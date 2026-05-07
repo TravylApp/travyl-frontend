@@ -16,10 +16,10 @@ export const documentUploads = new sst.aws.Bucket('DocumentUploads', {
   public: false,
   cors: {
     allowOrigins: ['*'],
-    allowMethods: ['PUT', 'OPTIONS'],
+    allowMethods: ['PUT'],
     allowHeaders: ['*'],
     exposeHeaders: ['ETag'],
-    maxAge: 3600,
+    maxAge: '1 hour',
   },
 })
 

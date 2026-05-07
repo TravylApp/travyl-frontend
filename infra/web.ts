@@ -23,6 +23,9 @@ import {
 export const site = new sst.aws.Nextjs('TravylWeb', {
   path: 'apps/web',
   environment: {
+    // React's CJS shim picks dev vs prod bundle from NODE_ENV at runtime.
+    // Without this, Lambda 502s with "Cannot find module './cjs/react.development.js'".
+    NODE_ENV: 'production',
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl.value,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey.value,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: supabaseAnonKey.value,
