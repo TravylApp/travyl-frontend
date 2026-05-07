@@ -23,10 +23,6 @@ import {
 
 export const site = new sst.aws.Nextjs('TravylWeb', {
   path: 'apps/web',
-  // dns:false → SST won't touch Route53; we keep the existing
-  // dev.gotravyl.com CNAME pointed at the CloudFront distro this
-  // produces. Cert is the wildcard *.gotravyl.com already issued
-  // in this account.
   domain: {
     name: 'dev.gotravyl.com',
     dns: false,

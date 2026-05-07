@@ -1,5 +1,10 @@
 import type { HotelData } from '@travyl/shared'
 
+export interface SerpHotelNearbyPlace {
+  name: string
+  transportations: { type: string; duration: string }[]
+}
+
 export interface SerpHotel {
   id: string
   name: string
@@ -8,18 +13,23 @@ export interface SerpHotel {
   reviews: number
   price: number | null
   currency: string
+  /** Lowest extracted total for the full stay (taxes/fees included when reported). */
+  totalRate: number | null
   address: string
   neighborhood: string
   lat: number
   lng: number
   images: string[]
   amenities: string[]
+  excludedAmenities: string[]
   checkIn: string
   checkOut: string
   description: string
   link: string
   source: string
   propertyType: string | null
+  ecoCertified: boolean
+  nearbyPlaces: SerpHotelNearbyPlace[]
   deal: string | null
   dealDescription: string | null
 }
