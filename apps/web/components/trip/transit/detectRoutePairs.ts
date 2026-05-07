@@ -1,4 +1,4 @@
-import type { ItineraryDayViewModel, HotelViewModel, TransitSegment } from '@travyl/shared';
+import type { ItineraryDayViewModel, HotelViewModel } from '@travyl/shared';
 
 // ─── Public types ─────────────────────────────────────────────
 
@@ -54,10 +54,11 @@ export function pairId(
 
 /**
  * Compute an ISO date string (YYYY-MM-DD) from a trip start date and a 0-based day index.
+ * Uses UTC date arithmetic to avoid timezone offset issues.
  */
 export function isoDateFromDayIndex(tripStartDate: string, dayIndex: number): string {
-  const date = new Date(tripStartDate + 'T00:00:00');
-  date.setDate(date.getDate() + dayIndex);
+  const date = new Date(tripStartDate + 'T00:00:00Z');
+  date.setUTCDate(date.getUTCDate() + dayIndex);
   return date.toISOString().split('T')[0];
 }
 
@@ -70,27 +71,17 @@ interface CoordinateLocation {
   label: string;
 }
 
-// ─── Detection logic ──────────────────────────────────────────
-
 /**
- * Check whether an existing transit booking matches a route pair by comparing
- * origin/destination label text (case-insensitive substring match).
+ * Build a coordinate-only dedup key (no dayIndex) for cross-day deduplication.
  */
-function isBookedPair(
-  origin: { label: string },
-  destination: { label: string },
-  bookings: TransitSegment[],
-): boolean {
-  return bookings.some((b) => {
-    const ol = b.data.originLabel.toLowerCase();
-    const dl = b.data.destinationLabel.toLowerCase();
-    const olPair = origin.label.toLowerCase();
-    const dlPair = destination.label.toLowerCase();
-    const originMatch = ol.includes(olPair) || olPair.includes(ol);
-    const destMatch = dl.includes(dlPair) || dlPair.includes(dl);
-    return originMatch && destMatch;
-  });
+function coordOnlyKey(
+  origin: { lat: number; lng: number },
+  destination: { lat: number; lng: number },
+): string {
+  return `${origin.lat.toFixed(4)},${origin.lng.toFixed(4)}>${destination.lat.toFixed(4)},${destination.lng.toFixed(4)}`;
 }
+
+// ─── Detection logic ──────────────────────────────────────────
 
 /**
  * Collect all coordinate-locations for a single itinerary day.
@@ -105,20 +96,19 @@ function collectDayLocations(
   hotels: HotelViewModel[],
 ): CoordinateLocation[] {
   // Find hotels whose stay covers this day
-  const matchingHotels = hotels.filter((h) => {
+  const matchingHotel = hotels.find((h) => {
     if (h.latitude == null || h.longitude == null) return false;
     return dayDate >= h.checkIn && dayDate < h.checkOut;
   });
 
   const locations: CoordinateLocation[] = [];
 
-  // Prepend hotel as origin endpoint (use the first matching hotel)
-  if (matchingHotels.length > 0) {
-    const hotel = matchingHotels[0];
+  // Prepend hotel as origin endpoint
+  if (matchingHotel && matchingHotel.latitude != null && matchingHotel.longitude != null) {
     locations.push({
-      lat: hotel.latitude!,
-      lng: hotel.longitude!,
-      label: hotel.name,
+      lat: matchingHotel.latitude,
+      lng: matchingHotel.longitude,
+      label: matchingHotel.name,
     });
   }
 
@@ -135,13 +125,12 @@ function collectDayLocations(
     }
   }
 
-  // Append hotel as destination endpoint
-  if (matchingHotels.length > 0) {
-    const hotel = matchingHotels[0];
+  // Append hotel as destination endpoint (only if there are non-hotel locations to connect)
+  if (matchingHotel && matchingHotel.latitude != null && matchingHotel.longitude != null && locations.length > 1) {
     locations.push({
-      lat: hotel.latitude!,
-      lng: hotel.longitude!,
-      label: hotel.name,
+      lat: matchingHotel.latitude,
+      lng: matchingHotel.longitude,
+      label: matchingHotel.name,
     });
   }
 
@@ -157,7 +146,7 @@ function collectDayLocations(
  * 3. Filters to items with lat/lng — skips items without coordinate data
  * 4. Builds consecutive pairs within each day
  * 5. Builds cross-day pairs (last location of day N → first location of day N+1)
- * 6. Skips pairs that are already booked (label text proximity)
+ * 6. Skips pairs that are already booked (handled externally via dismissedPairIds in TransitsModule)
  * 7. Deduplicates identical coordinate pairs across days (shown once, in first day)
  * 8. Skips same-location pairs (origin/destination within ~100m)
  */
@@ -165,15 +154,13 @@ export function detectRoutePairs(
   tripStartDate: string,
   days: ItineraryDayViewModel[],
   hotels: HotelViewModel[],
-  transitBookings: TransitSegment[],
 ): RoutePair[] {
   // Track coordinate-only keys (without dayIndex) for cross-day dedup (rule 7)
   const seenCoordOnlyKeys = new Set<string>();
   const result: RoutePair[] = [];
 
   // Pre-compute locations for every day
-  const dayLocations: { dayIndex: number; dayDate: string; locations: CoordinateLocation[] }[] =
-    [];
+  const dayLocations: { dayIndex: number; dayDate: string; locations: CoordinateLocation[] }[] = [];
 
   for (let i = 0; i < days.length; i++) {
     const dayDate = isoDateFromDayIndex(tripStartDate, i);
@@ -193,13 +180,10 @@ export function detectRoutePairs(
       if (coordsEqual(origin, destination)) continue;
 
       // Coordinate-only key for dedup (rule 7)
-      const coordOnlyKey = `${origin.lat.toFixed(4)},${origin.lng.toFixed(4)}>${destination.lat.toFixed(4)},${destination.lng.toFixed(4)}`;
-      if (seenCoordOnlyKeys.has(coordOnlyKey)) continue;
+      const cKey = coordOnlyKey(origin, destination);
+      if (seenCoordOnlyKeys.has(cKey)) continue;
 
-      // Skip if already booked (rule 6)
-      if (isBookedPair(origin, destination, transitBookings)) continue;
-
-      seenCoordOnlyKeys.add(coordOnlyKey);
+      seenCoordOnlyKeys.add(cKey);
 
       result.push({
         id: pairId(dayIndex, origin, destination),
@@ -221,12 +205,10 @@ export function detectRoutePairs(
         // Skip same-location pairs (rule 8)
         if (coordsEqual(origin, destination)) continue;
 
-        const coordOnlyKey = `${origin.lat.toFixed(4)},${origin.lng.toFixed(4)}>${destination.lat.toFixed(4)},${destination.lng.toFixed(4)}`;
-        if (seenCoordOnlyKeys.has(coordOnlyKey)) continue;
+        const cKey = coordOnlyKey(origin, destination);
+        if (seenCoordOnlyKeys.has(cKey)) continue;
 
-        if (isBookedPair(origin, destination, transitBookings)) continue;
-
-        seenCoordOnlyKeys.add(coordOnlyKey);
+        seenCoordOnlyKeys.add(cKey);
 
         result.push({
           id: pairId(dayIndex, origin, destination),
