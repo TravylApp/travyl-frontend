@@ -1,7 +1,10 @@
 'use client';
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState, useEffect, useRef } from 'react';
+import { QueryClient } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
+import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
+import { createStore as createIdbStore, get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation'
 import { useAuthStore, useSettingsStore, configureSupabase } from '@travyl/shared';
 import { getSupabaseBrowser } from '@/lib/supabase-browser';
@@ -18,18 +21,50 @@ import { OnboardingOverlay } from './onboarding';
 import { useChordShortcuts } from '@/hooks/useChordShortcuts';
 import { ChordHUD } from '@/components/ChordHUD';
 
+// Bump when query payload shape changes incompatibly so old caches drop.
+const PERSIST_BUSTER = 'travyl-rq-v1';
+const PERSIST_MAX_AGE = 24 * 60 * 60 * 1000; // 24h — long enough to survive day-to-day use
+
+// Browser-only IndexedDB persister. Falls back to a no-op store on the
+// server (Next.js SSR) or in older browsers where indexedDB is unavailable.
+function makeStorage() {
+  if (typeof window === 'undefined' || typeof indexedDB === 'undefined') {
+    return {
+      getItem: async () => null,
+      setItem: async () => undefined,
+      removeItem: async () => undefined,
+    };
+  }
+  const store = createIdbStore('travyl-rq', 'cache');
+  return {
+    getItem: (key: string) => idbGet<string>(key, store).then((v) => v ?? null),
+    setItem: (key: string, value: string) => idbSet(key, value, store),
+    removeItem: (key: string) => idbDel(key, store),
+  };
+}
+
 export default function Providers({ children }: { children: React.ReactNode }) {
-  const queryClientRef = useRef(new QueryClient({
-    defaultOptions: {
-      queries: {
-        staleTime: 5 * 60 * 1000, // 5 min — cached data served instantly, no background refetch
-        gcTime: 10 * 60 * 1000,   // 10 min — keep unused cache longer
-        refetchOnWindowFocus: false,
-        refetchOnMount: false,     // Don't refetch when component remounts (tab switches)
-        retry: false,
+  const queryClientRef = useRef(
+    new QueryClient({
+      defaultOptions: {
+        queries: {
+          staleTime: 5 * 60 * 1000, // 5 min — cached data served instantly, no background refetch
+          gcTime: 24 * 60 * 60 * 1000, // 24h — must be ≥ persist max age or persisted entries get evicted on hydrate
+          refetchOnWindowFocus: false,
+          refetchOnMount: false, // Don't refetch when component remounts (tab switches)
+          retry: false,
+        },
       },
-    },
-  }));
+    }),
+  );
+
+  const persisterRef = useRef(
+    createAsyncStoragePersister({
+      storage: makeStorage(),
+      key: 'travyl-rq-cache',
+      throttleTime: 1000, // Debounce write bursts during rapid invalidations
+    }),
+  );
 
   const initialize = useAuthStore((s) => s.initialize);
 
@@ -59,7 +94,19 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }, [user, hydrateSettings]);
 
   return (
-    <QueryClientProvider client={queryClientRef.current}>
+    <PersistQueryClientProvider
+      client={queryClientRef.current}
+      persistOptions={{
+        persister: persisterRef.current,
+        maxAge: PERSIST_MAX_AGE,
+        buster: PERSIST_BUSTER,
+        dehydrateOptions: {
+          // Only persist queries explicitly opted-in via meta.persist === true.
+          // Trip preload + search results opt in; auth/profile/realtime do not.
+          shouldDehydrateQuery: (query) => query.meta?.persist === true,
+        },
+      }}
+    >
       <ChordShortcutProvider>
         <GlobalCommandRegistrar />
         <GlobalNavbar />
@@ -69,7 +116,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         <ChordHUD />
       </ChordShortcutProvider>
       <Toaster />
-    </QueryClientProvider>
+    </PersistQueryClientProvider>
   );
 }
 

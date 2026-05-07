@@ -18,6 +18,7 @@ import { AnimatePresence } from 'motion/react';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 import { TripExploreSection } from './trip-layout-inner';
 import OverviewBudgetSummary from '@/components/trip/OverviewBudgetSummary';
+import { useTripPreload } from '@/lib/preload/useTripPreload';
 
 // Hide broken images — no misleading fallback photos
 const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -742,6 +743,20 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     description: `${safeDate(e.date)} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
     category: e.category, image: hiRes(e.image),
   }))) || [];
+
+  // Background preload for flights/hotels/cars + image warming. Self-throttling,
+  // skips on slow networks. Visible-on-overview images (hero + explore) are
+  // queued first; flights/hotels/cars images are warmed once their searches
+  // return. Hook order is stable — calls every render before any early return.
+  useTripPreload({
+    tripId: id,
+    trip: trip ?? null,
+    overviewImages: [
+      ...(trip?.trip_context?.hero_images ?? []),
+      ...(exploreItems as Array<{ image?: string }>).map((e) => e.image),
+      ...(events as Array<{ image?: string }>).map((e) => e.image),
+    ],
+  });
 
   if (isLoading || enriching) {
     return (
