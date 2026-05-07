@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
     const supabase = getSupabase()
     let body: any; try { body = await req.json() } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
-    const { title, destination, start_date, end_date, status, travelers, budget, currency, trip_context, flights, itinerary } = body
+    const { title, destination, start_date, end_date, status, travelers, budget, currency, trip_context, itinerary } = body
 
     // Derive user_id from verified session — never trust body.user_id
     let user_id: string | null = null
@@ -94,28 +94,10 @@ export async function POST(req: NextRequest) {
   // bookings only land in the table when the user clicks "Add to trip"
   // from search or fills the manual form.
 
-  // Save flights to flights table (best effort)
-  if (flights?.length) {
-    const flightRows = flights.map((f: any) => ({
-      trip_id: tripId,
-      data: {
-        airline: f.airline,
-        flight_number: null,
-        origin_iata: f.origin_iata || '',
-        origin_name: f.origin_name || null,
-        dest_iata: f.dest_iata || '',
-        dest_name: city,
-        departure_at: f.departure_time,
-        arrival_at: f.arrival_time,
-        price: f.price,
-        currency: f.currency || 'USD',
-        cabin_class: null,
-        booking_ref: null,
-        offer_id: null,
-      },
-    }))
-    const { error: flightErr } = await supabase.from('flights').insert(flightRows)
-  }
+  // Flights are no longer auto-seeded from the AI planner's output —
+  // suggestions still live in `trip_context.flights` for inspiration, but
+  // only user-confirmed selections (search "Add to trip" or manual form)
+  // land in the flights table.
 
   // Itinerary is stored in trip_context — no separate tables needed
 

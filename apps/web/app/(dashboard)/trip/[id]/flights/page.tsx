@@ -39,7 +39,10 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
   }
 
   const totalDuration = formatTotalDuration(flights)
-  const description = flights.length === 0 ? 'No flights booked yet' : `${flights.length} ${flights.length === 1 ? 'flight' : 'flights'}${totalDuration ? ` · ${totalDuration} total` : ''}`
+  const description =
+    flights.length === 0
+      ? 'Search live inventory and add a flight to your trip'
+      : `${flights.length} ${flights.length === 1 ? 'flight' : 'flights'}${totalDuration ? ` · ${totalDuration} total` : ''}`
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-10 py-8 lg:py-12 max-w-6xl mx-auto">
@@ -49,11 +52,11 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
           <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5">{description}</p>
         </div>
         <button
-          onClick={() => window.dispatchEvent(new CustomEvent('flights:add'))}
+          onClick={() => window.dispatchEvent(new CustomEvent('flights:add-manual'))}
           className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-[12px] font-semibold text-white shadow-sm hover:shadow-md transition-shadow shrink-0"
           style={{ backgroundColor: 'var(--trip-base)' }}
         >
-          <Plus size={13} /> Flight
+          <Plus size={13} /> Add manually
         </button>
       </header>
 
