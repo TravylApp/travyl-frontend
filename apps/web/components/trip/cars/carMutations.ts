@@ -11,14 +11,14 @@ async function readContext(tripId: string): Promise<Record<string, unknown>> {
   return (data?.trip_context as Record<string, unknown>) ?? {}
 }
 
-export async function readCars(tripId: string): Promise<CarRental[]> {
+export async function readCars(tripId: string): Promise<{ cars: CarRental[]; ctx: Record<string, unknown> }> {
   const ctx = await readContext(tripId)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((ctx as any).cars as CarRental[] | undefined) ?? []
+  const cars = ((ctx as any).cars as CarRental[] | undefined) ?? []
+  return { cars, ctx }
 }
 
-async function writeCars(tripId: string, cars: CarRental[]): Promise<void> {
-  const ctx = await readContext(tripId)
+async function writeCars(tripId: string, ctx: Record<string, unknown>, cars: CarRental[]): Promise<void> {
   const { error } = await supabase
     .from('trips')
     .update({ trip_context: { ...ctx, cars } })
@@ -34,17 +34,17 @@ function newId(): string {
 }
 
 export async function addCar(tripId: string, data: CarRentalData): Promise<void> {
-  const cars = await readCars(tripId)
+  const { cars, ctx } = await readCars(tripId)
   const next: CarRental = { id: newId(), data }
-  await writeCars(tripId, [...cars, next])
+  await writeCars(tripId, ctx, [...cars, next])
 }
 
 export async function updateCar(tripId: string, id: string, data: CarRentalData): Promise<void> {
-  const cars = await readCars(tripId)
-  await writeCars(tripId, cars.map((c) => c.id === id ? { ...c, data } : c))
+  const { cars, ctx } = await readCars(tripId)
+  await writeCars(tripId, ctx, cars.map((c) => c.id === id ? { ...c, data } : c))
 }
 
 export async function deleteCar(tripId: string, id: string): Promise<void> {
-  const cars = await readCars(tripId)
-  await writeCars(tripId, cars.filter((c) => c.id !== id))
+  const { cars, ctx } = await readCars(tripId)
+  await writeCars(tripId, ctx, cars.filter((c) => c.id !== id))
 }

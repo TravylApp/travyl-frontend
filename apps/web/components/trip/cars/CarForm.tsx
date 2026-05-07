@@ -68,7 +68,6 @@ export function CarForm({ initial, defaultCurrency = 'USD', onSubmit, onCancel, 
       const pickupIso = localInputToIso(pickupLocal)
       const dropoffIso = localInputToIso(dropoffLocal)
       if (!pickupIso || !dropoffIso) {
-        setBusy(false)
         return
       }
       const data: CarRentalData = {
