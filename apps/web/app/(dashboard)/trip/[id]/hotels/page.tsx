@@ -8,7 +8,7 @@ import { HotelsModule } from '@/components/trip/hotels/HotelsModule'
 
 export default function Hotels({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const { hotels, trip } = useItineraryScreen(id)
+  const { hotels, isLoading, trip } = useItineraryScreen(id)
   const rawHotelsQuery = useHotels(id)
   const rawHotels = rawHotelsQuery.data ?? []
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
