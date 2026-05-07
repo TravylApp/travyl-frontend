@@ -669,9 +669,12 @@ export default function Home() {
     planner.submitPrompt(pending);
   }, [user]);
 
-  // Show takeoff when planning starts
+  // Show takeoff overlay only for the long planning phase. The extracting
+  // phase has its own inline 'Understanding your trip…' chip near the
+  // search bar, so the full overlay during extract was just a brief loading
+  // flash with no payoff.
   useEffect(() => {
-    if ((planner.state.phase === 'extracting' || planner.state.phase === 'planning') && !showTakeoff) {
+    if (planner.state.phase === 'planning' && !showTakeoff) {
       const rect = searchButtonRef.current?.getBoundingClientRect() ?? null;
       setButtonRect(rect);
       setShowTakeoff(true);
