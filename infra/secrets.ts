@@ -35,3 +35,7 @@ export const openchargeApiKey = new sst.Secret('OpenchargeApiKey')
 
 // ─── Booking / Affiliate ────────────────────────────────────
 export const openTableAffiliateKey = new sst.Secret('OpenTableAffiliateKey')
+
+// ─── Transit / OTP ───────────────────────────────────────────
+export const otpServerUrl = new sst.Secret('OtpServerUrl')
+export const otpApiKey = new sst.Secret('OtpApiKey')
