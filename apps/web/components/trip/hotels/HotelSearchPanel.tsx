@@ -291,19 +291,6 @@ export function HotelSearchPanel({
         </div>
       )}
 
-      {/* Change-search toggle (when form hidden) */}
-      {!showForm && hasSearched && (
-        <div className="flex items-center justify-end">
-          <button
-            onClick={() => setShowForm(true)}
-            className="group inline-flex items-center gap-1 text-[12px] font-medium text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-          >
-            <Search size={12} />
-            Change search
-          </button>
-        </div>
-      )}
-
       {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-12">
@@ -339,7 +326,7 @@ export function HotelSearchPanel({
       {/* Results toolbar + filter sidebar + grid */}
       {!loading && results.length > 0 && (
         <>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <p className="text-[13px] text-gray-500 dark:text-gray-400">
               <span className="font-semibold text-gray-900 dark:text-white">{results.length}</span> hotels
               {filteredResults.length < results.length && (
@@ -348,26 +335,6 @@ export function HotelSearchPanel({
                 </span>
               )}
             </p>
-            <div className="relative">
-              <select
-                value={sortMode}
-                onChange={(e) => setSortMode(e.target.value as SortMode)}
-                className="appearance-none text-[12px] h-8 pl-2.5 pr-7 rounded-lg border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 cursor-pointer hover:border-gray-300 dark:hover:border-white/[0.15] focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-white/20"
-              >
-                {SORT_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <ArrowUpDown
-                size={12}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none"
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`text-[12px] h-8 px-3 rounded-lg border transition ${
@@ -386,6 +353,34 @@ export function HotelSearchPanel({
                 Clear all
               </button>
             )}
+            <div className="ml-auto flex items-center gap-3">
+              {hasSearched && !showForm && (
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="inline-flex items-center gap-1 text-[12px] font-medium text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                >
+                  <Search size={12} />
+                  Change search
+                </button>
+              )}
+              <div className="relative">
+                <select
+                  value={sortMode}
+                  onChange={(e) => setSortMode(e.target.value as SortMode)}
+                  className="appearance-none text-[12px] h-8 pl-2.5 pr-7 rounded-lg border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 cursor-pointer hover:border-gray-300 dark:hover:border-white/[0.15] focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-white/20"
+                >
+                  {SORT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                <ArrowUpDown
+                  size={12}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col lg:flex-row gap-4">

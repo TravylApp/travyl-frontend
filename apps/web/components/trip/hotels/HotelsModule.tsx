@@ -117,18 +117,6 @@ export function HotelsModule({
       toast.error("Couldn't delete — try again")
     }
   }
-  const handleClearAll = async () => {
-    if (rawHotels.length === 0) return
-    if (!confirm(`Delete all ${rawHotels.length} hotel ${rawHotels.length === 1 ? 'booking' : 'bookings'}? This can't be undone.`)) return
-    try {
-      await Promise.all(rawHotels.map((r) => deleteHotel(r.id)))
-      invalidate()
-      toast.success('Cleared bookings')
-    } catch (e) {
-      console.error(e)
-      toast.error("Couldn't clear — try again")
-    }
-  }
   const handleAddManual = async (data: HotelData) => {
     try {
       await addHotel(tripId, data)
@@ -162,15 +150,7 @@ export function HotelsModule({
       {/* Saved bookings — show as a strip above search when present */}
       {hotels.length > 0 && (
         <section className="space-y-3">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 className="text-[15px] font-serif text-gray-700 dark:text-gray-200">Your bookings</h2>
-            <button
-              onClick={handleClearAll}
-              className="text-[11px] font-medium text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-            >
-              Clear all
-            </button>
-          </div>
+          <h2 className="text-[15px] font-serif text-gray-700 dark:text-gray-200">Your bookings</h2>
           <div className="space-y-3">
             {sorted.map((h) => {
               const raw = rawHotels.find((r) => r.id === h.id)
