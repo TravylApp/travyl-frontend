@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useMemo, useState, useCallback } from 'react'
 import { DndContext, DragOverlay, pointerWithin } from '@dnd-kit/core'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { computeTimeRange, getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
 import { fetchCollaborators, usePlaceImages } from '@travyl/shared'
 import { DEFAULT_TIME_RANGE, HOUR_HEIGHT as DEFAULT_HOUR_HEIGHT } from './constants'
@@ -41,6 +41,7 @@ import { ActivityContextMenu } from './ActivityContextMenu'
 import { RegenerateOptionsModal } from './RegenerateOptionsModal'
 import { RegenerateDayModal } from './RegenerateDayModal'
 import { getSupabaseBrowser } from '@/lib/supabase-browser'
+import { setCommandMutations } from '@/lib/command-mutations-store'
 import type { CalendarActivity, SuggestionCard } from './types'
 import type { DragData } from './hooks/useCalendarDnd'
 import { formatTimeRange } from './utils'
@@ -189,6 +190,23 @@ export function CalendarShell({
     ...rawMutations,
     getActivity: (id) => activities.find((a) => a.id === id),
   })
+
+  // ── Command mutations bridge ─────────────────────────────
+  useEffect(() => {
+    setCommandMutations({
+      addActivity,
+      moveActivity,
+      removeActivity,
+      getAllActivities: () => activities,
+      getActivityByTitle: (title: string) => activities.find(a => a.title === title),
+      // startBatch/commitBatch are stubs for v1 — individual operations
+      // each create their own undo entry. Future: wrap in a single undo entry.
+      startBatch: () => {},
+      commitBatch: () => {},
+    })
+    return () => setCommandMutations(null)
+  }, [addActivity, moveActivity, removeActivity, activities])
+
   const isLoading = tripLoading || syncLoading
   const errorMsg = tripError || syncError
 
@@ -661,6 +679,16 @@ export function CalendarShell({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scheduledActivities, trip?.destination])
 
+  const queryClient = useQueryClient()
+
+  const handleResizeEvent = useCallback(
+    (id: string, newStartHour: number, newDuration: number) => {
+      updateActivity(id, { startHour: newStartHour, duration: newDuration })
+      queryClient.invalidateQueries({ queryKey: ['activity-intelligence', id] })
+    },
+    [updateActivity, queryClient],
+  )
+
   // ── Drag-and-drop ────────────────────────────────────────
   const weekGridRef = useRef<HTMLDivElement>(null)
   const { sensors, activeId, activeData, pendingDrop, handleDragStart, handleDragMove, handleDragEnd, handleDragCancel } = useCalendarDnd({
@@ -784,7 +812,7 @@ export function CalendarShell({
           <div className="flex flex-1 min-h-0 overflow-hidden">
 
             {/* Center: Calendar Grid */}
-            <div ref={weekGridRef} className="flex flex-col flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
+            <div ref={weekGridRef} className="flex flex-col flex-1 min-w-0 overflow-y-auto overflow-x-hidden scrollbar-thin">
               {viewMode === 'week' ? (
                 <WeekView
                   days={visibleWeekDays}
@@ -803,6 +831,7 @@ export function CalendarShell({
                   tripId={tripId}
                   onContextMenu={handleContextMenu}
                   onRegenerateDay={handleRegenerateDay}
+                  onResizeEvent={handleResizeEvent}
                 />
               ) : (
                 <DayView
@@ -819,6 +848,7 @@ export function CalendarShell({
                   tripId={tripId}
                   onContextMenu={handleContextMenu}
                   onRegenerateDay={handleRegenerateDay}
+                  onResizeEvent={handleResizeEvent}
                 />
               )}
             </div>
