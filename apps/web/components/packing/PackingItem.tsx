@@ -104,52 +104,50 @@ export function PackingItem({ item, onToggle, onIncrementPacked, onUpdateQuantit
         {item.name}
       </span>
 
-      {/* Quantity stepper — only for quantity > 1, shown on item hover */}
-      {item.quantity > 1 && (
-        <div
-          className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-          onMouseEnter={() => setQtyHover(true)}
-          onMouseLeave={() => { if (!editing) setQtyHover(false) }}
-        >
-          {qtyHover || editing ? (
-            <>
+      {/* Quantity stepper — always visible */}
+      <div
+        className="flex items-center gap-0.5"
+        onMouseEnter={() => setQtyHover(true)}
+        onMouseLeave={() => { if (!editing) setQtyHover(false) }}
+      >
+        {qtyHover || editing ? (
+          <>
+            <button
+              onClick={() => { if (item.quantity > 1) onUpdateQuantity(item.id, item.quantity - 1) }}
+              disabled={item.quantity <= 1}
+              className="w-4 h-4 flex items-center justify-center rounded text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+            >−</button>
+            {editing ? (
+              <input
+                ref={inputRef}
+                type="number"
+                min={1}
+                max={99}
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={commitEdit}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.currentTarget.blur()
+                  else if (e.key === 'Escape') cancelEdit()
+                }}
+                className="w-8 text-center text-xs bg-transparent border-b border-gray-300 text-gray-900 dark:text-white outline-none"
+              />
+            ) : (
               <button
-                onClick={() => { if (item.quantity > 1) onUpdateQuantity(item.id, item.quantity - 1) }}
-                disabled={item.quantity <= 1}
-                className="w-4 h-4 flex items-center justify-center rounded text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
-              >−</button>
-              {editing ? (
-                <input
-                  ref={inputRef}
-                  type="number"
-                  min={1}
-                  max={99}
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onBlur={commitEdit}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') e.currentTarget.blur()
-                    else if (e.key === 'Escape') cancelEdit()
-                  }}
-                  className="w-8 text-center text-xs bg-transparent border-b border-gray-300 text-gray-900 dark:text-white outline-none"
-                />
-              ) : (
-                <button
-                  onClick={startEditing}
-                  className="w-5 text-center text-xs text-gray-700 dark:text-gray-200"
-                >{item.quantity}</button>
-              )}
-              <button
-                onClick={() => { if (item.quantity < 99) onUpdateQuantity(item.id, item.quantity + 1) }}
-                disabled={item.quantity >= 99}
-                className="w-4 h-4 flex items-center justify-center rounded text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
-              >+</button>
-            </>
-          ) : (
-            <span className="text-xs text-gray-400">× {item.quantity}</span>
-          )}
-        </div>
-      )}
+                onClick={startEditing}
+                className="w-5 text-center text-xs text-gray-500 dark:text-gray-400"
+              >{item.quantity}</button>
+            )}
+            <button
+              onClick={() => { if (item.quantity < 99) onUpdateQuantity(item.id, item.quantity + 1) }}
+              disabled={item.quantity >= 99}
+              className="w-4 h-4 flex items-center justify-center rounded text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+            >+</button>
+          </>
+        ) : (
+          <span className="text-xs text-gray-400">× {item.quantity}</span>
+        )}
+      </div>
 
       {/* Ownership pill */}
       <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 font-medium ${pillClass}`} style={pillStyle}>

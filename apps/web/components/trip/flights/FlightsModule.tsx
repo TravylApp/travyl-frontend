@@ -61,10 +61,7 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency, fo
   useEffect(() => {
     if (hasExpandedRef.current) return
     const expandId = searchParams.get('expand')
-    if (expandId && flights.some((f) => f.id === expandId)) {
-      setEditingId(expandId)
-      hasExpandedRef.current = true
-    }
+    if (expandId && flights.some((f) => f.id === expandId)) { setEditingId(expandId); hasExpandedRef.current = true }
   }, [searchParams, flights])
 
   useEffect(() => {
@@ -92,34 +89,12 @@ export function FlightsModule({ tripId, flights, rawFlights, defaultCurrency, fo
       setBusyOfferId(null)
     }
   }
-
   const handleUpdate = async (id: string, data: FlightData) => {
-    try {
-      await updateFlight(id, data)
-      invalidate()
-      setEditingId(null)
-      if (searchParams.get('expand')) {
-        router.replace(`/trip/${tripId}/flights`, { scroll: false })
-      }
-    } catch (e) {
-      console.error(e)
-      toast.error("Couldn't save — try again")
-    }
+    try { await updateFlight(id, data); invalidate(); setEditingId(null); if (searchParams.get('expand')) router.replace(`/trip/${tripId}/flights`, { scroll: false }) } catch (e) { console.error(e); toast.error("Couldn't save — try again") }
   }
-
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this flight?')) return
-    try {
-      await deleteFlight(id)
-      invalidate()
-      setEditingId(null)
-      if (searchParams.get('expand')) {
-        router.replace(`/trip/${tripId}/flights`, { scroll: false })
-      }
-    } catch (e) {
-      console.error(e)
-      toast.error("Couldn't delete — try again")
-    }
+    try { await deleteFlight(id); invalidate(); setEditingId(null); if (searchParams.get('expand')) router.replace(`/trip/${tripId}/flights`, { scroll: false }) } catch (e) { console.error(e); toast.error("Couldn't delete — try again") }
   }
 
   const tripForPanel = {

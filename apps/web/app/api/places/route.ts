@@ -158,5 +158,18 @@ async function fetchNearby(
     { headers: { Accept: 'application/json' } }
   )
   if (!res.ok) return []
-  return res.json()
+  const raw = await res.json()
+  // Unwrap the nearby Lambda's { places: Place[], total } envelope
+  const nearbyPlaces: any[] = raw.places ?? (Array.isArray(raw) ? raw : [])
+  return nearbyPlaces.map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    lat: p.latitude,
+    lng: p.longitude,
+    category: p.category,
+    rating: p.rating ?? 0,
+    description: '',
+    photo_url: p.photos?.[0] ?? null,
+    address: p.address,
+  }))
 }

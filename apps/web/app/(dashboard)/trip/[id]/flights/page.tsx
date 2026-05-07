@@ -9,8 +9,7 @@ import { FlightsModule } from '@/components/trip/flights/FlightsModule'
 function formatTotalDuration(flights: { departureAt: string | null; arrivalAt: string | null }[]): string {
   const totalMs = flights.reduce((sum, f) => {
     if (!f.departureAt || !f.arrivalAt) return sum
-    const ms = new Date(f.arrivalAt).getTime() - new Date(f.departureAt).getTime()
-    return sum + Math.max(0, ms)
+    return sum + Math.max(0, new Date(f.arrivalAt).getTime() - new Date(f.departureAt).getTime())
   }, 0)
   if (totalMs === 0) return ''
   const h = Math.floor(totalMs / 3600000)
@@ -39,21 +38,15 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
   }
 
   const totalDuration = formatTotalDuration(flights)
-  const description = flights.length === 0
-    ? 'No flights booked yet'
-    : `${flights.length} ${flights.length === 1 ? 'flight' : 'flights'}${totalDuration ? ` · ${totalDuration} total` : ''}`
+  const description = flights.length === 0 ? 'No flights booked yet' : `${flights.length} ${flights.length === 1 ? 'flight' : 'flights'}${totalDuration ? ` · ${totalDuration} total` : ''}`
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
-      <Module
-        title="Flights"
-        description={description}
+      <Module title="Flights" description={description}
         action={
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent('flights:add'))}
+          <button onClick={() => window.dispatchEvent(new CustomEvent('flights:add'))}
             className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-[12px] font-semibold text-white shadow-sm hover:shadow-md transition-shadow"
-            style={{ backgroundColor: 'var(--trip-base)' }}
-          >
+            style={{ backgroundColor: 'var(--trip-base)' }}>
             <Plus size={13} /> Flight
           </button>
         }

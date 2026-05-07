@@ -24,8 +24,9 @@ import { useMarqueeSelection } from './hooks/useMarqueeSelection'
 import { useResizablePanel } from './hooks/useResizablePanel'
 import { MarqueeOverlay } from './MarqueeOverlay'
 import { AllDayRow } from './AllDayRow'
-import { WeekView } from './WeekView'
 import { DayView } from './DayView'
+import { DayStrip } from './DayStrip'
+import { MiniMonthCalendar } from './MiniMonthCalendar'
 import { CardPopover } from './CardPopover'
 import { ForYouPanel } from './ForYouPanel'
 import SidebarTabs from './SidebarTabs'
@@ -117,7 +118,12 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
   const [bookingInProgress, setBookingInProgress] = useState(false)
   const [failedToOpenIds, setFailedToOpenIds] = useState<string[]>([])
   const bookingFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [weekOffset, setWeekOffset] = useState(0)
+
+  // Mini month calendar navigation state — initialized to current date, synced to trip
+  const today = useMemo(() => new Date(), [])
+  const [viewMonth, setViewMonth] = useState(today.getMonth())
+  const [viewYear, setViewYear] = useState(today.getFullYear())
+  const [miniCalendarSynced, setMiniCalendarSynced] = useState(false)
   const router = useRouter()
 
   // Hooks
@@ -339,12 +345,15 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
     setGhostActivities([])
   }, [selectedDayIndex])
 
-  // Reset week offset when switching to week view or when trip changes
+  // Sync mini calendar to trip's start month when trip loads
   useEffect(() => {
-    if (viewMode === 'week') {
-      setWeekOffset(0)
+    if (trip?.start_date && !miniCalendarSynced) {
+      const startDate = new Date(trip.start_date + 'T00:00:00Z')
+      setViewMonth(startDate.getUTCMonth())
+      setViewYear(startDate.getUTCFullYear())
+      setMiniCalendarSynced(true)
     }
-  }, [viewMode, trip?.id])
+  }, [trip?.id, trip?.start_date, miniCalendarSynced])
 
   // ─── Derive trip structure from fetched trip ────────────────
   const parsedStartDate = trip ? new Date(trip.start_date + 'T00:00:00Z') : new Date()
@@ -366,15 +375,14 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
     }
   }), [tripTotalDays, parsedStartMs])
 
-  // Calculate visible days for week view (max 7 days at a time)
-  const weekStartIndex = weekOffset * 7
-  const visibleWeekDays = useMemo(() => {
-    const endIndex = Math.min(weekStartIndex + 7, tripTotalDays)
-    return TRIP_DAYS.slice(weekStartIndex, endIndex)
-  }, [TRIP_DAYS, weekStartIndex, tripTotalDays])
-
-  const hasMoreWeeks = weekStartIndex + 7 < tripTotalDays
-  const hasPreviousWeeks = weekOffset > 0
+  // Activity counts per day for the day strip + mini calendar density visualization
+  const activityCounts = useMemo(() => {
+    const counts = new Map<number, number>()
+    for (const a of scheduledActivities) {
+      counts.set(a.day, (counts.get(a.day) ?? 0) + 1)
+    }
+    return counts
+  }, [scheduledActivities])
 
   const {
     selectedIds: marqueeSelectedIds,
@@ -728,7 +736,7 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
     viewMode === 'day' ? TRIP_DAYS[selectedDayIndex]?.label ?? '' : ''
 
   // Days to show (for DayView we pass a single day)
-  const visibleDays = viewMode === 'week' ? visibleWeekDays : [TRIP_DAYS[selectedDayIndex]]
+  const visibleDays = [TRIP_DAYS[selectedDayIndex]]
 
   const marqueeOverlayElement = (
     <MarqueeOverlay
@@ -757,105 +765,73 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
         {/* Header */}
         <CalendarToolbar
           tripName={trip?.title ?? 'Loading...'}
-          dateRange={viewMode === 'day' ? currentDayLabel : dateRange}
-          commands={commands}
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
+          dateRange={dateRange}
           onAddEvent={handleAddEvent}
           connectionStatus={connectionStatus}
           collaborators={collaboratorsWithProfiles}
           onShare={() => setIsShareModalOpen(true)}
-          selectedActivity={selectedActivity}
-          onDeselect={() => selectEvent(null)}
           tripDays={TRIP_DAYS}
           trip={trip ?? null}
-          scheduledActivities={scheduledActivities}
-          unscheduledActivities={unscheduledActivities}
-          userId={userId}
-          onAssignUnscheduled={(id, dayOffset) =>
-            updateActivity(id, { day: dayOffset, endDay: dayOffset, unscheduled: false })
-          }
-          onDeleteUnscheduled={removeActivity}
           isSharedView={isSharedView}
           onOpenHistory={() => setIsHistoryOpen(true)}
-          onBookTrip={isSharedView ? undefined : handleBookTrip}
-          hasBookingMatches={hasBookingMatches}
-          isBookingInProgress={bookingInProgress}
-          onViewBookings={() => {
-            setBookingPanelMode('summary')
-            setIsBookingPanelOpen(true)
-          }}
-          onFillGaps={handleFillGaps}
-          isGapFilling={isGapFilling}
-          hasGhosts={ghostActivities.length > 0}
-          hasGaps={hasGaps}
-          showEvents={showEvents}
-          onToggleEvents={() => setShowEvents(v => !v)}
+          hasUnscheduled={unscheduledActivities.length > 0}
+          onOpenUnscheduled={undefined}
         />
 
-        {/* Week navigation and overflow notification */}
-        {viewMode === 'week' && tripTotalDays > 7 && (
-          <div className="px-4 py-2 bg-cal-bg border-b border-[var(--cal-border)] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {hasMoreWeeks && (
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                  <span className="text-xs font-medium text-amber-800 dark:text-amber-200">
-                    Trip extends beyond this week
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setWeekOffset(Math.max(0, weekOffset - 1))}
-                disabled={!hasPreviousWeeks}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-cal-surface hover:bg-[var(--cal-hover)] text-[var(--cal-text)] border border-[var(--cal-border)]"
-              >
-                ← Previous week
-              </button>
-              <span className="text-xs text-[var(--cal-text-tertiary)] px-2">
-                Week {weekOffset + 1} of {Math.ceil(tripTotalDays / 7)}
-              </span>
-              <button
-                onClick={() => setWeekOffset(weekOffset + 1)}
-                disabled={!hasMoreWeeks}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-cal-surface hover:bg-[var(--cal-hover)] text-[var(--cal-text)] border border-[var(--cal-border)]"
-              >
-                Next week →
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Day navigation controls */}
-        {viewMode === 'day' && tripTotalDays > 1 && (
-          <div className="px-4 py-2 bg-cal-bg border-b border-[var(--cal-border)] flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {/* Empty div to match week navigation layout */}
-            </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => selectDay(Math.max(0, selectedDayIndex - 1))}
-                disabled={selectedDayIndex === 0}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-cal-surface hover:bg-[var(--cal-hover)] text-[var(--cal-text)] border border-[var(--cal-border)]"
-              >
-                ← Previous day
-              </button>
-              <span className="text-xs text-[var(--cal-text-tertiary)] px-2">
-                Day {selectedDayIndex + 1} of {tripTotalDays}
-              </span>
-              <button
-                onClick={() => selectDay(Math.min(tripTotalDays - 1, selectedDayIndex + 1))}
-                disabled={selectedDayIndex === tripTotalDays - 1}
-                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed bg-cal-surface hover:bg-[var(--cal-hover)] text-[var(--cal-text)] border border-[var(--cal-border)]"
-              >
-                Next day →
-              </button>
-            </div>
-          </div>
+        {/* Day strip */}
+        {tripTotalDays > 1 && (
+          <DayStrip
+            selectedDayIndex={selectedDayIndex}
+            totalDays={tripTotalDays}
+            tripStartDate={parsedStartDate}
+            onSelectDay={selectDay}
+            activityCounts={activityCounts}
+          />
         )}
 
         {/* Grid area */}
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* Left: Mini month calendar sidebar */}
+          <div className="flex-shrink-0 w-[220px] border-r border-cal-border p-3 overflow-y-auto hidden lg:flex flex-col gap-3">
+            <MiniMonthCalendar
+              tripStartDate={parsedStartDate}
+              tripEndDate={parsedEndDate}
+              selectedDayIndex={selectedDayIndex}
+              onSelectDay={selectDay}
+              viewMonth={viewMonth}
+              viewYear={viewYear}
+              onNavigate={(m, y) => { setViewMonth(m); setViewYear(y) }}
+              activityCounts={activityCounts}
+            />
+
+            {/* Trip summary card */}
+            {trip && (
+              <div className="rounded-xl border border-cal-border bg-cal-surface-elevated p-3">
+                <div className="text-[11px] font-semibold text-cal-text-secondary uppercase tracking-wider mb-1.5">
+                  Trip Summary
+                </div>
+                <div className="space-y-1.5 text-[12px] text-cal-text">
+                  <div className="flex justify-between">
+                    <span className="text-cal-text-secondary">Days</span>
+                    <span className="font-medium">{tripTotalDays}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-cal-text-secondary">Activities</span>
+                    <span className="font-medium">{scheduledActivities.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-cal-text-secondary">Unscheduled</span>
+                    <span className="font-medium text-amber-600">{unscheduledActivities.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-cal-text-secondary">Collaborators</span>
+                    <span className="font-medium">{collaboratorsWithProfiles.length}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
         <DndContext
           sensors={isSharedView ? [] : sensors}
           collisionDetection={calendarCollision}
@@ -865,87 +841,47 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
           onDragCancel={handleDragCancel}
         >
           <div className="flex flex-1 min-h-0 overflow-hidden">
-            {/* Calendar grid column (AllDayRow + scrollable time grid) */}
+            {/* Calendar grid column */}
             <div className="flex flex-col flex-1 min-w-0">
-              {/* All-day row: flight + hotel banners — only spans the grid, not the right panel */}
+              {/* All-day row: flight + hotel banners */}
               <AllDayRow
-                days={visibleDays}
+                days={TRIP_DAYS}
                 eventsByDate={eventsByDate}
                 showEvents={showEvents}
               />
-              {/* Scrollable time grid */}
+              {/* Scrollable time grid — single day view */}
               <div ref={scrollRef} className="flex flex-1 min-w-0 overflow-auto">
-                <AnimatePresence mode="wait" initial={false}>
-                  {viewMode === 'week' ? (
-                    <motion.div
-                      key="week"
-                      className="flex flex-1 min-w-0"
-                      initial={{ opacity: 0, x: -12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 12 }}
-                      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                    >
-                      <WeekView
-                        days={visibleWeekDays}
-                        activities={scheduledActivities}
-                        viewers={collaboratorsWithProfiles}
-                        selectedEventId={selectedEventId}
-                        timeRange={timeRange}
-                        tripStartDate={parsedStartDate}
-                        onSelectEvent={handleSelectEvent}
-                        onClickDayHeader={handleClickDayHeader}
-                        onDeselect={() => selectEvent(null)}
-                        pendingDrop={pendingDrop}
-                        marqueeSelectedIds={marqueeSelectedIds}
-                        gridRef={weekGridRef}
-                        marqueeOverlay={marqueeOverlayElement}
-                        onShiftClickEvent={toggleActivityInSelection}
-                        onResizeEvent={handleResizeEvent}
-                        onContextMenu={handleContextMenu}
-                        polls={polls}
-                        pollUserId={userId}
-                        onVotePoll={(activityId, v) => vote(activityId, userId, v)}
-                        bookingStatuses={bookingStatuses}
-                        tripId={tripId}
-                        ghostActivities={ghostActivities}
-                        onConfirmGhost={handleConfirmGhost}
-                        onDismissGhost={handleDismissGhost}
-                      />
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key={`day-${selectedDayIndex}`}
-                      className="flex flex-1 min-w-0"
-                      initial={{ opacity: 0, x: 12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -12 }}
-                      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                    >
-                      <DayView
-                        dayIndex={selectedDayIndex}
-                        label={TRIP_DAYS[selectedDayIndex]?.label ?? ''}
-                        activities={scheduledActivities}
-                        viewers={collaboratorsWithProfiles}
-                        selectedEventId={selectedEventId}
-                        timeRange={timeRange}
-                        tripStartDate={parsedStartDate}
-                        onSelectEvent={handleSelectEvent}
-                        onDeselect={() => selectEvent(null)}
-                        pendingDrop={pendingDrop}
-                        onResizeEvent={handleResizeEvent}
-                        onContextMenu={handleContextMenu}
-                        polls={polls}
-                        pollUserId={userId}
-                        onVotePoll={(activityId, v) => vote(activityId, userId, v)}
-                        bookingStatuses={bookingStatuses}
-                        tripId={tripId}
-                        ghostActivities={ghostActivities}
-                        onConfirmGhost={handleConfirmGhost}
-                        onDismissGhost={handleDismissGhost}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <motion.div
+                  key={`day-${selectedDayIndex}`}
+                  className="flex flex-1 min-w-0"
+                  initial={{ opacity: 0, x: 12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -12 }}
+                  transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <DayView
+                    dayIndex={selectedDayIndex}
+                    label={TRIP_DAYS[selectedDayIndex]?.label ?? ''}
+                    activities={scheduledActivities}
+                    viewers={collaboratorsWithProfiles}
+                    selectedEventId={selectedEventId}
+                    timeRange={timeRange}
+                    tripStartDate={parsedStartDate}
+                    onSelectEvent={handleSelectEvent}
+                    onDeselect={() => selectEvent(null)}
+                    pendingDrop={pendingDrop}
+                    onResizeEvent={handleResizeEvent}
+                    onContextMenu={handleContextMenu}
+                    polls={polls}
+                    pollUserId={userId}
+                    onVotePoll={(activityId, v) => vote(activityId, userId, v)}
+                    bookingStatuses={bookingStatuses}
+                    tripId={tripId}
+                    ghostActivities={ghostActivities}
+                    onConfirmGhost={handleConfirmGhost}
+                    onDismissGhost={handleDismissGhost}
+                  />
+                </motion.div>
               </div>
             </div>
 
@@ -1067,6 +1003,7 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
           )}
         </DndContext>
       </div>
+    </div>
     </motion.div>
     </div>
     <CardPopover

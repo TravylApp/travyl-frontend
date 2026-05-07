@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
+import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'motion/react';
 import { MapPin, Map, Share2, X } from 'lucide-react';
@@ -130,11 +131,13 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
     return names;
   }, []);
 
-  // Strip items with no real image URL or known broken ones
+  // Strip items with no real image URL, known broken ones, or low-res thumbnails
   const hasValidImage = (item: ExploreItem) => {
     const url = item.image;
     if (!url || url.length < 10) return false;
     if (brokenImages.has(item.id)) return false;
+    // Skip tiny Google proxy thumbnails (gstatic) that can't be upscaled
+    if (url.includes('encrypted-tbn')) return false;
     return true;
   };
   const onImgError = (id: string) => {
@@ -261,8 +264,11 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
       for (const item of items) {
         const key = item.id || item.title || item.name;
         if (!key || seen.has(key) || !item.image) continue;
+        const upscaled = upscaleGoogleImage(item.image);
+        // Skip gstatic thumbnails that can't be upscaled
+        if (!upscaled || upscaled.includes('encrypted-tbn')) continue;
         seen.add(key);
-        allItems.push({ ...item, title: item.title || item.name, image: upscaleGoogleImage(item.image) || item.image, category: item.category || fallbackCat || 'Attraction' });
+        allItems.push({ ...item, title: item.title || item.name, image: upscaled, category: item.category || fallbackCat || 'Attraction' });
       }
     };
     add(ctx?.explore_items || []);
@@ -330,8 +336,7 @@ export function TripExploreSection({ trip, embedded }: { trip: Trip | null; embe
               {merged.map((item: ExploreItem, idx: number) => (
                 <div key={`${item.id}-${idx}`} onClick={() => setSelectedPlace(toPlaceItem(item))}
                   className="relative flex-shrink-0 w-[220px] rounded-2xl overflow-hidden shadow-lg group cursor-pointer hover:shadow-xl transition-shadow" style={{ height: 280 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={item.image!} alt={item.title || item.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={() => onImgError(item.id)} referrerPolicy="no-referrer" />
+                  <Image src={item.image!} alt={item.title || item.name || ''} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="220px" onError={() => onImgError(item.id)} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                   <button onClick={(e) => { e.stopPropagation(); setFavorites((prev) => prev.includes(item.id) ? prev.filter((f) => f !== item.id) : [...prev, item.id]); }}
                     className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full backdrop-blur-sm flex items-center justify-center shadow-sm hover:scale-110 transition-transform z-10 ${favorites.includes(item.id) ? 'bg-red-500' : 'bg-black/30'}`}>
@@ -385,13 +390,15 @@ function TripPhotoMosaic({ photos, destination }: { photos: string[]; destinatio
   return (
     <div className="w-full relative overflow-hidden" style={{ height: 600 }}>
       {photos.map((src, i) => (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           key={i}
           src={src}
           alt={destination || 'Trip photo'}
-          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-[2000ms]"
+          fill
+          className="object-cover transition-opacity duration-[2000ms]"
           style={{ opacity: i === current ? 1 : 0, objectPosition: 'center 40%' }}
+          sizes="100vw"
+          priority={i === 0}
         />
       ))}
       <div className="absolute bottom-0 left-0 right-0 pointer-events-none" style={{

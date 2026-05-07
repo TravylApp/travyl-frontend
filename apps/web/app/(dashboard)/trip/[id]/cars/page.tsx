@@ -21,6 +21,12 @@ export default function CarsPage({ params }: { params: Promise<{ id: string }> }
   const { format: formatHome } = useHomeCurrency()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tripCurrency = ((trip as any)?.currency ?? 'USD').match(/^[A-Z]{3}/)?.[0] ?? 'USD'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tripDestination = (trip as any)?.destination as string | undefined
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tripStartDate = (trip as any)?.start_date as string | undefined
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tripEndDate = (trip as any)?.end_date as string | undefined
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const cars = (((trip?.trip_context as any)?.cars as CarRental[] | undefined) ?? [])
@@ -62,6 +68,9 @@ export default function CarsPage({ params }: { params: Promise<{ id: string }> }
           cars={cars}
           defaultCurrency={tripCurrency}
           formatPrice={formatPrice}
+          tripDestination={tripDestination}
+          tripStartDate={tripStartDate}
+          tripEndDate={tripEndDate}
         />
       </Module>
     </div>

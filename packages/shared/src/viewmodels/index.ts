@@ -20,11 +20,13 @@ export {
   buildItineraryDayViewModel,
   buildFlightViewModel,
   buildHotelViewModel,
+  buildCarViewModel,
   type ActivityViewModel,
   type TimeGroup,
   type ItineraryDayViewModel,
   type FlightViewModel,
   type HotelViewModel,
+  type CarViewModel,
 } from './itineraryViewModel';
 
 export {

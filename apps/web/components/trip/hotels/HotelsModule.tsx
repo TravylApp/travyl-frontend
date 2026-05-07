@@ -58,10 +58,7 @@ export function HotelsModule({ tripId, hotels, rawHotels, defaultCurrency, forma
   useEffect(() => {
     if (hasExpandedRef.current) return
     const expandId = searchParams.get('expand')
-    if (expandId && hotels.some((h) => h.id === expandId)) {
-      setEditingId(expandId)
-      hasExpandedRef.current = true
-    }
+    if (expandId && hotels.some((h) => h.id === expandId)) { setEditingId(expandId); hasExpandedRef.current = true }
   }, [searchParams, hotels])
 
   useEffect(() => {
@@ -89,34 +86,12 @@ export function HotelsModule({ tripId, hotels, rawHotels, defaultCurrency, forma
       setBusyOfferId(null)
     }
   }
-
   const handleUpdate = async (id: string, data: HotelData) => {
-    try {
-      await updateHotel(id, data)
-      invalidate()
-      setEditingId(null)
-      if (searchParams.get('expand')) {
-        router.replace(`/trip/${tripId}/hotels`, { scroll: false })
-      }
-    } catch (e) {
-      console.error(e)
-      toast.error("Couldn't save — try again")
-    }
+    try { await updateHotel(id, data); invalidate(); setEditingId(null); if (searchParams.get('expand')) router.replace(`/trip/${tripId}/hotels`, { scroll: false }) } catch (e) { console.error(e); toast.error("Couldn't save — try again") }
   }
-
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this hotel booking?')) return
-    try {
-      await deleteHotel(id)
-      invalidate()
-      setEditingId(null)
-      if (searchParams.get('expand')) {
-        router.replace(`/trip/${tripId}/hotels`, { scroll: false })
-      }
-    } catch (e) {
-      console.error(e)
-      toast.error("Couldn't delete — try again")
-    }
+    try { await deleteHotel(id); invalidate(); setEditingId(null); if (searchParams.get('expand')) router.replace(`/trip/${tripId}/hotels`, { scroll: false }) } catch (e) { console.error(e); toast.error("Couldn't delete — try again") }
   }
 
   const tripForPanel = {

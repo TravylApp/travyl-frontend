@@ -15,7 +15,8 @@ function upscaleImage(url: string | null | undefined, width = 1200, height = 800
   if (url.includes('googleusercontent.com')) {
     return url
       .replace(/=w\d+-h\d+[^&\s]*/, `=w${width}-h${height}-k-no`)
-      .replace(/=s\d+-w\d+-h\d+[^&\s]*/, `=w${width}-h${height}-k-no`);
+      .replace(/=s\d+-w\d+-h\d+[^&\s]*/, `=w${width}-h${height}-k-no`)
+      .replace(/=s\d+/, `=w${width}-h${height}-k-no`);
   }
   if (url.includes('4sqi.net') || url.includes('foursquare.com') || url.includes('fsq.com')) {
     return url.replace(/\/(\d+x\d+|cap\d+|width\d+)\//, '/original/');

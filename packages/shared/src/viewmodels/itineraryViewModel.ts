@@ -8,7 +8,7 @@
  * Used by the web ItineraryTab and the mobile trip overview screens.
  */
 
-import type { ItineraryDayWithActivities, Activity, Flight, Hotel } from '../types';
+import type { ItineraryDayWithActivities, Activity, Flight, Hotel, Car } from '../types';
 import { formatCurrency, upscaleGoogleImage } from '../utils';
 
 // ─── Time helpers ──────────────────────────────────────────────
@@ -399,5 +399,44 @@ export function buildHotelViewModel(hotel: Hotel): HotelViewModel {
     starRating: d.star_rating,
     imageUrl: d.image_url,
     bookingRef: d.booking_ref,
+  };
+}
+
+// ─── Car rental view model ──────────────────────────────────────
+
+export interface CarViewModel {
+  id: string;
+  company: string;
+  model: string | null;
+  pickupLocation: string | null;
+  dropoffLocation: string | null;
+  pickupDisplay: string | null;
+  dropoffDisplay: string | null;
+  pickupAt: string | null;
+  dropoffAt: string | null;
+  priceDisplay: string | null;
+  price: number | null;
+  priceCurrency: string | null;
+  bookingRef: string | null;
+  imageUrl: string | null;
+}
+
+export function buildCarViewModel(car: Car): CarViewModel {
+  const d = car.data;
+  return {
+    id: car.id,
+    company: d.company,
+    model: d.model,
+    pickupLocation: d.pickup_location,
+    dropoffLocation: d.dropoff_location,
+    pickupDisplay: formatDatetime(d.pickup_at),
+    dropoffDisplay: formatDatetime(d.dropoff_at),
+    pickupAt: d.pickup_at,
+    dropoffAt: d.dropoff_at,
+    priceDisplay: d.price != null && d.currency ? formatCurrency(d.price, d.currency) : null,
+    price: d.price ?? null,
+    priceCurrency: d.price != null ? d.currency ?? null : null,
+    bookingRef: d.booking_ref,
+    imageUrl: d.image_url,
   };
 }
