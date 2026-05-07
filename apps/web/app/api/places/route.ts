@@ -8,7 +8,11 @@ import {
 import { filterByRadius } from '@/lib/haversine'
 import { createServerClient } from '@supabase/ssr'
 
-const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
+// FastAPI backend (EC2, separate from SST API Gateway). The SST APIGW
+// exposes `/places/nearby` (no `/api` prefix) and requires auth, whereas
+// FastAPI serves `/api/places/nearby` openly — and that's the path this
+// route hits. Defaults to staging so local dev works without env config.
+const API_URL = process.env.FASTAPI_URL || 'https://api.dev.gotravyl.com'
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_KEY = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)!
 
