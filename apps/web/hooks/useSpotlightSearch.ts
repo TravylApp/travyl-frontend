@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams, usePathname } from 'next/navigation'
 import { useAuthStore, useTrip, mergeSearchResults, type SpotlightResult } from '@travyl/shared'
+import { useCommandRegistry } from '@/stores/commandRegistry'
 import { fuzzyMatch } from '@/components/spotlight/fuzzyMatch'
 import { SITE_ROUTES } from '@/lib/sitemap'
 
@@ -181,6 +182,7 @@ export function useSpotlightSearch() {
   // Get trip name for context pill
   const { data: tripData } = useTrip(isInTripContext && !clearTripScope ? tripId ?? undefined : undefined)
   const tripName = tripData?.title ?? null
+  const registryCommands = useCommandRegistry((s) => s.pageCommands)
 
   // 200ms debounce (single debounce for the two-phase pipeline)
   useEffect(() => {
@@ -248,6 +250,36 @@ export function useSpotlightSearch() {
 
     return matched.length ? { navigation: matched } : {}
   }, [debouncedQuery, scope, routeKeywords])
+
+  // Client-side filter for page commands using fuzzy match
+  const commandResults = useMemo((): Record<string, SpotlightResult[]> => {
+    if (!registryCommands?.length || debouncedQuery.length < 1) return {}
+    if (scope && scope !== 'commands') return {}
+    const q = debouncedQuery.toLowerCase()
+
+    const matched: (SpotlightResult & { _fuzzyScore: number })[] = registryCommands
+      .filter((cmd) => cmd.isEnabled)
+      .map((cmd) => {
+        const score = fuzzyMatch(cmd.label, q)
+        if (score === null) return null
+        return {
+          id: cmd.id,
+          type: 'command' as const,
+          title: cmd.label,
+          subtitle: cmd.description,
+          href: '',
+          score: 1,
+          shortcut: cmd.shortcut,
+          execute: cmd.execute,
+          _fuzzyScore: score,
+        }
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null)
+      .sort((a, b) => b._fuzzyScore - a._fuzzyScore)
+
+    const cleaned = matched.map(({ _fuzzyScore, ...rest }) => rest)
+    return cleaned.length ? { command: cleaned } : {}
+  }, [registryCommands, debouncedQuery, scope])
 
   // Transform Phase 1 trip results
   const tripResults = useMemo((): Record<string, SpotlightResult[]> => {
@@ -348,10 +380,10 @@ export function useSpotlightSearch() {
   // Merge all sources
   const results = useMemo(() => {
     return mergeSearchResults(
-      [actionResults, tripResults, quickEntityResults, deepEntityResults, navResults],
+      [actionResults, tripResults, quickEntityResults, deepEntityResults, navResults, commandResults],
       { maxPerCategory: 5 },
     )
-  }, [actionResults, tripResults, quickEntityResults, deepEntityResults, navResults])
+  }, [actionResults, tripResults, quickEntityResults, deepEntityResults, navResults, commandResults])
 
   // Recent searches
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
