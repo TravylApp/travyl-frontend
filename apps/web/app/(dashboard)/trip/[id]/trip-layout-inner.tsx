@@ -4,11 +4,11 @@ import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapPin, Map, Share2, X } from 'lucide-react';
+import { MapPin, Map, X } from 'lucide-react';
 import type { Trip } from '@travyl/shared';
 import { usePathname, useRouter } from 'next/navigation';
-import TripRail, { getTabMeta, useRailCollapsed } from '@/components/trip-rail';
-import { useItineraryScreen, useAuthStore, canViewTrip, useDestinationImage, upscaleGoogleImage, ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
+import TripRail, { useRailCollapsed } from '@/components/trip-rail';
+import { useItineraryScreen, useAuthStore, canViewTrip, useDestinationImage, upscaleGoogleImage } from '@travyl/shared';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
 import { CompactTripHeader } from '@/components/trip/CompactTripHeader';
@@ -20,85 +20,6 @@ import { useQuery } from '@tanstack/react-query';
 import type { PlaceItem } from '@travyl/shared';
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
-
-// ─── Content Header Bar (per-tab) ───────────────────────────
-
-function ContentHeader({ tripId, trip, mapOpen, onToggleMap }: {
-  tripId: string;
-  trip: Trip | null | undefined;
-  mapOpen: boolean;
-  onToggleMap: () => void;
-}) {
-  const pathname = usePathname();
-  const basePath = `/trip/${tripId}`;
-  const segment = pathname.replace(basePath, '').replace(/^\//, '') || '';
-  const tab = getTabMeta(segment);
-  const [shareBusy, setShareBusy] = useState(false);
-  const [railCollapsed] = useRailCollapsed();
-
-  // Share the trip from any subpage. Generates the same `/trip/<id>/share/<token>`
-  // URL the Settings → Sharing tab and the Trips list card both produce, so a
-  // link from here is interchangeable with one shared from anywhere else.
-  const handleShare = useCallback(async () => {
-    if (!trip?.id || shareBusy) return;
-    setShareBusy(true);
-    try {
-      const token = await ensureShareLinkToken(trip.id);
-      if (trip.visibility === 'private') {
-        try { await updateTripVisibility(trip.id, 'link'); } catch {}
-      }
-      const url = `${window.location.origin}/trip/${trip.id}/share/${token}`;
-      const message = `Join me planning my trip to ${trip.destination} on Travyl: ${url}`;
-      const title = trip.title ?? `Trip to ${trip.destination}`;
-      if (typeof navigator !== 'undefined' && (navigator as any).share) {
-        try { await (navigator as any).share({ title, text: message, url }); return; } catch {}
-      }
-      try {
-        await navigator.clipboard.writeText(url);
-        window.alert(`Link copied to clipboard:\n${url}`);
-      } catch {
-        window.alert(`Share link:\n${url}`);
-      }
-    } catch (e: any) {
-      window.alert(`Share failed: ${e?.message ?? 'unknown error'}`);
-    } finally {
-      setShareBusy(false);
-    }
-  }, [trip?.id, trip?.destination, trip?.title, trip?.visibility, shareBusy]);
-
-  if (!tab) return null;
-  const Icon = tab.icon;
-
-  return (
-    <div className={`shrink-0 bg-white dark:bg-background px-5 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} pt-4 pb-3 sticky top-0 z-20 transition-[padding] duration-200 ease-out`}
-      style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.04)' }}>
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0" style={{ backgroundColor: `${tab.color}18`, color: tab.color }}>
-          <Icon size={15} />
-        </div>
-        <div className="flex-1">
-          <h2 className="text-[17px] tracking-wide font-normal text-gray-900 dark:text-white font-serif">{tab.label}</h2>
-          <p className="text-[12px] text-gray-500 dark:text-gray-400">{tab.subtitle}</p>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={handleShare}
-            disabled={!trip?.id || shareBusy}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 border-gray-200 dark:border-white/[0.12] hover:bg-gray-50 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300 disabled:opacity-50"
-            title="Share this trip"
-          >
-            <Share2 size={13} />
-            <span className="text-[12px] font-medium">{shareBusy ? '...' : 'Share'}</span>
-          </button>
-          <button onClick={onToggleMap} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 ${mapOpen ? 'text-white shadow-md' : 'border-gray-200 dark:border-white/[0.12] hover:bg-gray-50 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300'}`} style={mapOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined} title={mapOpen ? 'Hide map' : 'Show map'}>
-            <Map size={13} />
-            <span className="text-[12px] font-medium">Map</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Trip Explore Section (overview page — shows trip_context data) ──
 
@@ -499,15 +420,6 @@ function TripLayoutContent({
       {/* Content area */}
       <div className={`relative z-10 ${isCalendar ? 'flex-1 flex flex-col min-h-0' : ''}`}>
         <div className={isCalendar ? 'flex-1 flex flex-col min-h-0 w-full' : isMagazine ? '' : 'mx-auto max-w-[1800px]'}>
-          {!isMagazine && !isCalendar && (
-            <ContentHeader
-              tripId={tripId}
-              trip={trip}
-              mapOpen={mapOpen}
-              onToggleMap={() => setMapOpen(!mapOpen)}
-            />
-          )}
-
           {isOverview && <TripOnboardingBanner />}
 
           <div className={`flex ${isCalendar ? 'flex-1 min-h-0' : ''}`}>
