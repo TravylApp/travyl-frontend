@@ -445,9 +445,9 @@ function CostOfLivingSection({ cost, localCurrency }: { cost: NonNullable<TripCo
       : '';
 
   return (
-    <section>
+    <section className="flex flex-col h-full">
       <SectionHeader eyebrow="Cost of Living" title={`Cost Per Diem${headingSuffix}`} icon={Wallet} />
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 flex-1 content-start">
         {items.map(({ icon: Icon, label, value, raw }) => (
           <div key={label} className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm p-3 text-center">
             <Icon size={16} className="mx-auto mb-1.5 text-[color:var(--trip-base)]" />
@@ -540,13 +540,13 @@ function PhrasesSection({ phrases, language }: { phrases: Record<string, string>
   const entries = showAll ? allEntries : allEntries.slice(0, 6);
 
   return (
-    <section>
+    <section className="flex flex-col h-full">
       <SectionHeader
         eyebrow="Local Language"
         title={`Essential Phrases${language ? ` · ${language}` : ''}`}
         icon={Languages}
       />
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1 auto-rows-fr">
         {entries.map(([english, translated]) => (
           <button key={english}
             onClick={() => speak(translated)}
@@ -561,7 +561,7 @@ function PhrasesSection({ phrases, language }: { phrases: Record<string, string>
         ))}
       </div>
       {allEntries.length > 6 && (
-        <button onClick={() => setShowAll(v => !v)} className="mt-2 text-[11px] font-medium hover:underline text-[color:var(--trip-base)]">
+        <button onClick={() => setShowAll(v => !v)} className="mt-2 text-[11px] font-medium hover:underline text-[color:var(--trip-base)] self-start">
           {showAll ? 'Show less' : `Show ${allEntries.length - 6} more phrases`}
         </button>
       )}
@@ -978,14 +978,14 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
           {/* ── Row 3: Phrases + Cost of Living ── */}
           {(phrasesData || costData) && (
             <div className={`relative z-10 mt-8 ${sectionCard}`}>
-              <div className="flex flex-col lg:flex-row gap-6 items-start">
+              <div className="flex flex-col lg:flex-row gap-6 items-stretch">
                 {phrasesData && Object.keys(phrasesData).length > 0 && (
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 flex flex-col">
                     <PhrasesSection phrases={phrasesData as any} language={trip?.trip_context?.country?.language} />
                   </div>
                 )}
                 {costData && (
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 flex flex-col">
                     <CostOfLivingSection cost={costData} localCurrency={trip?.trip_context?.country?.currency?.code} />
                   </div>
                 )}

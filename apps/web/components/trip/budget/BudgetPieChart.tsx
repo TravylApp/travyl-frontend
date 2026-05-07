@@ -3,14 +3,18 @@
 import { useRef, useState } from 'react'
 import type { BudgetItem } from './types'
 
+// Travyl-brand palette: deep navy → mid-blue → gold range, with neutral grey
+// for "other". Drawn from packages/shared/src/config/colors.ts (Blue, Navy,
+// Brand.gold/goldDark/accent) so the chart stays visually consistent with the
+// rest of the app's chrome.
 const PIE_COLORS: Record<string, string> = {
-  flights: '#003594',
-  hotels: '#C4956A',
-  food: '#D4733D',
-  activities: '#6B9E8E',
-  transportation: '#8B7EC4',
-  shopping: '#8FB87A',
-  other: '#9CA3AF',
+  flights: '#003594',        // Blue 600 — brand primary
+  hotels: '#d4b57a',         // Brand gold — warm contrast against the blues
+  food: '#FFC72C',           // Brand accent gold — brightest pop
+  activities: '#1A5CC8',     // Blue 500 — vibrant mid-blue
+  transportation: '#1e3a5f', // Navy — deep grounded tone
+  shopping: '#4D7FD7',       // Blue 400 — lighter blue, still on-brand
+  other: '#9CA3AF',          // Gray 400 — neutral
 }
 
 function getColor(id: string, name: string): string {
