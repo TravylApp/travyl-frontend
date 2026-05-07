@@ -17,27 +17,27 @@ export function TransitDirectionResults({ results, isLoading, error, onAddToTrip
   if (error) {
     return (
       <div className="text-center py-8">
-        <p className="text-[13px] text-red-500">{error}</p>
-        <button onClick={onRetry} className="mt-3 text-[13px] text-blue-600 hover:underline">Try again</button>
+        <p className="text-sm text-red-500">{error}</p>
+        <button onClick={onRetry} className="mt-3 text-sm text-blue-600 hover:underline">Try again</button>
       </div>
     );
   }
   if (results.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-[13px] text-gray-500 dark:text-gray-400">No transit routes found. Try adjusting your departure time.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">No transit routes found. Try adjusting your departure time.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-3">
-      <p className="text-[13px] font-medium text-gray-700 dark:text-gray-300">{results.length} route{results.length > 1 ? 's' : ''} found</p>
+      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{results.length} route{results.length > 1 ? 's' : ''} found</p>
       {results.map((result, idx) => (
         <div key={result.id || idx} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-sm transition-shadow">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <span className="text-[13px] font-semibold text-gray-900 dark:text-white">
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">
                 {Math.floor(result.total_duration_minutes / 60)}h {result.total_duration_minutes % 60}m
               </span>
               {result.fare && <span className="text-[12px] text-gray-500">{result.fare.currency} {result.fare.amount.toFixed(2)}</span>}

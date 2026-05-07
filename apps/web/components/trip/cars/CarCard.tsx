@@ -164,7 +164,7 @@ export function CarCard({ car, formatPrice, onEdit, onDelete }: CarCardProps) {
               <span />
             )}
             {data.price != null && (
-              <span className="text-[13px] font-semibold text-gray-900 dark:text-white tabular-nums">
+              <span className="text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
                 {formatPrice(data.price, data.currency)}
               </span>
             )}

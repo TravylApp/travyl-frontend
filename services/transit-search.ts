@@ -99,6 +99,10 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
     const otpUrl = Resource.OtpServerUrl.value;
     const otpKey = Resource.OtpApiKey.value;
 
+    if (!otpUrl || otpUrl === 'placeholder') {
+      return { statusCode: 503, body: JSON.stringify({ error: 'Transit routing not configured' }) };
+    }
+
     const otpResponse = await fetch(
       `${otpUrl}/otp/routers/default/plan?` + new URLSearchParams({
         fromPlace: `${origin_lat},${origin_lng}`,

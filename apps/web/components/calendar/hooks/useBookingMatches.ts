@@ -84,7 +84,7 @@ export function useBookingMatches({
 
   // Fetch current status from proxy
   const fetchStatus = useCallback(async () => {
-    const res = await fetch(`/api/calendar/book/status/${tripId}`, {
+    const res = await fetch(`/api/calendar/book/status?tripId=${tripId}`, {
       headers: { Authorization: `Bearer ${authToken}` },
     })
     if (!res.ok) return

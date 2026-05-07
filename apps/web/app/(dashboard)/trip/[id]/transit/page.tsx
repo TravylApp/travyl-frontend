@@ -25,7 +25,7 @@ export default function TransitPage({ params }: { params: Promise<{ id: string }
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="text-[26px] font-serif font-normal text-gray-900 dark:text-white tracking-tight leading-tight">Transit</h1>
-          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5">Trains, buses, subways & more</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">Trains, buses, subways & more</p>
         </div>
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('transit:add'))}

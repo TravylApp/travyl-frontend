@@ -89,7 +89,7 @@ function AlternativeCard({
 
       {/* Content */}
       <div className="p-3">
-        <div className="text-[13px] font-semibold text-gray-900 leading-tight line-clamp-2">
+        <div className="text-sm font-semibold text-gray-900 leading-tight line-clamp-2">
           {alternative.name}
         </div>
         <div className="flex items-center gap-1.5 mt-1.5">

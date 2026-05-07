@@ -267,7 +267,7 @@ export function HotelResultDetailModal({
                 <h3 className="text-[11px] font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400 mb-2">
                   About this property
                 </h3>
-                <p className="text-[13px] leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                <p className="text-sm leading-relaxed text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                   {hotel.description}
                 </p>
               </section>
@@ -324,7 +324,7 @@ export function HotelResultDetailModal({
                 <ul className="space-y-2">
                   {hotel.nearbyPlaces.map((np) => (
                     <li key={np.name} className="flex items-start justify-between gap-3 py-1.5 border-b border-gray-100 dark:border-white/[0.06] last:border-0">
-                      <span className="text-[13px] text-gray-800 dark:text-gray-200 truncate">{np.name}</span>
+                      <span className="text-sm text-gray-800 dark:text-gray-200 truncate">{np.name}</span>
                       <div className="flex items-center gap-2 text-[11.5px] text-gray-500 dark:text-gray-400 shrink-0">
                         {np.transportations.map((t, i) => {
                           const Icon = transportIcon(t.type)
@@ -357,7 +357,7 @@ export function HotelResultDetailModal({
                     <span className="text-[12px] text-gray-500 dark:text-gray-400">/ night</span>
                   </div>
                 ) : (
-                  <p className="text-[13px] text-gray-400">Price not available</p>
+                  <p className="text-sm text-gray-400">Price not available</p>
                 )}
                 {hotel.totalRate != null && hotel.price != null && hotel.totalRate !== hotel.price && (
                   <p className="text-[12px] text-gray-500 dark:text-gray-400 tabular-nums">
@@ -367,7 +367,7 @@ export function HotelResultDetailModal({
                 <button
                   onClick={handleAdd}
                   disabled={busy || alreadySaved}
-                  className={`w-full inline-flex items-center justify-center gap-1.5 px-4 h-11 rounded-lg text-[14px] font-semibold text-white shadow-sm hover:shadow-md transition disabled:opacity-50 ${
+                  className={`w-full inline-flex items-center justify-center gap-1.5 px-4 h-11 rounded-lg text-sm font-semibold text-white shadow-sm hover:shadow-md transition disabled:opacity-50 ${
                     alreadySaved
                       ? 'bg-gray-500'
                       : 'bg-[#1e3a5f] hover:bg-[#162d4a]'

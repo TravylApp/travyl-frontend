@@ -54,7 +54,7 @@ export default function CarsPage({ params }: { params: Promise<{ id: string }> }
             Car rentals
           </h1>
           {description && (
-            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5">{description}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">{description}</p>
           )}
         </div>
         <button

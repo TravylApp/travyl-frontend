@@ -169,7 +169,7 @@ export function PlaceDetailOverlay({
               onFocus={() => setSearchFocused(true)}
               onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
               placeholder="Search for a place..."
-              className="w-full pl-10 pr-10 py-2.5 rounded-full bg-white border border-gray-200 shadow-sm text-[13px] text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f]/30 transition-all"
+              className="w-full pl-10 pr-10 py-2.5 rounded-full bg-white border border-gray-200 shadow-sm text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/15 focus:border-[#1e3a5f]/30 transition-all"
             />
             {searchQuery && (
               <button
@@ -193,7 +193,7 @@ export function PlaceDetailOverlay({
                 >
                   <SearchThumb src={p.images?.[0] || p.image} alt={p.name} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-semibold text-gray-800 truncate">{p.name}</p>
+                    <p className="text-sm font-semibold text-gray-800 truncate">{p.name}</p>
                     <p className="text-[11px] text-gray-500 truncate">{p.tagline}</p>
                   </div>
                   {p.rating != null && (
@@ -209,7 +209,7 @@ export function PlaceDetailOverlay({
 
           {searchFocused && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
             <div className="absolute top-full left-0 right-0 max-w-2xl mx-auto mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-4 text-center z-50">
-              <p className="text-[13px] text-gray-400">No places found</p>
+              <p className="text-sm text-gray-400">No places found</p>
             </div>
           )}
 
@@ -219,38 +219,25 @@ export function PlaceDetailOverlay({
         <div className="flex flex-col md:flex-row gap-4">
           {/* Left: Card + Discovery arrows */}
           <motion.div
-            initial={{ opacity: 0, x: -120, scale: 0.92 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: -120, scale: 0.92 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
             className="w-full md:flex-1 flex flex-col gap-3"
           >
             <div className="relative rounded-2xl shadow-lg border border-gray-200/60 overflow-hidden" style={{ minHeight: 520 }} onClick={(e) => e.stopPropagation()}>
-              <AnimatePresence mode="popLayout" custom={direction}>
+              <AnimatePresence mode="popLayout">
                 <motion.div
                   key={currentPlace.id}
-                  custom={direction}
                   variants={{
-                    enter: (d: number) => ({
-                      x: d > 0 ? 250 : -250,
-                      y: -30,
-                      opacity: 0,
-                      rotate: d > 0 ? 12 : -12,
-                      scale: 0.92,
-                    }),
-                    center: { x: 0, y: 0, opacity: 1, rotate: 0, scale: 1 },
-                    exit: (d: number) => ({
-                      x: d > 0 ? -200 : 200,
-                      y: -50,
-                      opacity: 0,
-                      rotate: d > 0 ? -15 : 15,
-                      scale: 0.88,
-                    }),
+                    enter: { opacity: 0 },
+                    center: { opacity: 1 },
+                    exit: { opacity: 0 },
                   }}
                   initial="enter"
                   animate="center"
                   exit="exit"
-                  transition={{ duration: 0.4, ease: [0, 0, 0.2, 1] }}
+                  transition={{ duration: 0.15 }}
                   className="relative w-full h-full"
                 >
                   <WebCardFront
@@ -282,9 +269,9 @@ export function PlaceDetailOverlay({
                         <div className="relative h-full flex flex-col p-5 text-white overflow-y-auto">
                           {/* Header */}
                           <motion.div
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.05, duration: 0.3 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.15 }}
                           >
                             <span className="text-[10px] font-bold uppercase tracking-widest text-sky-300 mb-1 block">
                               {currentPlace.category} &middot; {currentPlace.type}
@@ -308,15 +295,15 @@ export function PlaceDetailOverlay({
 
                           {/* Quick stats */}
                           <motion.div
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.12, duration: 0.3 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.15 }}
                             className="grid grid-cols-2 gap-2 mb-3"
                           >
                             {currentPlace.priceLevel && (
                               <div className="bg-white/10 rounded-xl px-3 py-2">
                                 <span className="text-[9px] text-white/45 block">Price</span>
-                                <span className="text-[13px] font-bold">
+                                <span className="text-sm font-bold">
                                   {'$'.repeat(currentPlace.priceLevel)}
                                   <span className="text-white/25">{'$'.repeat(4 - currentPlace.priceLevel)}</span>
                                 </span>
@@ -325,19 +312,19 @@ export function PlaceDetailOverlay({
                             {currentPlace.duration && (
                               <div className="bg-white/10 rounded-xl px-3 py-2">
                                 <span className="text-[9px] text-white/45 block">Duration</span>
-                                <span className="text-[13px] font-bold">{currentPlace.duration}</span>
+                                <span className="text-sm font-bold">{currentPlace.duration}</span>
                               </div>
                             )}
                             {currentPlace.admissionFee && (
                               <div className="bg-white/10 rounded-xl px-3 py-2">
                                 <span className="text-[9px] text-white/45 block">Admission</span>
-                                <span className="text-[13px] font-bold">{currentPlace.admissionFee}</span>
+                                <span className="text-sm font-bold">{currentPlace.admissionFee}</span>
                               </div>
                             )}
                             {currentPlace.rating != null && currentPlace.reviewCount && (
                               <div className="bg-white/10 rounded-xl px-3 py-2">
                                 <span className="text-[9px] text-white/45 block">Reviews</span>
-                                <span className="text-[13px] font-bold">{currentPlace.reviewCount.toLocaleString()}</span>
+                                <span className="text-sm font-bold">{currentPlace.reviewCount.toLocaleString()}</span>
                               </div>
                             )}
                             {currentPlace.bestTimeToVisit && (
@@ -351,9 +338,9 @@ export function PlaceDetailOverlay({
                           {/* Contact info */}
                           {(currentPlace.hours || currentPlace.phone || currentPlace.website) && (
                             <motion.div
-                              initial={{ opacity: 0, y: 8 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: 0.15, duration: 0.3 }}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ duration: 0.15 }}
                               className="flex flex-wrap gap-1.5 mb-3"
                             >
                               {currentPlace.hours && (
@@ -380,10 +367,10 @@ export function PlaceDetailOverlay({
                           {/* Description */}
                           {currentPlace.description && (
                             <motion.p
-                              initial={{ opacity: 0, y: 8 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: 0.18, duration: 0.3 }}
-                              className="text-[13px] text-white/70 leading-[19px] line-clamp-3 mb-3"
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ duration: 0.15 }}
+                              className="text-sm text-white/70 leading-[19px] line-clamp-3 mb-3"
                             >
                               {currentPlace.description}
                             </motion.p>
@@ -392,9 +379,9 @@ export function PlaceDetailOverlay({
                           {/* Tips */}
                           {currentPlace.tips && currentPlace.tips.length > 0 && (
                             <motion.div
-                              initial={{ opacity: 0, y: 8 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: 0.2, duration: 0.3 }}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ duration: 0.15 }}
                               className="mb-3"
                             >
                               <div className="flex items-center gap-1.5 mb-1.5">
@@ -414,9 +401,9 @@ export function PlaceDetailOverlay({
 
                           {/* Action buttons */}
                           <motion.div
-                            initial={{ opacity: 0, y: 16 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.22, duration: 0.3 }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.15 }}
                             className="flex flex-col gap-2"
                           >
                             <WebOverlayActions place={currentPlace} />
@@ -456,10 +443,10 @@ export function PlaceDetailOverlay({
           {/* Right: Map + Action buttons */}
           {hasCoords && (
             <motion.div
-              initial={{ opacity: 0, x: 120, scale: 0.92 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: 120, scale: 0.92 }}
-              transition={{ duration: 0.4, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
               className="hidden md:flex flex-1 flex-col gap-3"
               onClick={(e) => e.stopPropagation()}
             >
@@ -488,10 +475,10 @@ export function PlaceDetailOverlay({
 
       {/* Explore section */}
       <motion.div
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: 16, transition: { duration: 0.2 } }}
-        transition={{ duration: 0.35, delay: 0.15, ease: [0, 0, 0.2, 1] }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
         onClick={(e) => e.stopPropagation()}
       >
         {!minimal && <ExplorePreview onItemClick={(item) => {
@@ -722,25 +709,25 @@ function WebCardBack({
 
         <div className="flex flex-col gap-2">
           <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0, duration: 0.25 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15 }}
           >
             <WebQuickFacts place={place} />
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.25 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15 }}
           >
             <WebGettingThere place={place} />
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.25 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15 }}
           >
             <WebPlaceActions place={place} />
           </motion.div>
@@ -897,7 +884,7 @@ function WebOverlayActions({ place }: { place: PlaceItem }) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white text-[#1e3a5f] font-bold text-[13px] hover:bg-white/90 transition-colors [&_svg]:text-[#1e3a5f]"
+          className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white text-[#1e3a5f] font-bold text-sm hover:bg-white/90 transition-colors [&_svg]:text-[#1e3a5f]"
         >
           {primary.icon}
           {primary.label}

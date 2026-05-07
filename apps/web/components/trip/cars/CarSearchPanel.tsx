@@ -454,7 +454,7 @@ export function CarSearchPanel({
       {showForm && (
         <div className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.03] p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[13px] font-semibold text-gray-700 dark:text-gray-300">Search options</p>
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Search options</p>
             <button
               onClick={() => setShowForm(false)}
               className="text-[12px] text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
@@ -514,7 +514,7 @@ export function CarSearchPanel({
           <Search size={22} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
           {apiError ? (
             <>
-              <p className="text-[13px] text-red-600 dark:text-red-400 font-medium">
+              <p className="text-sm text-red-600 dark:text-red-400 font-medium">
                 Search failed
               </p>
               <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 max-w-sm mx-auto">
@@ -523,7 +523,7 @@ export function CarSearchPanel({
             </>
           ) : (
             <>
-              <p className="text-[13px] text-gray-500 dark:text-gray-400">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 No car rentals found for this location and dates.
               </p>
               <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
@@ -534,14 +534,14 @@ export function CarSearchPanel({
           {onAddManually && (
             <button
               onClick={onAddManually}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[13px] font-medium border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
+              className="mt-4 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-sm font-medium border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
             >
               <Plus size={13} /> Add manually
             </button>
           )}
           <button
             onClick={() => setShowForm(true)}
-            className="mt-2 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[13px] font-medium border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
+            className="mt-2 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-sm font-medium border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
           >
             <Search size={13} /> Change search
           </button>
@@ -552,7 +552,7 @@ export function CarSearchPanel({
       {!isLoading && !hasResults && !searchEnabled && (
         <div className="text-center py-12">
           <Car size={22} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-          <p className="text-[13px] text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Search car rentals for your trip
           </p>
           <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
@@ -560,14 +560,14 @@ export function CarSearchPanel({
           </p>
           <button
             onClick={() => setShowForm(true)}
-            className="mt-4 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[13px] font-medium border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
+            className="mt-4 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-sm font-medium border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
           >
             <Search size={13} /> Set search
           </button>
           {onAddManually && (
             <button
               onClick={onAddManually}
-              className="mt-2 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[13px] font-medium border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
+              className="mt-2 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-sm font-medium border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
             >
               <Plus size={13} /> Add manually
             </button>
@@ -580,7 +580,7 @@ export function CarSearchPanel({
         <>
           {/* Toolbar: count + filters + change search + sort — single inline row */}
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[13px] text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               <span className="font-semibold text-gray-900 dark:text-white">
                 {allRates.length}
               </span>{" "}

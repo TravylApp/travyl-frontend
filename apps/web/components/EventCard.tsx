@@ -64,7 +64,7 @@ export function EventCard({
           <div className="absolute bottom-0.5 right-0.5 w-2.5 h-2.5 rounded-full border-[1.5px] border-white" style={{ backgroundColor: event.color }} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] text-[#314158] truncate font-semibold">{event.name}</p>
+          <p className="text-sm text-[#314158] truncate font-semibold">{event.name}</p>
           <div className="flex items-center gap-2 mt-0.5">
             <p className="text-[11px] text-gray-400 flex items-center gap-1">
               <MapPin size={9} /> {event.location}
@@ -128,7 +128,7 @@ export function EventCard({
         <div className="flex items-center gap-1 text-[11px] text-gray-400 mb-1">
           <MapPin size={10} /> {event.location}
         </div>
-        <h4 className="text-[14px] text-gray-900 mb-1">{event.name}</h4>
+        <h4 className="text-sm text-gray-900 mb-1">{event.name}</h4>
         {event.date && (
           <div className="flex items-center gap-1.5 text-[11px] text-trip-base mb-2">
             <CalendarDays size={11} /> {event.date}

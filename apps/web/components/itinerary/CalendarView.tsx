@@ -830,7 +830,7 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
                         placeholder={`Search in ${destination}...`}
                         value={discoverSearch}
                         onChange={(e) => setDiscoverSearch(e.target.value)}
-                        className="w-full pl-9 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[13px] focus:outline-none focus:ring-2 focus:ring-trip-base/20 focus:border-trip-base/30 placeholder:text-gray-400"
+                        className="w-full pl-9 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-trip-base/20 focus:border-trip-base/30 placeholder:text-gray-400"
                       />
                       {discoverSearch && (
                         <button onClick={() => setDiscoverSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">
@@ -1132,19 +1132,19 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
                 <div className="p-4">
                   <h2 className="text-lg font-bold mb-1" style={{ color: NAVY }}>{selectedActivity.title}</h2>
                   {selectedActivity.location && (
-                    <div className="flex items-center gap-1.5 text-gray-500 mb-3 text-[13px]">
+                    <div className="flex items-center gap-1.5 text-gray-500 mb-3 text-sm">
                       <MapPin size={13} />
                       <span>{selectedActivity.location}</span>
                     </div>
                   )}
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] mb-4 w-fit" style={{ background: `${NAVY}08`, color: NAVY }}>
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm mb-4 w-fit" style={{ background: `${NAVY}08`, color: NAVY }}>
                     <Clock size={13} />
                     <span className="font-medium">{selectedActivity.startTime} – {selectedActivity.endTime}</span>
                   </div>
 
                   {isParent(selectedActivity, activities) && (
                     <div className="mb-4">
-                      <h4 className="text-[13px] font-semibold mb-2" style={{ color: NAVY }}>Activities Inside</h4>
+                      <h4 className="text-sm font-semibold mb-2" style={{ color: NAVY }}>Activities Inside</h4>
                       <div className="space-y-1.5">
                         {getChildren(selectedActivity.id, activities).map((child) => {
                           const cfg = getConfig(child.type);
@@ -1168,15 +1168,15 @@ export function CalendarView({ destination = 'Paris' }: CalendarViewProps) {
                   <div className="flex gap-2 pt-3 border-t border-gray-100">
                     {selectedActivity.onCalendar ? (
                       <>
-                        <button onClick={() => handleRemoveFromCalendar(selectedActivity.id)} className="flex-1 px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
+                        <button onClick={() => handleRemoveFromCalendar(selectedActivity.id)} className="flex-1 px-3 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer">
                           <Trash2 size={13} /> Remove
                         </button>
-                        <button className="px-3 py-2 border-2 hover:bg-gray-50 rounded-xl text-[13px] font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer" style={{ borderColor: NAVY, color: NAVY }}>
+                        <button className="px-3 py-2 border-2 hover:bg-gray-50 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer" style={{ borderColor: NAVY, color: NAVY }}>
                           <Edit2 size={13} /> Edit
                         </button>
                       </>
                     ) : (
-                      <button className="flex-1 px-3 py-2 text-white rounded-xl text-[13px] font-medium flex items-center justify-center gap-1.5 cursor-pointer shadow-md" style={{ background: NAVY }}>
+                      <button className="flex-1 px-3 py-2 text-white rounded-xl text-sm font-medium flex items-center justify-center gap-1.5 cursor-pointer shadow-md" style={{ background: NAVY }}>
                         <Plus size={13} /> Add to Calendar
                       </button>
                     )}

@@ -132,7 +132,7 @@ function CardFrontInternal({
 
         {/* Description */}
         {!isCompact && place.description && (
-          <p className="text-[13px] text-white/70 leading-snug drop-shadow-md" style={{ display: '-webkit-box', WebkitLineClamp: isFull ? 2 : 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          <p className="text-sm text-white/70 leading-snug drop-shadow-md" style={{ display: '-webkit-box', WebkitLineClamp: isFull ? 2 : 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
             {place.description}
           </p>
         )}

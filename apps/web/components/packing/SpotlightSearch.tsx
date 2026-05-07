@@ -133,7 +133,7 @@ export const SpotlightSearch = forwardRef<SpotlightSearchHandle, SpotlightSearch
           onFocus={() => { if (query.trim()) setIsOpen(true) }}
           onKeyDown={handleKeyDown}
           placeholder="Search or add an item…"
-          className="flex-1 text-[14px] bg-transparent outline-none text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
+          className="flex-1 text-sm bg-transparent outline-none text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500"
         />
       </div>
 

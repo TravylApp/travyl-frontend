@@ -31,7 +31,7 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
       <div className="w-full px-4 sm:px-6 lg:px-10 py-12 max-w-6xl mx-auto">
         <header className="mb-8">
           <h1 className="text-[28px] font-serif font-normal text-gray-900 dark:text-white tracking-tight leading-tight">Flights</h1>
-          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5">Loading…</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">Loading…</p>
         </header>
         <div className="h-40 animate-pulse bg-gray-100 dark:bg-white/[0.04] rounded-xl" />
       </div>
@@ -49,7 +49,7 @@ export default function Flights({ params }: { params: Promise<{ id: string }> })
       <header className="flex items-start justify-between gap-4 mb-8">
         <div>
           <h1 className="text-[28px] font-serif font-normal text-gray-900 dark:text-white tracking-tight leading-tight">Flights</h1>
-          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5">{description}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">{description}</p>
         </div>
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('flights:add-manual'))}

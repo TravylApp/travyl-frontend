@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { MapPin, Clock, Heart } from 'lucide-react';
 import { getActivityTypeColor, Navy } from '@travyl/shared';
 import type { ActivityViewModel } from '@travyl/shared';
+import { lookupActivityImage } from './ActivityCardRenderer';
 
 interface ActivityCardProps {
   activity: ActivityViewModel;
@@ -14,14 +15,15 @@ export function ActivityCard({ activity, onClick }: ActivityCardProps) {
   const [isFavorited, setIsFavorited] = useState(false);
   const [imgError, setImgError] = useState(false);
   const typeColor = getActivityTypeColor(activity.category);
-  const hasImage = !!(activity as any).image && !imgError;
+  const imageSrc = (activity as any).image || lookupActivityImage(activity.name);
+  const hasImage = !!imageSrc && !imgError;
 
   return (
     <div className="rounded-[14px] bg-white dark:bg-muted border border-gray-200 dark:border-white/[0.08] overflow-hidden cursor-pointer group transition-all hover:shadow-lg hover:scale-[1.02]" onClick={onClick}>
       {/* Image section */}
       <div className="relative h-[150px] overflow-hidden" style={{ backgroundColor: typeColor.bg }}>
         {hasImage ? (
-          <img src={(activity as any).image} alt={activity.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" onError={() => setImgError(true)} />
+          <img src={imageSrc} alt={activity.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" onError={() => setImgError(true)} />
         ) : (
           <div
             className="w-full h-full flex items-center justify-center"
@@ -72,7 +74,7 @@ export function ActivityCard({ activity, onClick }: ActivityCardProps) {
         </div>
         <div className="flex items-center gap-2.5">
           {activity.costDisplay && (
-            <span className="text-[13px] font-bold text-gray-900 dark:text-gray-100">{activity.costDisplay}</span>
+            <span className="text-sm font-bold text-gray-900 dark:text-gray-100">{activity.costDisplay}</span>
           )}
         </div>
       </div>

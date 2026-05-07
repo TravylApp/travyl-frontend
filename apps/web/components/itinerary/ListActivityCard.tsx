@@ -67,7 +67,7 @@ export function ListActivityCard({
 
       {/* Content */}
       <div className="flex-1 min-w-0 py-2 pr-2 flex flex-col justify-center">
-        <h3 className="text-[13px] font-semibold text-gray-900 dark:text-gray-100 leading-tight line-clamp-1">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-tight line-clamp-1">
           {activity.name}
         </h3>
 

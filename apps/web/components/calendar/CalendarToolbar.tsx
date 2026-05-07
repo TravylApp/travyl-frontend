@@ -90,7 +90,7 @@ export function CalendarToolbar({
         {/* Trip info */}
         <div className="flex flex-col justify-center min-w-0">
           <div className="flex items-center gap-2">
-            <span className="truncate text-[13px] font-serif font-normal tracking-wide text-trip-base dark:text-cal-text leading-tight">
+            <span className="truncate text-sm font-serif font-normal tracking-wide text-trip-base dark:text-cal-text leading-tight">
               {tripName}
             </span>
             <span className="text-[10px] text-cal-text-secondary leading-tight hidden sm:inline">

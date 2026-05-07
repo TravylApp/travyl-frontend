@@ -85,6 +85,11 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       return { statusCode: 200, body: JSON.stringify(response) }
     }
 
+    const apiKey = Resource.TicketmasterApiKey.value
+    if (!apiKey || apiKey === 'placeholder') {
+      return { statusCode: 503, body: JSON.stringify({ error: 'Event data source unavailable' }) }
+    }
+
     const city = destination.split(',')[0].trim()
     console.log('[events] cache miss, fetching Ticketmaster for:', city)
 
@@ -93,7 +98,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       startDateTime: `${startDate}T00:00:00Z`,
       endDateTime: `${endDate}T23:59:59Z`,
       size: '200',
-      apikey: Resource.TicketmasterApiKey.value,
+      apikey: apiKey,
     })
 
     const res = await fetch(
@@ -102,7 +107,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     if (!res.ok) {
       console.error('[events] Ticketmaster error:', res.status, await res.text().catch(() => ''))
-      return { statusCode: 500, body: JSON.stringify({ error: 'Failed to fetch events' }) }
+      return { statusCode: 502, body: JSON.stringify({ error: 'Failed to fetch events' }) }
     }
 
     const data = await res.json()

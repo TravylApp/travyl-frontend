@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useState, useEffect, useMemo, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { useItineraryScreen, useHomeCurrency } from '@travyl/shared';
 import { supabase } from '@travyl/shared';
@@ -146,6 +147,7 @@ function mergeAutoWithSaved(
 
 export default function Budget({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const queryClient = useQueryClient();
   const { isLoading, trip, days, flights, hotels } = useItineraryScreen(id);
   const { format: formatHome, convert, currency: homeCurrency } = useHomeCurrency();
   const formatAmount = (n: number) => formatHome(n, homeCurrency);
@@ -172,28 +174,46 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
     setBudgetData(next);
   }, [trip, autoExpenses]);
 
-  const persist = (next: BudgetItem[]) => {
-    if (flushTimer.current) clearTimeout(flushTimer.current);
-    flushTimer.current = setTimeout(async () => {
-      try {
-        const { data: current } = await supabase
-          .from('trips')
-          .select('trip_context')
-          .eq('id', id)
-          .single();
-        const existingContext = (current?.trip_context as Record<string, unknown>) ?? {};
-        await supabase
-          .from('trips')
-          .update({ trip_context: { ...existingContext, budget_data: next } })
-          .eq('id', id);
-      } catch (err) {
-        console.error('Failed to flush budget to Supabase', err);
-      }
-    }, 1500);
+  const doPersist = async (next: BudgetItem[]) => {
+    try {
+      const { data: current } = await supabase
+        .from('trips')
+        .select('trip_context')
+        .eq('id', id)
+        .single();
+      const existingContext = (current?.trip_context as Record<string, unknown>) ?? {};
+      // Sync trip.budget so the overview page (which reads trip.budget) stays consistent
+      const totalBudgeted = next.reduce((sum, i) => sum + (i.budgeted ?? 0), 0);
+      await supabase
+        .from('trips')
+        .update({
+          budget: totalBudgeted,
+          trip_context: { ...existingContext, budget_data: next },
+        })
+        .eq('id', id);
+      // Invalidate trip query so overview and other screens refetch fresh data
+      queryClient.invalidateQueries({ queryKey: ['trip', id] });
+    } catch (err) {
+      console.error('Failed to flush budget to Supabase', err);
+    }
   };
 
+  const persist = (next: BudgetItem[]) => {
+    if (flushTimer.current) clearTimeout(flushTimer.current);
+    flushTimer.current = setTimeout(() => doPersist(next), 1500);
+  };
+
+  const latestRef = useRef(budgetData);
+  latestRef.current = budgetData;
+
   useEffect(() => {
-    return () => { if (flushTimer.current) clearTimeout(flushTimer.current); };
+    return () => {
+      // Flush pending changes immediately instead of discarding them
+      if (flushTimer.current) {
+        clearTimeout(flushTimer.current);
+        doPersist(latestRef.current);
+      }
+    };
   }, []);
 
   const daysInTrip = trip?.start_date && trip?.end_date

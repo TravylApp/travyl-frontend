@@ -101,7 +101,7 @@ function travelerCount(t: number | null | undefined): number {
 function rowClasses(active: boolean, dark: boolean, collapsed: boolean) {
   const base = collapsed
     ? 'relative flex items-center justify-center h-8 w-8 mx-auto rounded-[7px] my-px transition-colors'
-    : 'relative flex items-center gap-[11px] h-8 px-2.5 rounded-[7px] my-px text-[13px] transition-colors';
+    : 'relative flex items-center gap-[11px] h-8 px-2.5 rounded-[7px] my-px text-sm transition-colors';
   if (active) {
     const text = dark ? 'text-white font-semibold' : 'text-[var(--trip-base)] dark:text-white font-semibold';
     return `${base} ${text}`;
@@ -354,7 +354,7 @@ function RailMobile({
                 <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-white/20" />
               </div>
               <div className="flex items-center justify-between px-4 pt-1 pb-2">
-                <span className="text-[14px] font-semibold text-gray-900 dark:text-white">More</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">More</span>
                 <button onClick={() => setMoreOpen(false)} aria-label="Close" className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 flex items-center justify-center">
                   <X size={16} className="text-gray-500" />
                 </button>
@@ -369,7 +369,7 @@ function RailMobile({
                       key={tab.segment}
                       href={tab.segment ? `${basePath}/${tab.segment}` : basePath}
                       onClick={() => setMoreOpen(false)}
-                      className="flex items-center gap-3 px-3 h-11 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 text-[14px] text-gray-700 dark:text-gray-200"
+                      className="flex items-center gap-3 px-3 h-11 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 text-sm text-gray-700 dark:text-gray-200"
                       style={active ? { color, backgroundColor: `${color}14`, fontWeight: 600 } : undefined}
                     >
                       <Icon size={18} strokeWidth={1.8} />
@@ -381,14 +381,14 @@ function RailMobile({
                 <Link
                   href={`${basePath}/settings`}
                   onClick={() => setMoreOpen(false)}
-                  className="flex items-center gap-3 px-3 h-11 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 text-[14px] text-gray-700 dark:text-gray-200"
+                  className="flex items-center gap-3 px-3 h-11 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 text-sm text-gray-700 dark:text-gray-200"
                 >
                   <SettingsIcon size={18} strokeWidth={1.8} />
                   <span>Settings</span>
                 </Link>
                 <button
                   onClick={() => { setMoreOpen(false); onOpenHistory(); }}
-                  className="flex items-center gap-3 px-3 h-11 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 text-[14px] text-gray-700 dark:text-gray-200 w-full text-left"
+                  className="flex items-center gap-3 px-3 h-11 rounded-lg hover:bg-gray-50 dark:hover:bg-white/5 text-sm text-gray-700 dark:text-gray-200 w-full text-left"
                 >
                   <History size={18} strokeWidth={1.8} />
                   <span>Trip History</span>

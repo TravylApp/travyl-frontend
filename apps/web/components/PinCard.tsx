@@ -133,7 +133,7 @@ export function PinCard({ item, index, isFavorited, onFavorite, onClick, onAddTo
               style={{ background: `linear-gradient(135deg, ${Navy.DEFAULT}, #1e3a5f)` }}
             >
               <MapPin size={20} className="text-white/15 mb-auto mt-4 mx-auto" />
-              <h3 className="text-[14px] font-bold text-white/70 leading-tight line-clamp-2 mb-1">{item.name}</h3>
+              <h3 className="text-sm font-bold text-white/70 leading-tight line-clamp-2 mb-1">{item.name}</h3>
               {item.tagline && <span className="text-[10px] text-white/35 truncate">{item.tagline}</span>}
             </div>
           ) : (

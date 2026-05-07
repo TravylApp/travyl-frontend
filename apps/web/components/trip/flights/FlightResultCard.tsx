@@ -83,7 +83,7 @@ export function FlightResultCard({ flight, alreadySaved, busy, onAdd, formatPric
               </div>
             )}
             <div className="min-w-0">
-              <div className="text-[14px] font-semibold text-gray-900 dark:text-white truncate">
+              <div className="text-sm font-semibold text-gray-900 dark:text-white truncate">
                 {carriers.join(' + ') || 'Flight'}
               </div>
               <div className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
@@ -187,7 +187,7 @@ export function FlightResultCard({ flight, alreadySaved, busy, onAdd, formatPric
           <button
             onClick={handleAdd}
             disabled={busy || alreadySaved}
-            className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-lg text-[13px] font-semibold text-white shadow-sm hover:shadow-md transition disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-lg text-sm font-semibold text-white shadow-sm hover:shadow-md transition disabled:opacity-50"
             style={{ backgroundColor: alreadySaved ? 'rgb(107 114 128)' : 'var(--trip-base)' }}
           >
             {alreadySaved ? <><Check size={13} /> Added to trip</> : <><Plus size={13} /> Add to trip</>}

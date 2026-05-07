@@ -85,14 +85,14 @@ export function PlaceDetailModal({ place, isFavorited = false, onToggleFavorite,
             <h2 className="text-xl sm:text-2xl font-bold text-white leading-tight mb-2">{place.name}</h2>
             <div className="flex items-center gap-3 flex-wrap">
               {place.rating > 0 && (
-                <span className="flex items-center gap-1 text-[13px] text-white/90">
+                <span className="flex items-center gap-1 text-sm text-white/90">
                   <Star size={14} className="fill-amber-400 text-amber-400" />
                   <span className="font-semibold">{place.rating}</span>
                   {place.reviewCount && <span className="text-white/50">({place.reviewCount})</span>}
                 </span>
               )}
               {place.priceLevel && (
-                <span className="text-[13px] text-white/70">{'$'.repeat(place.priceLevel)}</span>
+                <span className="text-sm text-white/70">{'$'.repeat(place.priceLevel)}</span>
               )}
               {place.address && (
                 <span className="flex items-center gap-1 text-[12px] text-white/60">
@@ -109,11 +109,11 @@ export function PlaceDetailModal({ place, isFavorited = false, onToggleFavorite,
           {/* Description */}
           <div className="p-5 flex-1">
             {place.description && (
-              <p className="text-[14px] leading-[1.7] text-gray-700 dark:text-gray-300 mb-4">{place.description}</p>
+              <p className="text-sm leading-[1.7] text-gray-700 dark:text-gray-300 mb-4">{place.description}</p>
             )}
 
             {place.tagline && place.tagline !== place.description && (
-              <p className="text-[13px] text-gray-500 dark:text-gray-400 italic mb-4">{place.tagline}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 italic mb-4">{place.tagline}</p>
             )}
 
             {/* Tags */}

@@ -25,7 +25,7 @@ export function RescoperConflictModal({
         <h2 className="text-[15px] font-medium text-gray-900 dark:text-cal-text mb-1">
           Activities outside new range
         </h2>
-        <p className="text-[13px] text-gray-500 dark:text-cal-text-secondary mb-3">
+        <p className="text-sm text-gray-500 dark:text-cal-text-secondary mb-3">
           {conflictingActivities.length === 1
             ? '1 activity falls outside the new trip dates.'
             : `${conflictingActivities.length} activities fall outside the new trip dates.`}
@@ -40,7 +40,7 @@ export function RescoperConflictModal({
           {conflictingActivities.map((a) => (
             <li
               key={a.id}
-              className="text-[13px] text-gray-700 dark:text-cal-text bg-gray-50 dark:bg-cal-accent-bg/30 rounded px-2 py-1 truncate"
+              className="text-sm text-gray-700 dark:text-cal-text bg-gray-50 dark:bg-cal-accent-bg/30 rounded px-2 py-1 truncate"
             >
               {a.title || 'Untitled'}
             </li>
@@ -50,19 +50,19 @@ export function RescoperConflictModal({
         <div className="flex flex-col gap-2">
           <button
             onClick={onMoveToLastDay}
-            className="w-full px-4 py-2 rounded-lg bg-primary text-white text-[13px] font-medium hover:bg-primary transition-colors"
+            className="w-full px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary transition-colors"
           >
             Move to last day
           </button>
           <button
             onClick={onKeepUnscheduled}
-            className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-cal-border text-gray-700 dark:text-cal-text text-[13px] hover:bg-gray-50 dark:hover:bg-cal-accent-bg/60 transition-colors"
+            className="w-full px-4 py-2 rounded-lg border border-gray-200 dark:border-cal-border text-gray-700 dark:text-cal-text text-sm hover:bg-gray-50 dark:hover:bg-cal-accent-bg/60 transition-colors"
           >
             Keep as unscheduled
           </button>
           <button
             onClick={onCancel}
-            className="w-full px-4 py-2 text-[13px] text-gray-400 dark:text-cal-text-secondary hover:text-gray-600 dark:hover:text-cal-text transition-colors"
+            className="w-full px-4 py-2 text-sm text-gray-400 dark:text-cal-text-secondary hover:text-gray-600 dark:hover:text-cal-text transition-colors"
           >
             Cancel
           </button>

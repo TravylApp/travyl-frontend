@@ -18,8 +18,16 @@ export async function GET(req: NextRequest) {
       `${API_URL}/transit/directions?${searchParams.toString()}`,
       { headers: { authorization: authHeader } }
     );
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      let message = 'Transit search failed';
+      try { message = JSON.parse(body).error || message; } catch { /* use default */ }
+      return NextResponse.json({ error: message }, { status: response.status });
+    }
+
     const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+    return NextResponse.json(data);
   } catch (error) {
     console.error('[transit-directions-proxy] error:', error);
     return NextResponse.json({ error: 'Transit search failed' }, { status: 502 });

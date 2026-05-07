@@ -40,7 +40,7 @@ export function DashboardNavBar() {
               key={item.segment}
               href={item.href}
               className={[
-                'flex items-center gap-2 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-colors',
+                'flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
                 isActive
                   ? 'bg-trip-base/10 text-[var(--trip-base)] dark:bg-white/10 dark:text-white'
                   : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/[0.06] hover:text-gray-900 dark:hover:text-gray-200',

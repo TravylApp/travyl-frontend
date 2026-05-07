@@ -232,7 +232,7 @@ export function DiscoverCard({
         </div>
 
         {/* Description */}
-        <p className="text-[13px] text-gray-500 leading-[20px] line-clamp-2 mb-2.5 tracking-tight">
+        <p className="text-sm text-gray-500 leading-[20px] line-clamp-2 mb-2.5 tracking-tight">
           {item.description}
         </p>
 

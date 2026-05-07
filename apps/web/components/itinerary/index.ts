@@ -12,7 +12,6 @@ export { HotelCard } from './HotelCard';
 export { ItineraryEmpty } from './ItineraryEmpty';
 export { DiscoverCard } from './DiscoverCard';
 export { ItemDetailModal } from './ItemDetailModal';
-export { SplitScreenModal } from './SplitScreenModal';
 export { FlightSearchSection } from './FlightSearchSection';
 export { ComparisonAlternatives } from './ComparisonAlternatives';
 export { FlightBookingDetails } from './FlightBookingDetails';

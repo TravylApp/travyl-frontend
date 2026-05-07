@@ -9,7 +9,7 @@ export function ItineraryEmpty() {
         <CalendarDays size={24} style={{ color: 'var(--trip-base)' }} />
       </div>
       <h2 className="text-[17px] font-bold text-gray-900 dark:text-gray-100 mb-1.5 text-center">No itinerary yet</h2>
-      <p className="text-[13px] text-gray-500 dark:text-gray-400 text-center max-w-xs leading-5">
+      <p className="text-sm text-gray-500 dark:text-gray-400 text-center max-w-xs leading-5">
         Your AI-generated itinerary will appear here once your trip is planned.
       </p>
     </div>

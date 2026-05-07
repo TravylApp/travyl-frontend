@@ -34,7 +34,7 @@ export function TripOnboardingBanner() {
           <p className="text-[15px] font-semibold text-gray-800 mb-2">Welcome to your trip! Here&apos;s what you can do:</p>
           <div className="flex flex-wrap gap-x-5 gap-y-1.5">
             {tips.map(({ icon: Icon, text }) => (
-              <span key={text} className="flex items-center gap-1.5 text-[13px] text-gray-600">
+              <span key={text} className="flex items-center gap-1.5 text-sm text-gray-600">
                 <Icon size={14} className="text-gray-400 shrink-0" />
                 {text}
               </span>

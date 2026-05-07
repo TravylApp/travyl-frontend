@@ -26,7 +26,7 @@ export function TransitDaySection({ dayLabel, dateLabel, defaultOpen = true, chi
           className="text-gray-400 transition-transform duration-200"
           style={{ transform: open ? 'rotate(0deg)' : 'rotate(-90deg)' }}
         />
-        <span className="text-[13px] font-semibold text-gray-900 dark:text-white">
+        <span className="text-sm font-semibold text-gray-900 dark:text-white">
           {dayLabel}
         </span>
         <span className="text-[12px] text-gray-500 dark:text-gray-400">

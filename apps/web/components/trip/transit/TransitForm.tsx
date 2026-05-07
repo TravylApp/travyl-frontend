@@ -163,7 +163,7 @@ export function TransitForm({ initial, onSubmit, onCancel, onDelete, defaultCurr
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="w-full rounded-xl border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.04] px-4 py-2 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base)]/20 resize-none"
+            className="w-full rounded-xl border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.04] px-4 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base)]/20 resize-none"
             rows={2}
             placeholder="Platform number, car number, transfer tips..."
           />
@@ -176,7 +176,7 @@ export function TransitForm({ initial, onSubmit, onCancel, onDelete, defaultCurr
             <button
               type="button"
               onClick={onDelete}
-              className="text-[13px] font-medium text-red-600 dark:text-red-400 hover:underline"
+              className="text-sm font-medium text-red-600 dark:text-red-400 hover:underline"
             >
               Delete
             </button>
