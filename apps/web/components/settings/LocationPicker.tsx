@@ -121,14 +121,14 @@ export function LocationPicker({ value, onChange, disabled }: LocationPickerProp
 
   return (
     <div className="space-y-3" ref={wrapRef}>
-      <label className="block text-sm font-medium text-gray-700">Where you live</label>
+      <label className="block text-sm font-medium text-foreground">Where you live</label>
 
       <div className="relative">
         {/* Selected pill */}
         {hasValue && !open && (
-          <div className="flex items-center gap-2 px-3.5 h-11 rounded-xl border border-gray-200 bg-white">
+          <div className="flex items-center gap-2 px-3.5 h-11 rounded-xl border border-border bg-card">
             <MapPin size={16} className="text-[#1e3a5f] shrink-0" />
-            <span className="text-sm text-gray-900 truncate flex-1">
+            <span className="text-sm text-foreground truncate flex-1">
               {value.city}
               {value.country ? `, ${value.country}` : ''}
             </span>
@@ -136,7 +136,7 @@ export function LocationPicker({ value, onChange, disabled }: LocationPickerProp
               type="button"
               onClick={() => setOpen(true)}
               disabled={disabled}
-              className="text-xs font-medium text-[#1e3a5f] hover:text-[#16314f] disabled:opacity-50"
+              className="text-xs font-medium text-[#1e3a5f] hover:text-[#162d4a] disabled:opacity-50"
             >
               Change
             </button>
@@ -145,7 +145,7 @@ export function LocationPicker({ value, onChange, disabled }: LocationPickerProp
               onClick={clearLocation}
               disabled={disabled}
               aria-label="Clear location"
-              className="text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              className="text-muted-foreground hover:text-foreground disabled:opacity-50"
             >
               <X size={14} />
             </button>
@@ -155,7 +155,7 @@ export function LocationPicker({ value, onChange, disabled }: LocationPickerProp
         {/* Search input */}
         {(!hasValue || open) && (
           <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               value={query}
@@ -164,7 +164,7 @@ export function LocationPicker({ value, onChange, disabled }: LocationPickerProp
               placeholder="Search a city…"
               disabled={disabled}
               autoComplete="off"
-              className="w-full h-11 pl-9 pr-32 text-sm text-gray-900 bg-white border border-gray-200 rounded-xl placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/40 disabled:opacity-60"
+              className="w-full h-11 pl-9 pr-32 text-sm text-foreground bg-card border border-border rounded-xl placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/40 disabled:opacity-60"
             />
             <button
               type="button"
@@ -180,26 +180,26 @@ export function LocationPicker({ value, onChange, disabled }: LocationPickerProp
 
         {/* Dropdown */}
         {open && (query.length >= 2 || searching) && (
-          <div className="absolute z-20 mt-1.5 w-full max-h-72 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg">
+          <div className="absolute z-20 mt-1.5 w-full max-h-72 overflow-y-auto rounded-xl border border-border bg-card shadow-lg">
             {searching && (
-              <div className="px-4 py-3 text-sm text-gray-500 flex items-center gap-2">
+              <div className="px-4 py-3 text-sm text-muted-foreground flex items-center gap-2">
                 <Loader2 size={14} className="animate-spin" /> Searching…
               </div>
             )}
             {!searching && results.length === 0 && query.length >= 2 && (
-              <div className="px-4 py-3 text-sm text-gray-500">No matching cities.</div>
+              <div className="px-4 py-3 text-sm text-muted-foreground">No matching cities.</div>
             )}
             {!searching && results.map((r) => (
               <button
                 key={r.id}
                 type="button"
                 onClick={() => selectResult(r)}
-                className="w-full text-left px-4 py-2.5 hover:bg-gray-50 transition-colors flex items-center gap-2 border-b border-gray-100 last:border-0"
+                className="w-full text-left px-4 py-2.5 hover:bg-muted transition-colors flex items-center gap-2 border-b border-border last:border-0"
               >
-                <MapPin size={14} className="text-gray-400 shrink-0" />
+                <MapPin size={14} className="text-muted-foreground shrink-0" />
                 <div className="min-w-0">
-                  <div className="text-sm text-gray-900 truncate">{r.city}</div>
-                  <div className="text-xs text-gray-500 truncate">
+                  <div className="text-sm text-foreground truncate">{r.city}</div>
+                  <div className="text-xs text-muted-foreground truncate">
                     {r.region ? `${r.region}, ` : ''}{r.country}
                   </div>
                 </div>
@@ -211,7 +211,7 @@ export function LocationPicker({ value, onChange, disabled }: LocationPickerProp
 
       {/* Map preview */}
       {hasCoords && (
-        <div className="rounded-xl overflow-hidden border border-gray-200">
+        <div className="rounded-xl overflow-hidden border border-border">
           <LeafletMap
             lat={value.lat!}
             lng={value.lng!}
@@ -222,7 +222,7 @@ export function LocationPicker({ value, onChange, disabled }: LocationPickerProp
         </div>
       )}
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-muted-foreground">
         We use this to suggest nearby trips and tailor inspiration. Your exact coordinates are never shown to other users.
       </p>
     </div>
