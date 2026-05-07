@@ -9,6 +9,7 @@ import type { PlaceItem } from '@travyl/shared';
 import { PlaceDetailModal } from '@/components/explore/PlaceDetailModal';
 import { SectionRail } from '@/components/explore/SectionRail';
 import { PlaceRailCard } from '@/components/explore/PlaceRailCard';
+import { getOpenStatus } from '@/components/explore/openNow';
 
 // ─── Rail definitions ──────────────────────────────────────────────────────
 
@@ -162,6 +163,9 @@ export default function TripExplorePage({ params }: { params: Promise<{ id: stri
   // Selected place modal
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
 
+  // Filters
+  const [openNowOnly, setOpenNowOnly] = useState(false);
+
   // Rail queries — fired in parallel, one per rail definition.
   // Each rail uses a distinct backend category so SerpAPI/Foursquare
   // return non-overlapping results (was previously all text queries that
@@ -185,19 +189,32 @@ export default function TripExplorePage({ params }: { params: Promise<{ id: stri
       const items = (q.data ?? []).filter((p) => {
         if (used.has(p.id)) return false;
         used.add(p.id);
+        if (openNowOnly) {
+          const status = getOpenStatus((p as { hours?: string | null }).hours ?? null);
+          // When parseable and currently closed, drop. When unparseable
+          // (status === null) keep — better to over-show than hide silently.
+          if (status && !status.isOpen) return false;
+        }
         return true;
       });
       return items;
     });
-  }, [railQueries]);
+  }, [railQueries, openNowOnly]);
 
   // Search query
-  const { data: searchResults = [], isLoading: searchLoading, isFetching: searchFetching } = useQuery({
+  const { data: searchResultsRaw = [], isLoading: searchLoading, isFetching: searchFetching } = useQuery({
     queryKey: ['trip-explore-search', id, searchQuery, lat, lng],
     queryFn: () => fetchSearch(searchQuery, lat, lng),
     enabled: ready && !!searchQuery,
     staleTime: 5 * 60 * 1000,
   });
+  const searchResults = useMemo(() => {
+    if (!openNowOnly) return searchResultsRaw;
+    return searchResultsRaw.filter((p) => {
+      const status = getOpenStatus((p as { hours?: string | null }).hours ?? null);
+      return !status || status.isOpen;
+    });
+  }, [searchResultsRaw, openNowOnly]);
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-10 py-6 lg:py-10">
@@ -218,7 +235,7 @@ export default function TripExplorePage({ params }: { params: Promise<{ id: stri
       </div>
 
       {/* Search bar */}
-      <div className="relative mb-10 max-w-2xl">
+      <div className="relative mb-3 max-w-2xl">
         <Search size={17} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
           type="text"
@@ -236,6 +253,30 @@ export default function TripExplorePage({ params }: { params: Promise<{ id: stri
           >
             <X size={14} />
           </button>
+        )}
+      </div>
+
+      {/* Filter chips */}
+      <div className="flex flex-wrap items-center gap-2 mb-9">
+        <button
+          type="button"
+          onClick={() => setOpenNowOnly((v) => !v)}
+          aria-pressed={openNowOnly}
+          className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full border text-[12px] font-semibold transition-colors ${
+            openNowOnly
+              ? 'bg-[#1e3a5f] border-[#1e3a5f] text-white'
+              : 'border-gray-200 dark:border-white/[0.08] text-gray-700 dark:text-white/70 hover:border-gray-300 dark:hover:border-white/20'
+          }`}
+        >
+          <span
+            className={`w-1.5 h-1.5 rounded-full ${openNowOnly ? 'bg-emerald-300' : 'bg-emerald-500'}`}
+          />
+          Open now
+        </button>
+        {openNowOnly && (
+          <span className="text-[11px] text-gray-400">
+            Only showing places we know are open right now
+          </span>
         )}
       </div>
 
@@ -272,7 +313,7 @@ export default function TripExplorePage({ params }: { params: Promise<{ id: stri
           )}
         </div>
       ) : (
-        <div className="-mx-4 sm:-mx-6 lg:-mx-10">
+        <div>
           {RAILS.map((rail, i) => {
             const q = railQueries[i];
             const items = dedupedRailItems[i] ?? [];

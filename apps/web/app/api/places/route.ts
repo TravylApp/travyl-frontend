@@ -56,41 +56,40 @@ export async function GET(req: NextRequest) {
   try {
     let data: BackendPlace[] = []
 
-    // Natural language queries go through the NLP search endpoint (SerpAPI google_local).
-    // Geocode + nearby is the fallback for structured results.
+    // Backend NLP search endpoint (`/places/search`) was removed in a recent
+    // backend deploy — only `/api/places/nearby` and `/api/places/suggest`
+    // remain. `suggest` returns the same destination-keyed list regardless
+    // of category, so for category-driven rails we always use `nearby`.
+    // `q` is kept as a hint-only field (it doesn't change the request, but
+    // future re-introduction of NLP search would re-use it).
     if (q) {
-      const nlpRes = await fetch(
-        `${API_URL}/places/search?q=${encodeURIComponent(q)}&category=${category}&limit=${limit}&lat=${lat}&lng=${lng}`,
-        { headers: { Accept: 'application/json', ...(authHeader ? { Authorization: authHeader } : {}) } }
-      )
-      if (nlpRes.ok) {
-        const nlpData = await nlpRes.json()
-        data = (nlpData.results ?? []).map((r: any) => ({
-          id: r.id,
-          name: r.name,
-          lat: r.latitude,
-          lng: r.longitude,
-          category: r.category,
-          rating: r.rating ?? 0,
-          description: r.description,
-          photo_url: r.imageUrl,
-          address: r.location,
-          price_level: r.price != null
-            ? (r.price <= 15 ? '$' : r.price <= 35 ? '$$' : r.price <= 60 ? '$$$' : '$$$$')
-            : null,
-        }))
-      }
-      // Fall back to nearby search if NLP returned nothing or failed.
-      // The previous fallback ran a hand-curated regex over the query to
-      // re-classify it into a Foursquare category. That's exactly the kind
-      // of hardcoded lookup we want to avoid — every new query phrasing
-      // requires a code change. Now we just retry the nearby search with
-      // the original `category` param the client sent. If the client
-      // didn't pick a category, we fall through to the FOURSQUARE_CAT_MAP
-      // alias resolution that fetchNearby already does.
-      if (!data || data.length === 0) {
-        const nearbyCategory = FOURSQUARE_CAT_MAP[category] ?? category
-        data = await fetchNearby(null, lat, lng, nearbyCategory, limit)
+      const nearbyCategory = FOURSQUARE_CAT_MAP[category] ?? category
+      data = await fetchNearby(q, lat, lng, nearbyCategory, limit)
+
+      // If we have a destination string but no coords (NLP-only), fall back
+      // to the suggest endpoint which will geocode the destination internally.
+      if ((!data || data.length === 0) && (!lat || !lng)) {
+        try {
+          const suggestRes = await fetch(
+            `${API_URL}/api/places/suggest?destination=${encodeURIComponent(q)}&category=${encodeURIComponent(category)}`,
+            { headers: { Accept: 'application/json', ...(authHeader ? { Authorization: authHeader } : {}) } }
+          )
+          if (suggestRes.ok) {
+            const sd = await suggestRes.json()
+            data = (sd.suggestions ?? []).map((r: any) => ({
+              id: r.id,
+              name: r.name,
+              lat: r.latitude,
+              lng: r.longitude,
+              category: r.category,
+              rating: r.rating ?? 0,
+              description: r.description,
+              photo_url: r.imageUrl,
+              address: r.location,
+              price_level: null,
+            }))
+          }
+        } catch { /* fall through with empty data */ }
       }
     } else {
       data = await fetchNearby(q, lat, lng, category, limit)
@@ -168,8 +167,15 @@ async function fetchNearby(
     lng: p.longitude,
     category: p.category,
     rating: p.rating ?? 0,
-    description: '',
-    photo_url: p.photos?.[0] ?? null,
+    description: p.description ?? '',
+    // Backend returns `photo_url` directly; older shape used `photos[]`. Try both.
+    photo_url: p.photo_url ?? p.photos?.[0] ?? null,
     address: p.address,
+    // Carry through duration + opening hours so the modal can pre-fill the
+    // itinerary slot. The shared mapper preserves these on PlaceItem.
+    hours: p.hours ?? null,
+    duration: p.duration ?? null,
+    review_count: p.review_count ?? null,
+    website: p.website ?? null,
   }))
 }

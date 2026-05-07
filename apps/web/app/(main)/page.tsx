@@ -92,6 +92,41 @@ const TRAVEL_STYLE_PILLS = [
   { id: "ts-4", label: "Wellness retreat" },
 ];
 
+/**
+ * Upgrade a hero background image URL to a 4K-width variant when the source
+ * CDN supports query-param resizing. Pexels and Unsplash both honor `w=`;
+ * we set `w=3840` (4K width). For Pexels we also bump `dpr` to 2 to hit
+ * retina densities. Returns the original URL untouched when the host isn't
+ * a known resizer, so the hero never breaks if the API returns a third-
+ * party CDN that ignores the params.
+ */
+function upgradeHeroImageUrl(url: string): string {
+  // Pexels CDN — `w` controls resize width, `dpr` is density.
+  if (url.includes('images.pexels.com')) {
+    if (!url.includes('?')) return `${url}?auto=compress&cs=tinysrgb&w=3840&dpr=2`;
+    let next = url;
+    next = /w=\d+/.test(next) ? next.replace(/w=\d+/, 'w=3840') : `${next}&w=3840`;
+    next = /dpr=\d+/.test(next) ? next.replace(/dpr=\d+/, 'dpr=2') : `${next}&dpr=2`;
+    // The default Pexels `h=650` keeps the height locked, defeating the
+    // wider `w` upgrade. Drop it so the CDN keeps the source aspect ratio.
+    next = next.replace(/[?&]h=\d+/, '');
+    return next;
+  }
+  // Unsplash CDN — `w` resize, `q` quality, `auto=format` lets the CDN pick
+  // AVIF/WebP. Default home-page lookups come back at w=1080 (sub-1080p),
+  // which looked blurry on retina displays.
+  if (url.includes('images.unsplash.com')) {
+    let next = url;
+    if (!next.includes('?')) {
+      return `${next}?auto=format&fit=max&q=80&w=3840`;
+    }
+    next = /w=\d+/.test(next) ? next.replace(/w=\d+/, 'w=3840') : `${next}&w=3840`;
+    next = /q=\d+/.test(next) ? next.replace(/q=\d+/, 'q=85') : `${next}&q=85`;
+    return next;
+  }
+  return url;
+}
+
 const ACTIVITY_PILLS = [
   { id: "ac-1", label: "Food & wine tour" },
   { id: "ac-2", label: "Ski holiday" },
@@ -229,14 +264,14 @@ function OptionCard({ label, index, selected, onSelect }: {
     <button
       onClick={onSelect}
       aria-pressed={selected}
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm transition-all duration-200 w-full ${
+      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left text-sm transition-all duration-200 w-full backdrop-blur-md ${
         selected
-          ? "bg-[#1e3a5f] text-white shadow-md ring-1 ring-white/30"
-          : "bg-white/10 text-white/80 hover:bg-white/20 border border-white/15"
+          ? "bg-[#1e3a5f] text-white shadow-lg ring-1 ring-white/40"
+          : "bg-black/45 text-white hover:bg-black/55 border border-white/25 shadow-md"
       }`}
     >
       <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 transition-all ${
-        selected ? "bg-white/20 text-white" : "bg-white/10 text-white/50"
+        selected ? "bg-white/20 text-white" : "bg-white/15 text-white/85"
       }`}>
         {selected ? "✓" : keys[index] || index + 1}
       </span>
@@ -422,18 +457,7 @@ export default function Home() {
     const loaded = heroImageQueries
       .map((q) => q.data?.url)
       .filter((url): url is string => !!url)
-      .map((url) => {
-        // Pexels — 4K width via CDN params (works with or without existing params)
-        if (url.includes('images.pexels.com')) {
-          if (url.includes('?')) {
-            // Already has CDN params (large/large2x variant) — replace width & dpr
-            return url.replace(/w=\d+/, 'w=3840').replace(/dpr=\d+/, 'dpr=2');
-          }
-          // Bare URL (original variant) — add params from scratch
-          return `${url}?auto=compress&cs=tinysrgb&w=3840&dpr=2`;
-        }
-        return url;
-      });
+      .map(upgradeHeroImageUrl);
     return loaded.length > 0 ? loaded : [
       `https://images.pexels.com/photos/30978583/pexels-photo-30978583.jpeg?auto=compress&cs=tinysrgb&w=3840&dpr=2`
     ];
@@ -648,15 +672,19 @@ export default function Home() {
     }
     if (planner.state.phase === 'clarifying' && showTakeoff) {
       clarifyRoundRef.current += 1;
-      if (clarifyRoundRef.current >= 2 && planner.state.questions?.length) {
-        // Auto-answer with first option to break the loop
+      // Only auto-answer when we're still in skip mode AND have looped twice;
+      // otherwise the auto-skip effect (above) has already taken over and is
+      // about to surface the questions UI — clobbering it here forces an
+      // unwanted loop where the user sees only a loading takeoff.
+      const stillSkipping = skipQuestionsRef.current;
+      if (stillSkipping && clarifyRoundRef.current >= 2 && planner.state.questions?.length) {
         const autoAnswers: Record<string, string> = {};
         for (const q of planner.state.questions) {
           autoAnswers[q.id] = q.options?.[0] ?? '';
         }
         planner.submitAnswers(autoAnswers);
       } else {
-        // First time — drop the overlay so user can answer
+        // Drop the overlay so the user can see and answer the clarifying questions.
         setShowTakeoff(false);
       }
     }
@@ -830,36 +858,47 @@ export default function Home() {
               </div>
             )}
 
-            {/* Search bar — hidden during questions */}
-            {!(isClarifying && showQuestions) && (
-              <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-                <div className="flex items-center p-1.5 gap-2">
-                  <HeroSearchInput
-                    tripQuery={tripQuery}
-                    setTripQuery={setTripQuery}
-                    onSearch={onSearch}
-                    staticPlaceholder={heroConfig?.search_placeholder}
-                    inputRef={inputRef}
-                  />
-                  <button
-                    ref={searchButtonRef}
-                    onClick={onSearch}
-                    disabled={isExtracting || isPlanning}
-                    aria-label="Generate trip"
-                    className="bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 shrink-0"
-                  >
-                    <PaperPlane size={16} />
-                  </button>
-                </div>
+            {/* Search bar — always visible, even during the clarifying flow so the
+                user can refine their original prompt without losing context. */}
+            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+              <div className="flex items-center p-1.5 gap-2">
+                <HeroSearchInput
+                  tripQuery={tripQuery}
+                  setTripQuery={setTripQuery}
+                  onSearch={onSearch}
+                  staticPlaceholder={heroConfig?.search_placeholder}
+                  inputRef={inputRef}
+                />
+                <button
+                  ref={searchButtonRef}
+                  onClick={onSearch}
+                  disabled={isExtracting || isPlanning}
+                  aria-label="Generate trip"
+                  className="bg-[#1e3a5f] hover:bg-[#162d4a] disabled:opacity-50 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 shrink-0"
+                >
+                  <PaperPlane size={16} />
+                </button>
               </div>
-            )}
+            </div>
+              </div>
+            </div>
 
             {/* Questions — only shown if user clicked Refine */}
             {isClarifying && showQuestions && currentQuestion && (
               <div className="mt-4 animate-[fadeSlideIn_0.3s_ease-out]">
                 <div className="bg-black/50 backdrop-blur-xl rounded-2xl p-4 border border-white/20 shadow-2xl">
                   <div className="flex items-center gap-2 mb-3">
-                    <Sparkles size={14} className="text-white/60" />
+                    {currentQIdx > 0 ? (
+                      <button
+                        onClick={() => setCurrentQIdx((i) => Math.max(0, i - 1))}
+                        aria-label="Previous question"
+                        className="w-6 h-6 -ml-1 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors shrink-0"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                      </button>
+                    ) : (
+                      <Sparkles size={14} className="text-white/60" />
+                    )}
                     <p className="text-sm text-white font-semibold">{currentQuestion.question}</p>
                     <span className="ml-auto text-[10px] text-white/40 font-medium shrink-0">
                       {currentQIdx + 1}/{questions.length}
@@ -948,9 +987,14 @@ export default function Home() {
                     </div>
                     {/* Live travel quote */}
                     {quote && (
-                      <p className="text-[11px] text-white/40 italic max-w-md text-center leading-relaxed mt-2">
+                      <p
+                        className="text-[12px] text-white/90 italic max-w-md text-center leading-relaxed mt-3"
+                        style={{
+                          textShadow: '0 1px 2px rgba(0,0,0,0.55), 0 0 8px rgba(0,0,0,0.35)',
+                        }}
+                      >
                         &ldquo;{quote.content}&rdquo;
-                        <span className="not-italic text-white/30"> — {quote.author}</span>
+                        <span className="not-italic text-white/70"> — {quote.author}</span>
                       </p>
                     )}
                   </div>

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { Heart, MapPin, Star } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Heart, MapPin, Star, Clock } from 'lucide-react';
 import type { PlaceItem } from '@travyl/shared';
+import { getOpenStatus } from './openNow';
 
 export interface PlaceRailCardProps {
   place: PlaceItem;
@@ -13,6 +14,10 @@ export interface PlaceRailCardProps {
 
 export function PlaceRailCard({ place, isFavorited, onFavorite, onClick }: PlaceRailCardProps) {
   const [imageBroken, setImageBroken] = useState(false);
+  const openStatus = useMemo(
+    () => getOpenStatus((place as { hours?: string | null }).hours ?? null),
+    [place],
+  );
   return (
     <div
       role="button"
@@ -75,6 +80,23 @@ export function PlaceRailCard({ place, isFavorited, onFavorite, onClick }: Place
             <span className="truncate">{place.address}</span>
           )}
         </div>
+        {openStatus && (
+          <div
+            className={`inline-flex items-center gap-1 mt-2 text-[11px] font-medium ${
+              openStatus.isOpen
+                ? 'text-emerald-700 dark:text-emerald-400'
+                : 'text-gray-500 dark:text-white/50'
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                openStatus.isOpen ? 'bg-emerald-500' : 'bg-gray-400'
+              }`}
+            />
+            <Clock size={10} />
+            <span className="truncate">{openStatus.label}</span>
+          </div>
+        )}
       </div>
     </div>
   );
