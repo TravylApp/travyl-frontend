@@ -15,7 +15,6 @@ import { Module } from '@/components/trip/Module'
 import { PackingListModule } from './PackingListModule'
 import { PackingGlance } from './PackingGlance'
 import { PackingSuggestions, SuggestionsHeaderAction } from './PackingSuggestions'
-import { PackingActivityFeed } from './PackingActivityFeed'
 import type { SpotlightSearchHandle } from './SpotlightSearch'
 
 interface PackingPageProps {
@@ -33,7 +32,6 @@ export function PackingPage({ tripId }: PackingPageProps) {
   const {
     items,
     filteredItems,
-    auditLog,
     progress,
     isLoading,
     error,
@@ -142,7 +140,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
               </button>
             }
           >
-            <div className="-mt-2 mb-5 flex items-center gap-3 text-[11px] text-gray-500">
+            <div className="-mt-2 mb-2 flex items-center gap-3 text-[11px] text-gray-500">
               <div className="flex-1 h-[4px] rounded-full bg-[#f0eee9] dark:bg-white/[0.06] overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-300"
@@ -150,6 +148,16 @@ export function PackingPage({ tripId }: PackingPageProps) {
                 />
               </div>
               <span className="font-semibold tabular-nums text-[var(--trip-base)]">{progress.percent}%</span>
+            </div>
+
+            {/* At a glance stats inline */}
+            <div className="mb-4">
+              <PackingGlance
+                trip={trip}
+                packed={progress.packed}
+                total={progress.total}
+                percent={progress.percent}
+              />
             </div>
 
             <PackingListModule
@@ -175,21 +183,17 @@ export function PackingPage({ tripId }: PackingPageProps) {
 
         {/* Right column — sticky stack */}
         <div className="lg:col-span-5 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto space-y-6 lg:space-y-8">
-          <Module title="At a glance" titleSize="sm">
-            <PackingGlance
-              trip={trip}
-              packed={progress.packed}
-              total={progress.total}
-              percent={progress.percent}
-            />
-          </Module>
-
-          <Module
-            title="Suggestions"
-            description="From AI based on your trip"
-            titleSize="sm"
-            action={<SuggestionsHeaderAction onGenerate={generateSuggestions} isGenerating={isGenerating} />}
-          >
+          {/* Suggestions — no card wrapper */}
+          <div>
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <div>
+                <h2 className="text-[17px] font-serif font-normal text-gray-900 dark:text-white tracking-tight leading-tight">
+                  Suggestions
+                </h2>
+                <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-0.5">From AI based on your trip</p>
+              </div>
+              <SuggestionsHeaderAction onGenerate={generateSuggestions} isGenerating={isGenerating} />
+            </div>
             <PackingSuggestions
               suggestionsByCategory={suggestionsByCategory}
               isGenerating={isGenerating}
@@ -197,15 +201,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
               onAccept={acceptSuggestion}
               onDismiss={dismissSuggestion}
             />
-          </Module>
-
-          <Module
-            title="Activity"
-            titleSize="sm"
-            description={auditLog.length > 0 ? `Last ${Math.min(auditLog.length, 6)} of ${auditLog.length}` : undefined}
-          >
-            <PackingActivityFeed entries={auditLog} currentUserId={userId} />
-          </Module>
+          </div>
         </div>
       </div>
     </div>

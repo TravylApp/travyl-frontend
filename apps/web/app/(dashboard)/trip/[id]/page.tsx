@@ -9,6 +9,7 @@ function safeDate(d: string | null | undefined): string {
   if (isNaN(parsed.getTime())) return '';
   return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
+import Image from 'next/image';
 import { Plus, ChevronLeft, ChevronRight, MapPin, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList } from 'lucide-react';
 import { useItineraryScreen, useWeather, useEvents, upscaleGoogleImage, supabase, useHomeCurrency } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
@@ -16,6 +17,7 @@ import type { TripContextData, PlaceItem } from '@travyl/shared';
 import { AnimatePresence } from 'motion/react';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
 import { TripExploreSection } from './trip-layout-inner';
+import OverviewBudgetSummary from '@/components/trip/OverviewBudgetSummary';
 
 // Hide broken images — no misleading fallback photos
 const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -131,23 +133,25 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
               const idx = Math.round(el.scrollLeft / (el.firstElementChild as HTMLElement)?.offsetWidth || 0);
               setActiveIdx(Math.min(idx, items.length - 1));
             }}>
-            {items.map((item) => (
-              <div key={item.id} onClick={() => onItemClick?.(item)} className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start cursor-pointer" style={{ height: 360 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={item.image || undefined} alt={item.title} className="absolute inset-0 w-full h-full object-cover" onError={handleImgError} referrerPolicy="no-referrer" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <div className="absolute top-3 left-3">
-                  <span className="text-[9px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full backdrop-blur-md bg-black/30 text-white border border-white/20">
-                    {item.category}
-                  </span>
+            {items.map((item) => {
+              const imgSrc = upscaleGoogleImage(item.image) || item.image || '';
+              return (
+                <div key={item.id} onClick={() => onItemClick?.(item)} className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start cursor-pointer" style={{ height: 360 }}>
+                  {imgSrc ? <Image src={imgSrc} alt={item.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 800px" onError={handleImgError} /> : null}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute top-3 left-3">
+                    <span className="text-[9px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full backdrop-blur-md bg-black/30 text-white border border-white/20">
+                      {item.category}
+                    </span>
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 p-5">
+                    <h3 className="text-lg font-normal text-white leading-tight mb-1 font-serif">{item.title}</h3>
+                    <p className="text-[12px] text-white/60 mb-3 line-clamp-2">{item.description}</p>
+                    <AddToTripButton isAdded={addedItems.has(item.id)} onToggle={() => onToggleAdd(item.id)} />
+                  </div>
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 p-5">
-                  <h3 className="text-lg font-normal text-white leading-tight mb-1 font-serif">{item.title}</h3>
-                  <p className="text-[12px] text-white/60 mb-3 line-clamp-2">{item.description}</p>
-                  <AddToTripButton isAdded={addedItems.has(item.id)} onToggle={() => onToggleAdd(item.id)} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           {/* Dot indicators */}
           <div className="flex items-center gap-1.5 mt-3">
@@ -165,12 +169,14 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
         /* Grid view */
         <div className={`grid gap-3 ${flush ? 'grid-cols-2 sm:grid-cols-3' : ''}`}
           style={!flush ? { columns: '2 280px', columnGap: '0.75rem' } : undefined}>
-          {items.filter(item => item.image).map((item) => (
+          {items.filter(item => item.image).map((item) => {
+            const upscaled = upscaleGoogleImage(item.image) || item.image;
+            return (
             <div key={item.id} onClick={() => onItemClick?.(item)}
               className={`relative rounded-xl overflow-hidden cursor-pointer group ${flush ? '' : 'break-inside-avoid mb-3'}`}
               style={flush ? { height: 280 } : undefined}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.image} alt={item.title} onError={handleImgError}
+              <img src={upscaled} alt={item.title} onError={handleImgError}
                 className={`w-full object-cover group-hover:scale-105 transition-transform duration-500 ${flush ? 'h-full' : ''}`}
                 style={!flush ? { minHeight: 200 } : undefined} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
@@ -183,7 +189,7 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
                 <h3 className="text-sm font-normal text-white leading-tight font-serif">{item.title}</h3>
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
     </section>
@@ -205,9 +211,8 @@ function NewsSection({ news }: { news: NonNullable<TripContextData['news']> }) {
             <a key={item.id} href={item.url || '#'} target="_blank" rel="noopener noreferrer"
               className="flex gap-3 py-3.5 first:pt-0 hover:opacity-80 transition-opacity">
               {(item as any).image && (
-                <div className="flex-shrink-0 w-[72px] h-[54px] rounded-lg overflow-hidden bg-gray-800">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={(item as any).image} alt="" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }} />
+                <div className="relative flex-shrink-0 w-[72px] h-[54px] rounded-lg overflow-hidden bg-gray-800">
+                  <Image src={upscaleGoogleImage((item as any).image) || (item as any).image} alt="" fill className="object-cover" sizes="72px" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }} />
                 </div>
               )}
               <div className="flex-1 min-w-0">
@@ -288,8 +293,7 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
               style={{ height: 300 }}>
               {bgImage ? (
                 <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={bgImage} alt={item.title} className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 30%' }} onError={handleImgError} referrerPolicy="no-referrer" />
+                  <Image src={bgImage} alt={item.title} fill className="object-cover" style={{ objectPosition: 'center 30%' }} sizes="(max-width: 768px) 100vw, 800px" onError={handleImgError} />
                   <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 35%, rgba(0,0,0,0.15) 60%, transparent 100%)' }} />
                 </>
               ) : (
@@ -359,8 +363,8 @@ function CostOfLivingSection({ cost, localCurrency }: { cost: NonNullable<TripCo
 
   const fmtLocal = (v: number) => {
     try {
-      return new Intl.NumberFormat('en', { style: 'currency', currency: code, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
-    } catch { return `${code} ${v.toFixed(0)}`; }
+      return new Intl.NumberFormat('en', { style: 'currency', currency: code, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+    } catch { return `${code} ${v.toFixed(2)}`; }
   };
 
   const fmtConverted = (v: number) => {
@@ -385,7 +389,7 @@ function CostOfLivingSection({ cost, localCurrency }: { cost: NonNullable<TripCo
 
   return (
     <section>
-      <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-4 font-serif">Cost of Living{headingSuffix}</h3>
+      <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-4 font-serif">Cost Per Diem{headingSuffix}</h3>
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
         {items.map(({ icon: Icon, label, value, raw }) => (
           <div key={label} className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm p-3 text-center">
@@ -756,7 +760,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   }
 
   const hasExploreItems = exploreItems.length > 0;
-  const ctxRestaurants = (trip?.trip_context?.restaurants as any[] | undefined)?.filter((r: any) => r.image) ?? [];
+  const ctxRestaurants = (trip?.trip_context?.restaurants as any[] | undefined)?.filter((r: any) => r.image).map((r: any) => ({ ...r, image: hiRes(r.image) })) ?? [];
   const restaurantData = ctxRestaurants.length > 0 ? ctxRestaurants : (liveRestaurants ?? []);
   const hasRestaurants = restaurantData.length > 0;
   const phrasesData = trip?.trip_context?.phrases ?? livePhrases;
@@ -769,7 +773,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     title: e.name,
     description: `${safeDate(e.date)} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
     category: e.category || 'Event',
-    image: e.photo_url || '',
+    image: hiRes(e.photo_url ?? undefined),
   }));
   // Fallback: use explore_items that AREN'T already in "Things to Do" (which shows the first items)
   // Take from the back half of the list to avoid duplicates
@@ -831,8 +835,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                           address: r.address, website: r.website, reviewCount: r.reviewCount,
                           phone: r.phone, hours: r.hours, priceLevel: r.priceLevel,
                         })}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={r.image} alt={r.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={handleImgError} referrerPolicy="no-referrer" />
+                        <Image src={upscaleGoogleImage(r.image) || r.image} alt={r.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="380px" onError={handleImgError} />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
                         {/* Add to trip button */}
                         <div className="absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
@@ -894,6 +897,11 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
               </div>
             </div>
           )}
+
+          {/* ── Row 3.5: Budget Summary ── */}
+          <div className="mt-8">
+            <OverviewBudgetSummary trip={trip} />
+          </div>
 
           {/* ── Row 4: Nearby Cities ── */}
           {trip?.trip_context?.nearby_cities && trip.trip_context.nearby_cities.length > 0 && (

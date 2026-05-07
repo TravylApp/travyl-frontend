@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect, useRef } from 'react';
+import { use, useState, useEffect, useRef, useMemo } from 'react';
 import { Plus } from 'lucide-react';
 import { useItineraryScreen, useHomeCurrency } from '@travyl/shared';
 import { supabase } from '@travyl/shared';
@@ -48,11 +48,11 @@ function generateBudgetFromTrip(trip: any, formatAmount: (n: number, cur?: strin
       { id: 'h1', description: `${hotel?.name || 'Hotel'} (${duration} nights × ${formatAmount(hotel?.price ?? hotel?.price_per_night ?? 0, tripCurrency)})`, amount: hotelPrice },
     ] : [] },
     { id: 'food', category: 'Food & Dining', budgeted: Math.round(dailyFood * duration * travelers), actual: 0, fixed: false, expenses: [
-      { id: 'fd1', description: `~${formatAmount(Math.round(dailyFood), tripCurrency)}/day × ${duration} days`, amount: 0 },
+      { id: 'fd1', description: `~${formatAmount(Math.round(dailyFood), tripCurrency)}/day × ${duration} days`, amount: Math.round(dailyFood * duration * travelers) },
     ] },
     { id: 'activities', category: 'Activities', budgeted: Math.round(duration * 25 * travelers), actual: 0, fixed: false, expenses: [] },
     { id: 'transportation', category: 'Transportation', budgeted: Math.round(transport * duration * travelers), actual: 0, fixed: false, expenses: [
-      { id: 't1', description: `~${formatAmount(Math.round(transport), tripCurrency)}/day × ${duration} days`, amount: 0 },
+      { id: 't1', description: `~${formatAmount(Math.round(transport), tripCurrency)}/day × ${duration} days`, amount: Math.round(transport * duration * travelers) },
     ] },
     { id: 'shopping', category: 'Shopping', budgeted: Math.round(duration * 15), actual: 0, fixed: false, expenses: [] },
     { id: 'other', category: 'Other', budgeted: 50, actual: 0, fixed: false, expenses: [] },
@@ -76,18 +76,39 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
   const formatAmount = (n: number) => formatHome(n, tripCurrency);
 
   const [budgetData, setBudgetData] = useState<BudgetItem[]>(EMPTY_BUDGET);
-  const seeded = useRef(false);
   const flushTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const AUTO_EXPENSE_IDS = useMemo(() => new Set(['h1', 'fd1', 't1']), []);
 
   useEffect(() => {
-    if (trip && !seeded.current) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const saved = (trip.trip_context as any)?.budget_data as BudgetItem[] | undefined;
-      const next = saved?.length ? saved : generateBudgetFromTrip(trip, formatHome);
-      setBudgetData(recomputeActuals(next));
-      seeded.current = true;
+    if (!trip) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const saved = (trip.trip_context as any)?.budget_data as BudgetItem[] | undefined;
+    const fresh = generateBudgetFromTrip(trip, formatHome);
+
+    if (saved?.length) {
+      // Merge: preserve user-added manual expenses from saved data,
+      // but let auto-generated expenses refresh from latest trip data
+      const merged = fresh.map((item) => {
+        const savedItem = saved.find((s) => s.id === item.id);
+        if (!savedItem) return item;
+
+        // Any expenses in the saved version that weren't auto-generated are user-added
+        const userExpenses = (savedItem.expenses ?? []).filter(
+          (e) => !AUTO_EXPENSE_IDS.has(e.id),
+        );
+
+        return {
+          ...item,
+          // Keep user's budgeted value if they changed it
+          budgeted: savedItem.budgeted !== item.budgeted ? savedItem.budgeted : item.budgeted,
+          expenses: [...(item.expenses ?? []), ...userExpenses],
+        };
+      });
+      setBudgetData(recomputeActuals(merged));
+    } else {
+      setBudgetData(recomputeActuals(fresh));
     }
-  }, [trip, formatHome]);
+  }, [trip, formatHome, AUTO_EXPENSE_IDS]);
 
   const persist = (next: BudgetItem[]) => {
     if (flushTimer.current) clearTimeout(flushTimer.current);

@@ -266,8 +266,8 @@ export default function TripSettingsPage({ params }: { params: Promise<{ id: str
   const {
     theme, themeId, customColor,
     setTripTheme,
-    tabColorOverrides,
-    itineraryColorOverrides,
+    tabColorOverrides, setTabColor, resetTabColors,
+    itineraryColorOverrides, setItineraryColor, resetItineraryColors,
     hiddenTabs, setTabHidden,
   } = useTripTheme();
 
@@ -535,6 +535,14 @@ export default function TripSettingsPage({ params }: { params: Promise<{ id: str
                 currentTheme={themeId}
                 customColor={customColor}
                 onSelectTheme={(tid, color) => { setTripTheme(tid, color); markAppearance(); }}
+                tabColors={theme.tabColors}
+                tabColorOverrides={tabColorOverrides}
+                onTabColorChange={setTabColor}
+                onResetTabColors={resetTabColors}
+                itineraryColors={theme.itineraryColors}
+                itineraryColorOverrides={itineraryColorOverrides}
+                onItineraryColorChange={setItineraryColor}
+                onResetItineraryColors={resetItineraryColors}
               />
 
               <div>

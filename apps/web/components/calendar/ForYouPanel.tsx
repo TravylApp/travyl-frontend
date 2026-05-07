@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Search } from 'iconoir-react'
+import { Search, MapPin, Clock, Star } from 'iconoir-react'
 import { usePlaceImages } from '@travyl/shared'
 import { FOR_YOU_PANEL_DEFAULT_WIDTH } from './constants'
 import { SuggestionCard } from './SuggestionCard'
@@ -16,6 +16,19 @@ interface ForYouPanelProps {
   tripId: string
   scheduledActivityIds?: string[]
   width?: number
+}
+
+const CATEGORY_ICONS: Record<string, string> = {
+  sightseeing: '🏛️',
+  dining: '🍽️',
+  tours: '🚌',
+  culture: '🎭',
+  shopping: '🛍️',
+  nightlife: '🌙',
+  outdoor: '🌲',
+  attractions: '🎡',
+  entertainment: '🎬',
+  wellness: '🧘',
 }
 
 export function ForYouPanel({
@@ -42,11 +55,9 @@ export function ForYouPanel({
 
   const { trackEvent } = useInteractionTracking(tripId)
 
-  // Pexels as last-resort fallback only — suggestions already have real Foursquare photos from the API
   const suggestionNames = useMemo(() => suggestions.map(s => s.name), [suggestions])
   const imageResults = usePlaceImages(suggestionNames)
 
-  // Only apply Pexels when a suggestion has no image at all (Foursquare enrichment covers most cases)
   const enrichedSuggestions = useMemo(() => {
     if (!imageResults.length) return suggestions
     return suggestions.map((suggestion, i) => {
@@ -89,98 +100,148 @@ export function ForYouPanel({
     }
   }, [])
 
+  const cityName = destination.split(',')[0]
+
   return (
     <aside
       style={{ width: width ?? FOR_YOU_PANEL_DEFAULT_WIDTH }}
       className="relative flex flex-col shrink-0 self-stretch border-l border-cal-border bg-cal-surface-elevated overflow-hidden"
       aria-label="Activity suggestions"
     >
-      {/* Header */}
-      <div className="p-3.5 pb-3 border-b border-cal-border-light">
-        <h2 className="text-sm font-semibold text-cal-text mb-2.5">
-          For You
-        </h2>
-        <div className="flex items-center gap-2 bg-cal-border-light border border-cal-border rounded-lg px-3 py-2">
-          <Search
-            width={14}
-            height={14}
-            strokeWidth={1.5}
-            className="shrink-0 text-cal-text-tertiary opacity-50"
-            aria-hidden="true"
-          />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') commitSearch() }}
-            placeholder="Search activities..."
-            className="flex-1 bg-transparent text-sm text-cal-text placeholder-cal-text-tertiary outline-none"
-          />
+      {/* Header with gradient accent */}
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none" />
+        <div className="relative px-3.5 pt-3.5 pb-3">
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Star width={13} height={13} className="text-primary" />
+              </div>
+              <h2 className="text-sm font-semibold text-cal-text">For You</h2>
+            </div>
+          </div>
+
+          {/* Search bar */}
+          <div className="relative">
+            <Search
+              width={14}
+              height={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-cal-text-tertiary pointer-events-none"
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') commitSearch() }}
+              placeholder="Search activities..."
+              className="w-full bg-cal-bg border border-cal-border rounded-xl pl-9 pr-3 py-2.5 text-sm text-cal-text placeholder-cal-text-tertiary outline-none transition-all focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+            />
+          </div>
         </div>
       </div>
 
       {/* Filter chips */}
-      <div className="flex gap-1.5 px-3.5 pt-2.5 pb-0 overflow-x-auto">
-        {filterCategories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setActiveFilter(cat as FilterCategory)}
-            className={[
-              'text-[11px] font-medium px-2.5 py-1 rounded-full whitespace-nowrap transition-all border',
-              activeFilter === cat
-                ? 'bg-primary border-primary text-white'
-                : 'border-cal-border text-cal-text-secondary hover:bg-cal-border-light hover:text-cal-text',
-            ].join(' ')}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
+      {filterCategories.length > 0 && (
+        <div className="px-3.5 pb-2.5 overflow-x-auto scrollbar-none">
+          <div className="flex gap-1.5">
+            {filterCategories.map((cat) => {
+              const isActive = activeFilter === cat
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setActiveFilter(cat as FilterCategory)}
+                  className={[
+                    'flex items-center gap-1 text-[11px] font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap transition-all border',
+                    isActive
+                      ? 'bg-primary border-primary text-white shadow-sm'
+                      : 'border-cal-border text-cal-text-secondary hover:bg-cal-bg hover:text-cal-text hover:border-cal-text-tertiary',
+                  ].join(' ')}
+                >
+                  {CATEGORY_ICONS[cat.toLowerCase()] && (
+                    <span className="text-[10px]">{CATEGORY_ICONS[cat.toLowerCase()]}</span>
+                  )}
+                  {cat}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Section label */}
-      <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-cal-text-secondary px-3.5 pt-3 pb-1.5">
-        {searchQuery.trim()
-          ? `Results for '${searchQuery}'`
-          : `Recommended for ${destination}`}
-      </div>
+      {!isLoading && !error && suggestions.length > 0 && (
+        <div className="text-[11px] font-medium text-cal-text-secondary/70 px-3.5 pb-1.5 flex items-center gap-1.5">
+          <MapPin width={10} height={10} />
+          {searchQuery.trim()
+            ? `Results for '${searchQuery}'`
+            : `${cityName || 'Recommended'} picks`}
+        </div>
+      )}
 
       {/* Content area */}
       <div className="h-0 grow overflow-y-auto px-2 pb-3 scrollbar-thin">
         {isLoading ? (
-          <div className="masonry-grid">
+          <div className="px-1 pt-1 space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="masonry-item mb-2 rounded-[10px] bg-cal-border animate-pulse"
-                style={{ height: 120 + i * 20 }}
-              />
+              <div key={i} className="flex gap-3 animate-pulse">
+                <div
+                  className="rounded-xl bg-cal-border shrink-0"
+                  style={{ width: 80, height: i % 2 === 0 ? 70 : 90 }}
+                />
+                <div className="flex-1 space-y-2 py-1">
+                  <div className="h-3 bg-cal-border rounded w-3/4" />
+                  <div className="h-2.5 bg-cal-border rounded w-1/2" />
+                  <div className="h-2.5 bg-cal-border rounded w-1/3" />
+                </div>
+              </div>
             ))}
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-2">
-            <p className="text-sm text-cal-text-secondary">
+          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 dark:bg-red-900/10 flex items-center justify-center mb-4">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-red-400">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 8v4M12 16h.01" strokeLinecap="round" />
+              </svg>
+            </div>
+            <p className="text-sm font-medium text-cal-text mb-1">
               Couldn&apos;t load suggestions
             </p>
-            <button onClick={() => refetch()} className="text-xs text-cal-accent hover:underline">
-              Tap to retry
+            <p className="text-xs text-cal-text-tertiary mb-4">
+              Something went wrong. Check your connection.
+            </p>
+            <button
+              onClick={() => refetch()}
+              className="text-xs font-medium text-white bg-primary px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
+            >
+              Try again
             </button>
           </div>
         ) : suggestions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-1">
-            <p className="text-sm text-cal-text-secondary">
+          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+            {/* Compass illustration */}
+            <div className="w-14 h-14 rounded-2xl bg-primary/5 flex items-center justify-center mb-4">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary/40">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 2v20M2 12h20" strokeLinecap="round" opacity="0.3" />
+                <path d="M12 6v2M12 16v2M6 12H8M16 12h2" strokeLinecap="round" opacity="0.3" />
+                <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88" opacity="0.6" />
+              </svg>
+            </div>
+            <p className="text-sm font-medium text-cal-text mb-1">
               {searchQuery.trim()
                 ? `No results for '${searchQuery}'`
-                : 'No suggestions available'}
+                : 'No suggestions yet'}
             </p>
-            {searchQuery.trim() && (
-              <p className="text-xs text-cal-text-tertiary">
-                Try broader terms
-              </p>
-            )}
+            <p className="text-xs text-cal-text-tertiary max-w-[200px]">
+              {searchQuery.trim()
+                ? 'Try different keywords or browse categories'
+                : 'Try searching for things to do or browse a category above'}
+            </p>
           </div>
         ) : (
           <>
-            <div className="masonry-grid">
+            <div className="masonry-grid px-0.5">
               {enrichedSuggestions.map((suggestion) => (
                 <SuggestionCard
                   key={suggestion.id}
@@ -191,16 +252,16 @@ export function ForYouPanel({
               ))}
             </div>
 
-            {/* Load more / loading spinner */}
             {isLoadingMore ? (
-              <div className="flex justify-center py-4">
-                <div className="h-5 w-5 rounded-full border-2 border-cal-border border-t-primary animate-spin" />
+              <div className="flex items-center justify-center gap-2 py-4">
+                <div className="h-4 w-4 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                <span className="text-xs text-cal-text-tertiary">Loading more...</span>
               </div>
             ) : hasMore ? (
               <button
                 type="button"
                 onClick={loadMore}
-                className="w-full py-3 mt-2 text-xs font-medium text-cal-accent border border-cal-border hover:bg-cal-border-light rounded-lg transition-colors"
+                className="w-full py-2.5 mt-1 text-xs font-medium text-cal-text-secondary border border-dashed border-cal-border hover:border-cal-text-tertiary hover:text-cal-text rounded-xl transition-all hover:bg-cal-bg/50"
               >
                 Load more suggestions
               </button>
@@ -211,8 +272,13 @@ export function ForYouPanel({
 
       {/* Footer hint */}
       {enrichedSuggestions.length > 0 && (
-        <div className="text-center text-[11px] text-cal-text-tertiary py-2.5 border-t border-cal-border-light">
-          Drag any card onto the calendar to schedule it
+        <div className="text-center text-[11px] text-cal-text-tertiary/60 py-2.5 border-t border-cal-border/50">
+          <span className="inline-flex items-center gap-1">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-40">
+              <path d="M5 15l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Drag cards onto the calendar
+          </span>
         </div>
       )}
 

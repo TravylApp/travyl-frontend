@@ -8,7 +8,7 @@
 
 import { supabase } from './supabase';
 import { mapToDbType, getWebApiBase } from '../utils';
-import type { Trip, Profile, SavedItem, MosaicTile, InspirationCard, ExplorePlaceRow, HeroConfig, Activity, ItineraryDayWithActivities, Flight, Hotel, TripCollaborator, TripNote, Visibility, LinkPermission, CollaboratorRole, DocumentParseResult } from '../types';
+import type { Trip, Profile, SavedItem, MosaicTile, InspirationCard, ExplorePlaceRow, HeroConfig, Activity, ItineraryDayWithActivities, Flight, Hotel, Car, TripCollaborator, TripNote, Visibility, LinkPermission, CollaboratorRole, DocumentParseResult } from '../types';
 
 /**
  * Fetches all trips owned by a user, sorted by creation date (newest first).
@@ -245,6 +245,14 @@ export async function fetchHotels(tripId: string): Promise<Hotel[]> {
     .from('hotels').select('*').eq('trip_id', tripId)
     .order('created_at', { ascending: true });
   if (error) return []; // Table doesn't exist yet — fall back to trip_context
+  return data ?? [];
+}
+
+export async function fetchCars(tripId: string): Promise<Car[]> {
+  const { data, error } = await supabase
+    .from('cars').select('*').eq('trip_id', tripId)
+    .order('created_at', { ascending: true });
+  if (error) return [];
   return data ?? [];
 }
 

@@ -3,11 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { Car, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import type { CarRental, CarRentalData } from './types'
 import { CarCard } from './CarCard'
 import { CarForm } from './CarForm'
+import { CarSearchPanel } from './CarSearchPanel'
 import { addCar, updateCar, deleteCar } from './carMutations'
 
 export interface CarsModuleProps {
@@ -15,9 +15,12 @@ export interface CarsModuleProps {
   cars: CarRental[]
   defaultCurrency: string
   formatPrice: (n: number, currency?: string | null) => string
+  tripDestination?: string
+  tripStartDate?: string
+  tripEndDate?: string
 }
 
-export function CarsModule({ tripId, cars, defaultCurrency, formatPrice }: CarsModuleProps) {
+export function CarsModule({ tripId, cars, defaultCurrency, formatPrice, tripDestination, tripStartDate, tripEndDate }: CarsModuleProps) {
   const queryClient = useQueryClient()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -95,24 +98,13 @@ export function CarsModule({ tripId, cars, defaultCurrency, formatPrice }: CarsM
 
   if (cars.length === 0 && !adding) {
     return (
-      <div className="flex flex-col items-center text-center py-12">
-        <div
-          className="w-12 h-12 rounded-full flex items-center justify-center mb-3"
-          style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.10)', color: 'var(--trip-base)' }}
-        >
-          <Car size={20} />
-        </div>
-        <p className="text-[15px] font-serif text-gray-700 dark:text-gray-200">No car rentals yet</p>
-        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-1 max-w-sm">
-          Add a rental to track your ground transportation.
-        </p>
-        <button
-          onClick={() => setAdding(true)}
-          className="mt-4 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[13px] font-medium border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.04] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.08] transition"
-        >
-          <Plus size={13} /> Add rental
-        </button>
-      </div>
+      <CarSearchPanel
+        tripDestination={tripDestination}
+        tripStartDate={tripStartDate}
+        tripEndDate={tripEndDate}
+        onAdd={handleAdd}
+        onAddManually={() => setAdding(true)}
+      />
     )
   }
 

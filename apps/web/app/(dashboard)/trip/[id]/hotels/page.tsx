@@ -8,48 +8,33 @@ import { HotelsModule } from '@/components/trip/hotels/HotelsModule'
 
 export default function Hotels({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const { hotels, isLoading, trip } = useItineraryScreen(id)
+  const { hotels, trip } = useItineraryScreen(id)
   const rawHotelsQuery = useHotels(id)
   const rawHotels = rawHotelsQuery.data ?? []
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tripCurrency = ((trip as any)?.currency ?? 'USD').match(/^[A-Z]{3}/)?.[0] ?? 'USD'
-
-  if (isLoading) {
-    return (
-      <div className="w-full px-4 sm:px-6 lg:px-10 py-12">
-        <Module title="Hotels" description="Loading…">
-          <div className="h-40 animate-pulse bg-gray-100 dark:bg-white/[0.04] rounded-xl" />
-        </Module>
-      </div>
-    )
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tripDestination = (trip as any)?.destination as string | undefined
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tripStartDate = (trip as any)?.start_date as string | undefined
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tripEndDate = (trip as any)?.end_date as string | undefined
 
   const totalNights = hotels.reduce((sum, h) => sum + h.nights, 0)
-  const description = hotels.length === 0
-    ? 'No hotels booked yet'
-    : `${hotels.length} ${hotels.length === 1 ? 'booking' : 'bookings'} · ${totalNights} ${totalNights === 1 ? 'night' : 'nights'} total`
+  const description = hotels.length === 0 ? 'No hotels booked yet' : `${hotels.length} ${hotels.length === 1 ? 'booking' : 'bookings'} · ${totalNights} ${totalNights === 1 ? 'night' : 'nights'} total`
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
-      <Module
-        title="Hotels"
-        description={description}
+      <Module title="Hotels" description={description}
         action={
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent('hotels:add'))}
+          <button onClick={() => window.dispatchEvent(new CustomEvent('hotels:add'))}
             className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-[12px] font-semibold text-white shadow-sm hover:shadow-md transition-shadow"
-            style={{ backgroundColor: 'var(--trip-base)' }}
-          >
+            style={{ backgroundColor: 'var(--trip-base)' }}>
             <Plus size={13} /> Hotel
           </button>
-        }
-      >
-        <HotelsModule
-          tripId={id}
-          hotels={hotels}
-          rawHotels={rawHotels}
-          defaultCurrency={tripCurrency}
-        />
+        }>
+        <HotelsModule tripId={id} hotels={hotels} rawHotels={rawHotels} defaultCurrency={tripCurrency}
+          tripDestination={tripDestination} tripCheckIn={tripStartDate} tripCheckOut={tripEndDate} />
       </Module>
     </div>
   )

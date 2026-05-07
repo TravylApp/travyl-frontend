@@ -256,6 +256,26 @@ export interface Hotel {
   created_at: string;
 }
 
+export interface CarData {
+  company: string;
+  model: string | null;
+  pickup_location: string | null;
+  dropoff_location: string | null;
+  pickup_at: string | null;
+  dropoff_at: string | null;
+  price: number | null;
+  currency: string | null;
+  booking_ref: string | null;
+  image_url: string | null;
+}
+
+export interface Car {
+  id: string;
+  trip_id: string;
+  data: CarData;
+  created_at: string;
+}
+
 export interface ItineraryDayWithActivities extends ItineraryDay {
   activities: Activity[];
 }

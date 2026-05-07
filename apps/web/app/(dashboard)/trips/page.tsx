@@ -7,7 +7,7 @@ import { useTrips } from '@travyl/shared';
 import type { TripCard as TripCardType } from '@travyl/shared';
 import { Plus } from 'lucide-react';
 import { PaperPlane } from '@/components/ui';
-import { Footer, OceanWave } from '@/components/home';
+import { Footer } from '@/components/home';
 import { ViewToggle, TripCard, TripListItem, CreateTripModal } from '@/components/trips';
 import { useIndexTrip } from '@/hooks/useIndexTrip';
 
@@ -258,7 +258,6 @@ function TripsContent() {
             <SkeletonCard />
           </div>
         </div>
-        <OceanWave />
         <Footer />
       </div>
     );
@@ -392,7 +391,6 @@ function TripsContent() {
           </div>
         )}
       </div>
-      <OceanWave />
       <Footer />
       <CreateTripModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>

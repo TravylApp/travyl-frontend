@@ -23,6 +23,7 @@ export {
   fetchItineraryDays,
   fetchFlights,
   fetchHotels,
+  fetchCars,
   fetchActivities,
   forkTrip,
   fetchPublicTrips,

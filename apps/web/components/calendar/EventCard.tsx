@@ -1,5 +1,7 @@
 'use client'
 
+import Image from 'next/image'
+import { upscaleGoogleImage } from '@travyl/shared'
 import type { LocalEvent } from './types'
 
 const CATEGORY_COLORS: Record<LocalEvent['category'], string> = {
@@ -42,11 +44,11 @@ export function EventCard({ event }: EventCardProps) {
     <div className="flex items-start gap-3 px-3 py-2.5 hover:bg-cal-border-light transition-colors rounded-lg">
       {/* Thumbnail */}
       <div
-        className="shrink-0 w-12 h-12 rounded-lg overflow-hidden"
+        className="relative shrink-0 w-12 h-12 rounded-lg overflow-hidden"
         style={{ backgroundColor: `${color}22` }}
       >
         {event.imageUrl ? (
-          <img src={event.imageUrl} alt={event.name} className="w-full h-full object-cover" />
+          <Image src={upscaleGoogleImage(event.imageUrl) || event.imageUrl} alt={event.name} fill className="object-cover" sizes="48px" />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <div className="w-4 h-4 rounded-full" style={{ backgroundColor: color }} />
