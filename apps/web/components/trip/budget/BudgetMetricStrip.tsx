@@ -45,6 +45,7 @@ export function BudgetMetricStrip({
           onCommit={onChangeTotalBudget}
           format={formatAmount}
           ariaLabel="Total budget"
+          showAffordance={false}
           className="font-serif text-[26px] font-normal text-gray-900 dark:text-white !text-left !justify-start !w-auto"
         />
         <div className="text-[10px] text-gray-400 mt-1">{formatAmount(Math.round(dailyTarget))}/day · {daysInTrip} days</div>

@@ -1,8 +1,11 @@
+export type BudgetExpenseSource = 'manual' | 'auto-flight' | 'auto-hotel' | 'auto-activity';
+
 export interface BudgetExpense {
   id: string;
   description: string;
   amount: number;
   date?: string;
+  source?: BudgetExpenseSource;
 }
 
 export interface BudgetItem {

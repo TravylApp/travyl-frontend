@@ -514,30 +514,6 @@ function TripLayoutContent({
     exit: { opacity: 0, y: dir > 0 ? -8 : 8 },
   };
 
-  // Layout toggle button (floating, bottom-right)
-  const layoutToggle = (
-    <button
-      onClick={toggleLayout}
-      className="fixed bottom-20 md:bottom-6 right-4 z-50 flex items-center gap-2 px-3 py-2 rounded-full shadow-lg border text-xs font-medium transition-all hover:scale-105"
-      style={{
-        backgroundColor: isMagazine ? 'rgba(30,58,95,0.9)' : 'rgba(255,255,255,0.95)',
-        borderColor: isMagazine ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)',
-        color: isMagazine ? 'white' : '#1e3a5f',
-        backdropFilter: 'blur(12px)',
-      }}
-      title={`Switch to ${isMagazine ? 'compact' : 'magazine'} layout`}
-    >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        {isMagazine ? (
-          <><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" /></>
-        ) : (
-          <><rect x="2" y="2" width="20" height="20" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></>
-        )}
-      </svg>
-      {isMagazine ? 'Compact' : 'Magazine'}
-    </button>
-  );
-
   return (
     <AnimatePresence mode="sync">
     {isCalendar ? (
@@ -550,14 +526,10 @@ function TripLayoutContent({
         className="w-screen overflow-hidden relative"
         style={{ height: '100vh', position: 'fixed', inset: 0, top: 0, zIndex: 40 }}
       >
-        {/* Hover-reveal sidebar — invisible strip on the left, expands on hover */}
-        <div className="fixed left-0 top-0 bottom-0 z-50 w-3 hover:w-auto group">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-16 rounded-r-full bg-white/10 group-hover:opacity-0 transition-opacity" />
-          <div className="h-full opacity-0 -translate-x-full group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 ease-out pointer-events-none group-hover:pointer-events-auto">
-            <TripRail tripId={tripId} variant="dark" />
-          </div>
+        <TripRail tripId={tripId} variant={isMagazine ? 'dark' : 'light'} />
+        <div className={`h-full transition-[padding] duration-200 ease-out ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'}`}>
+          {children}
         </div>
-        {children}
       </motion.div>
     ) : (
     <motion.div
@@ -568,8 +540,6 @@ function TripLayoutContent({
       transition={{ duration: 0.3, ease: 'easeInOut' }}
       className={`pb-14 md:pb-0 ${isMagazine ? 'relative' : 'bg-white dark:bg-background'}`}
     >
-      {layoutToggle}
-
       {/* Sidebar */}
       <TripRail tripId={tripId} variant={isMagazine ? 'dark' : 'light'} />
 
@@ -583,7 +553,7 @@ function TripLayoutContent({
 
       {/* Content area */}
       <div className="relative z-10">
-        <div className={isMagazine ? '' : 'mx-auto max-w-7xl'}>
+        <div className={isMagazine ? '' : 'mx-auto max-w-[1800px]'}>
           {!isMagazine && (
             <ContentHeader
               tripId={tripId}

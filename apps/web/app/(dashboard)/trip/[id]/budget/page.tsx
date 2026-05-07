@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useState, useEffect, useRef } from 'react';
+import { use, useState, useEffect, useMemo, useRef } from 'react';
 import { Plus } from 'lucide-react';
 import { useItineraryScreen, useHomeCurrency } from '@travyl/shared';
 import { supabase } from '@travyl/shared';
@@ -11,52 +11,99 @@ import { BudgetMobileList } from '@/components/trip/budget/BudgetMobileList';
 import { computeTotals, scaleBudgetsProportionally } from '@/components/trip/budget/budgetMath';
 import type { BudgetItem, BudgetExpense } from '@/components/trip/budget/types';
 
-const EMPTY_BUDGET: BudgetItem[] = [
-  { id: 'flights', category: 'Flights', budgeted: 0, actual: 0, fixed: true, expenses: [] },
-  { id: 'hotels', category: 'Hotels', budgeted: 0, actual: 0, fixed: true, expenses: [] },
-  { id: 'food', category: 'Food & Dining', budgeted: 0, actual: 0, fixed: false, expenses: [] },
-  { id: 'activities', category: 'Activities', budgeted: 0, actual: 0, fixed: false, expenses: [] },
-  { id: 'transportation', category: 'Transportation', budgeted: 0, actual: 0, fixed: false, expenses: [] },
-  { id: 'shopping', category: 'Shopping', budgeted: 0, actual: 0, fixed: false, expenses: [] },
-  { id: 'other', category: 'Other', budgeted: 0, actual: 0, fixed: false, expenses: [] },
+const CATEGORY_ORDER: { id: string; label: string; fixed: boolean }[] = [
+  { id: 'flights', label: 'Flights', fixed: true },
+  { id: 'hotels', label: 'Hotels', fixed: true },
+  { id: 'food', label: 'Food & Dining', fixed: false },
+  { id: 'activities', label: 'Activities', fixed: false },
+  { id: 'transportation', label: 'Transportation', fixed: false },
+  { id: 'shopping', label: 'Shopping', fixed: false },
+  { id: 'other', label: 'Other', fixed: false },
 ];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function generateBudgetFromTrip(trip: any, formatAmount: (n: number, cur?: string) => string = (n) => `$${n}`): BudgetItem[] {
-  if (!trip) return EMPTY_BUDGET;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ctx = trip.trip_context as any;
-  const cost = ctx?.cost_of_living;
-  const hotel = ctx?.hotels?.[0] || ctx?.all_hotels?.[0];
-  const rawCur: string = trip.currency ?? ctx?.quick_facts?.currency ?? 'USD';
-  const tripCurrency = rawCur.match(/^[A-Z]{3}/)?.[0] ?? 'USD';
-  const duration = trip.start_date && trip.end_date
-    ? Math.max(1, Math.ceil((new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000))
-    : ctx?.weather?.forecast?.length ?? 5;
-  const travelers = trip.travelers ?? 1;
+const EMPTY_BUDGET: BudgetItem[] = CATEGORY_ORDER.map(({ id, label, fixed }) => ({
+  id,
+  category: label,
+  budgeted: 0,
+  actual: 0,
+  fixed,
+  expenses: [],
+}));
 
-  const hotelPrice = (hotel?.price ?? hotel?.price_per_night ?? 0) * duration;
-  const mealBudget = cost?.budget_meal ? parseFloat(String(cost.budget_meal).replace(/[^0-9.]/g, '')) : 0;
-  const midMeal = cost?.mid_range_meal ? parseFloat(String(cost.mid_range_meal).replace(/[^0-9.]/g, '')) : 0;
-  const dailyFood = (mealBudget + midMeal) || 40;
-  const transport = cost?.public_transport ? parseFloat(String(cost.public_transport).replace(/[^0-9.]/g, '')) : 5;
-  const totalBudget = trip.budget ?? (hotelPrice + dailyFood * duration + transport * duration + 200);
+function categorizeActivity(category: string | null | undefined): string {
+  const c = (category ?? '').toLowerCase();
+  if (/dining|restaurant|food|cafe|café|bar|coffee|brunch|brewery|bakery/.test(c)) return 'food';
+  if (/transport|transit|taxi|uber|subway|bus|train|rental|car/.test(c)) return 'transportation';
+  if (/shopping|store|market|mall|boutique|souvenir/.test(c)) return 'shopping';
+  return 'activities';
+}
 
-  return [
-    { id: 'flights', category: 'Flights', budgeted: Math.round(totalBudget * 0.25), actual: 0, fixed: true, expenses: [] },
-    { id: 'hotels', category: 'Hotels', budgeted: hotelPrice || Math.round(totalBudget * 0.30), actual: 0, fixed: true, expenses: hotelPrice ? [
-      { id: 'h1', description: `${hotel?.name || 'Hotel'} (${duration} nights × ${formatAmount(hotel?.price ?? hotel?.price_per_night ?? 0, tripCurrency)})`, amount: hotelPrice },
-    ] : [] },
-    { id: 'food', category: 'Food & Dining', budgeted: Math.round(dailyFood * duration * travelers), actual: 0, fixed: false, expenses: [
-      { id: 'fd1', description: `~${formatAmount(Math.round(dailyFood), tripCurrency)}/day × ${duration} days`, amount: 0 },
-    ] },
-    { id: 'activities', category: 'Activities', budgeted: Math.round(duration * 25 * travelers), actual: 0, fixed: false, expenses: [] },
-    { id: 'transportation', category: 'Transportation', budgeted: Math.round(transport * duration * travelers), actual: 0, fixed: false, expenses: [
-      { id: 't1', description: `~${formatAmount(Math.round(transport), tripCurrency)}/day × ${duration} days`, amount: 0 },
-    ] },
-    { id: 'shopping', category: 'Shopping', budgeted: Math.round(duration * 15), actual: 0, fixed: false, expenses: [] },
-    { id: 'other', category: 'Other', budgeted: 50, actual: 0, fixed: false, expenses: [] },
-  ];
+type ItineraryDays = ReturnType<typeof useItineraryScreen>['days'];
+type Flights = ReturnType<typeof useItineraryScreen>['flights'];
+type Hotels = ReturnType<typeof useItineraryScreen>['hotels'];
+
+function buildAutoExpenses(
+  days: ItineraryDays,
+  flights: Flights,
+  hotels: Hotels,
+  convert: (amount: number, sourceCurrency: string) => number,
+  homeCurrency: string,
+): Record<string, BudgetExpense[]> {
+  const buckets: Record<string, BudgetExpense[]> = {
+    flights: [],
+    hotels: [],
+    food: [],
+    activities: [],
+    transportation: [],
+    shopping: [],
+    other: [],
+  };
+
+  for (const f of flights) {
+    if (f.price == null) continue;
+    const amt = convert(f.price, f.priceCurrency ?? homeCurrency);
+    const desc = `${f.airline}${f.flightNumber ? ` ${f.flightNumber}` : ''} · ${f.route}`;
+    buckets.flights.push({
+      id: `auto-flight-${f.id}`,
+      description: desc,
+      amount: Math.round(amt),
+      date: f.departureDisplay ?? undefined,
+      source: 'auto-flight',
+    });
+  }
+
+  for (const h of hotels) {
+    if (h.price == null) continue;
+    const isPerNight = (h.priceDisplay ?? '').includes('/night');
+    const totalNative = isPerNight ? h.price * h.nights : h.price;
+    const amt = convert(totalNative, h.priceCurrency ?? homeCurrency);
+    buckets.hotels.push({
+      id: `auto-hotel-${h.id}`,
+      description: `${h.name} · ${h.nightsLabel}`,
+      amount: Math.round(amt),
+      date: h.checkInDisplay,
+      source: 'auto-hotel',
+    });
+  }
+
+  for (const day of days) {
+    for (const group of day.timeGroups) {
+      for (const a of group.activities) {
+        if (a.cost == null || a.cost === 0) continue;
+        const amt = convert(a.cost, a.costCurrency ?? homeCurrency);
+        const bucket = categorizeActivity(a.category);
+        buckets[bucket].push({
+          id: `auto-activity-${a.id}`,
+          description: a.name,
+          amount: Math.round(amt),
+          date: day.dateLabel || undefined,
+          source: 'auto-activity',
+        });
+      }
+    }
+  }
+
+  return buckets;
 }
 
 function recomputeActuals(items: BudgetItem[]): BudgetItem[] {
@@ -66,28 +113,63 @@ function recomputeActuals(items: BudgetItem[]): BudgetItem[] {
   }));
 }
 
+function mergeAutoWithSaved(
+  auto: Record<string, BudgetExpense[]>,
+  saved: BudgetItem[] | undefined,
+): BudgetItem[] {
+  const savedById = new Map((saved ?? []).map((i) => [i.id, i]));
+  return CATEGORY_ORDER.map(({ id, label, fixed }) => {
+    const savedItem = savedById.get(id);
+    const autoExpenses = auto[id] ?? [];
+    const manualExpenses = (savedItem?.expenses ?? []).filter((e) => e.source === 'manual');
+    // Preserve manually-edited amounts on auto entries when an itinerary item
+    // is unchanged but the user typed a real receipt amount (rare, but cheap).
+    const savedAutoById = new Map(
+      (savedItem?.expenses ?? [])
+        .filter((e) => e.source && e.source !== 'manual')
+        .map((e) => [e.id, e]),
+    );
+    const merged = autoExpenses.map((e) => {
+      const prior = savedAutoById.get(e.id);
+      if (prior && prior.amount !== e.amount) {
+        return { ...e, amount: prior.amount };
+      }
+      return e;
+    });
+    const expenses = [...merged, ...manualExpenses];
+    const actual = expenses.reduce((s, e) => s + (e.amount ?? 0), 0);
+    const budgeted = savedItem?.budgeted ?? actual;
+    return { id, category: label, budgeted, actual, fixed, expenses };
+  });
+}
+
 export default function Budget({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { isLoading, trip } = useItineraryScreen(id);
-  const { format: formatHome } = useHomeCurrency();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rawCur: string = (trip as any)?.currency ?? (trip as any)?.trip_context?.quick_facts?.currency ?? 'USD';
-  const tripCurrency = rawCur.match(/^[A-Z]{3}/)?.[0] ?? 'USD';
-  const formatAmount = (n: number) => formatHome(n, tripCurrency);
+  const { isLoading, trip, days, flights, hotels } = useItineraryScreen(id);
+  const { format: formatHome, convert, currency: homeCurrency } = useHomeCurrency();
+  const formatAmount = (n: number) => formatHome(n, homeCurrency);
 
   const [budgetData, setBudgetData] = useState<BudgetItem[]>(EMPTY_BUDGET);
-  const seeded = useRef(false);
   const flushTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const lastSyncedRef = useRef<string>('');
 
+  const autoExpenses = useMemo(
+    () => buildAutoExpenses(days, flights, hotels, convert, homeCurrency),
+    [days, flights, hotels, convert, homeCurrency],
+  );
+
+  // Resync from itinerary whenever auto-expenses change. Manual entries and
+  // budgeted overrides survive via mergeAutoWithSaved.
   useEffect(() => {
-    if (trip && !seeded.current) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const saved = (trip.trip_context as any)?.budget_data as BudgetItem[] | undefined;
-      const next = saved?.length ? saved : generateBudgetFromTrip(trip, formatHome);
-      setBudgetData(recomputeActuals(next));
-      seeded.current = true;
-    }
-  }, [trip, formatHome]);
+    if (!trip) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const saved = (trip.trip_context as any)?.budget_data as BudgetItem[] | undefined;
+    const next = mergeAutoWithSaved(autoExpenses, saved);
+    const signature = JSON.stringify(next.map((i) => [i.id, i.budgeted, i.expenses?.map((e) => [e.id, e.amount])]));
+    if (signature === lastSyncedRef.current) return;
+    lastSyncedRef.current = signature;
+    setBudgetData(next);
+  }, [trip, autoExpenses]);
 
   const persist = (next: BudgetItem[]) => {
     if (flushTimer.current) clearTimeout(flushTimer.current);
@@ -136,7 +218,13 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
   };
 
   const handleAddExpense = (itemId: string, description: string, amount: number, date?: string) => {
-    const expense: BudgetExpense = { id: `exp-${Date.now()}`, description, amount, date };
+    const expense: BudgetExpense = {
+      id: `manual-${Date.now()}`,
+      description,
+      amount,
+      date,
+      source: 'manual',
+    };
     const updated = recomputeActuals(budgetData.map((i) =>
       i.id === itemId ? { ...i, expenses: [...(i.expenses ?? []), expense] } : i
     ));
@@ -168,7 +256,7 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
     <div className="w-full px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
       <Module
         title="Budget"
-        description="Edit any cell · click a category to expand expenses"
+        description="Auto-pulled from your itinerary · click a category to add or edit expenses"
         action={
           <button
             className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-[12px] font-semibold text-white shadow-sm hover:shadow-md transition-shadow"

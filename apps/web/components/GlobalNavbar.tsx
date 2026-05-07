@@ -9,7 +9,7 @@ import { PlaceholderAvatar } from "@/components/ui/PlaceholderAvatar";
 import { useAuthStore, useTrips } from "@travyl/shared";
 
 const baseNavLinks = [
-  { href: "/places", label: "Places", icon: MapPin },
+  { href: "/places", label: "Explore", icon: MapPin },
   { href: "/trips", label: "Trips", icon: Luggage },
 ];
 
@@ -41,8 +41,7 @@ export default function GlobalNavbar() {
   );
 
   const isAuthPage = AUTH_PAGES.some((p) => pathname.startsWith(p));
-  const isTripRoute = pathname.startsWith('/trip/'); // trip pages have their own nav
-  const isDashboardRoute = isTripRoute;
+  const isTripRoute = pathname.startsWith('/trip/');
   const isHomePage = pathname === "/";
   const useLightNav = isHomePage && !scrolled;
 
@@ -98,7 +97,7 @@ export default function GlobalNavbar() {
     await signOut();
   }, [signOut]);
 
-  if (isAuthPage || isDashboardRoute) return null;
+  if (isAuthPage) return null;
 
   return (
     <>
@@ -150,6 +149,9 @@ export default function GlobalNavbar() {
         /* Light mode backgrounds */
         .gnav-bar.bg-clear { background: rgba(255,255,255,0.30); }
         .gnav-bar.bg-clear-hero { background: rgba(255,255,255,0.05); box-shadow: 0 1px 0 rgba(255,255,255,0.06); }
+        /* Solid bar — used on non-hero routes so trip/dashboard content doesn't bleed through */
+        .gnav-bar.bg-solid { background: rgba(255,255,255,0.96); border-bottom: 1px solid rgba(0,0,0,0.06); }
+        :root.dark .gnav-bar.bg-solid { background: rgba(10,21,32,0.96); border-bottom: 1px solid rgba(255,255,255,0.06); }
         .gnav-shell.scrolled .gnav-bar.bg-clear {
           background: rgba(255,255,255,0.88);
           border: 1px solid rgba(0,0,0,0.08);
@@ -194,8 +196,8 @@ export default function GlobalNavbar() {
         }
       ` }} />
 
-      <div className={`gnav-shell ${scrolled ? "scrolled" : ""}`}>
-      <nav className={`gnav-bar ${useLightNav ? "bg-clear-hero" : "bg-clear"}`}>
+      <div className={`gnav-shell ${scrolled && isHomePage ? "scrolled" : ""}`}>
+      <nav className={`gnav-bar ${useLightNav ? "bg-clear-hero" : isHomePage ? "bg-clear" : "bg-solid"}`}>
         <div className="gnav-inner mx-auto flex items-center justify-between h-full px-4 sm:px-6 lg:px-8">
           {/* Logo */}
           <Link

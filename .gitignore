@@ -54,3 +54,6 @@ sst-env.d.ts
 *.png
 !apps/**/*.png
 !packages/**/*.png
+
+# Playwright
+test-results/

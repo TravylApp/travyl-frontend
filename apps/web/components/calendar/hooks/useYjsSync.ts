@@ -247,8 +247,12 @@ export function useYjsSync(
   // Uses application-level activity.id (UUID) to update our local Yjs map,
   // bypassing the Y.Map internal-ID incompatibility that breaks Yjs delta sync.
   useEffect(() => {
+    // Unique-per-mount suffix prevents `supabase.channel()` from returning a
+    // stale, already-subscribed channel under React 19 double-invoke / HMR,
+    // which would reject any further `.on()` calls.
+    const topic = `activity-pg:${tripId}-${Math.random().toString(36).slice(2, 8)}`
     const channel = supabase
-      .channel(`activity-pg:${tripId}`)
+      .channel(topic)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'activity', filter: `trip_id=eq.${tripId}` },
@@ -281,7 +285,7 @@ export function useYjsSync(
       .subscribe()
 
     return () => {
-      channel.unsubscribe()
+      supabase.removeChannel(channel)
     }
   }, [tripId, activitiesMap])
 

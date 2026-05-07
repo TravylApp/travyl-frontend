@@ -111,11 +111,13 @@ function rowClasses(active: boolean, dark: boolean, collapsed: boolean) {
     ? 'relative flex items-center justify-center h-8 w-8 mx-auto rounded-[7px] my-px transition-colors'
     : 'relative flex items-center gap-[11px] h-8 px-2.5 rounded-[7px] my-px text-[13px] transition-colors';
   if (active) {
-    const text = dark ? 'text-white font-semibold' : 'text-[var(--trip-base)] font-semibold';
+    const text = dark ? 'text-white font-semibold' : 'text-[var(--trip-base)] dark:text-white font-semibold';
     return `${base} ${text}`;
   }
-  const text = dark ? 'text-white/70 font-medium' : 'text-gray-600 font-medium';
-  const hover = dark ? 'hover:bg-white/10' : 'hover:bg-[#f5f3ee] hover:text-[var(--trip-base)]';
+  const text = dark ? 'text-white/70 font-medium' : 'text-gray-600 dark:text-white/70 font-medium';
+  const hover = dark
+    ? 'hover:bg-white/10'
+    : 'hover:bg-[#f5f3ee] hover:text-[var(--trip-base)] dark:hover:bg-white/5 dark:hover:text-white';
   return `${base} ${text} ${hover}`;
 }
 
@@ -186,19 +188,19 @@ function RailDesktop({
 }) {
   const surface = dark
     ? 'bg-black/85 backdrop-blur-xl border-white/10'
-    : 'bg-white border-gray-200';
-  const headingColor = dark ? 'text-white' : 'text-[var(--trip-base)]';
-  const metaColor = dark ? 'text-white/50' : 'text-gray-400';
+    : 'bg-white dark:bg-[#0c1117] border-gray-200 dark:border-white/[0.08]';
+  const headingColor = dark ? 'text-white' : 'text-[var(--trip-base)] dark:text-white';
+  const metaColor = dark ? 'text-white/50' : 'text-gray-400 dark:text-white/50';
   const count = travelerCount(trip?.travelers);
   const settingsTab = getTabMeta('settings')!;
 
   return (
     <aside
-      className={`hidden md:flex flex-col fixed top-0 bottom-0 left-0 ${collapsed ? 'w-[56px]' : 'w-[220px]'} transition-[width] duration-200 ease-out border-r ${surface} z-30`}
+      className={`hidden md:flex flex-col fixed top-12 bottom-0 left-0 ${collapsed ? 'w-[56px]' : 'w-[220px]'} transition-[width] duration-200 ease-out border-r ${surface} z-30`}
       aria-label="Trip navigation"
     >
       {!collapsed && (
-        <div className={`px-4 pt-4 pb-3 border-b ${dark ? 'border-white/10' : 'border-[#f0eee9]'}`}>
+        <div className={`px-4 pt-4 pb-3 border-b ${dark ? 'border-white/10' : 'border-[#f0eee9] dark:border-white/[0.08]'}`}>
           {trip ? (
             <>
               <div className={`font-serif text-[16px] leading-tight ${headingColor}`}>
@@ -216,8 +218,8 @@ function RailDesktop({
             </>
           ) : (
             <>
-              <div className={`h-4 w-32 rounded ${dark ? 'bg-white/10' : 'bg-gray-100'} animate-pulse`} />
-              <div className={`h-3 w-24 rounded mt-2 ${dark ? 'bg-white/10' : 'bg-gray-100'} animate-pulse`} />
+              <div className={`h-4 w-32 rounded ${dark ? 'bg-white/10' : 'bg-gray-100 dark:bg-white/10'} animate-pulse`} />
+              <div className={`h-3 w-24 rounded mt-2 ${dark ? 'bg-white/10' : 'bg-gray-100 dark:bg-white/10'} animate-pulse`} />
             </>
           )}
         </div>
@@ -228,7 +230,7 @@ function RailDesktop({
           if (visibleSegments.length === 0) return null;
           return (
           <div key={group.id}>
-            {idx > 0 && <div role="presentation" className={`h-px my-1.5 mx-3 ${dark ? 'bg-white/[0.06]' : 'bg-[#f0eee9]'}`} />}
+            {idx > 0 && <div role="presentation" className={`h-px my-1.5 mx-3 ${dark ? 'bg-white/[0.06]' : 'bg-[#f0eee9] dark:bg-white/[0.06]'}`} />}
             {visibleSegments.map((seg) => {
               const tab = getTabMeta(seg);
               if (!tab) return null;
@@ -249,7 +251,7 @@ function RailDesktop({
           );
         })}
       </nav>
-      <div className={`${collapsed ? 'px-1.5' : 'px-2.5'} pt-1.5 pb-2 border-t ${dark ? 'border-white/10' : 'border-[#f0eee9]'}`}>
+      <div className={`${collapsed ? 'px-1.5' : 'px-2.5'} pt-1.5 pb-2 border-t ${dark ? 'border-white/10' : 'border-[#f0eee9] dark:border-white/[0.08]'}`}>
         <RailRow
           href={`${basePath}/settings`}
           label="Settings"
@@ -269,7 +271,7 @@ function RailDesktop({
               ? 'flex items-center justify-center h-7 w-8 mx-auto mt-1.5 rounded-md'
               : 'flex items-center justify-end gap-1.5 w-full h-7 px-2.5 mt-1.5 rounded-md text-[11px]'
           } transition-colors ${
-            dark ? 'text-white/40 hover:text-white/70 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-[#f5f3ee]'
+            dark ? 'text-white/40 hover:text-white/70 hover:bg-white/10' : 'text-gray-400 hover:text-gray-600 hover:bg-[#f5f3ee] dark:text-white/40 dark:hover:text-white/70 dark:hover:bg-white/10'
           }`}
         >
           {!collapsed && <span>Collapse</span>}

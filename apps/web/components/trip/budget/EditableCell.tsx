@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { Pencil } from 'lucide-react';
 
 export interface EditableCellProps {
   value: number;
@@ -9,9 +10,12 @@ export interface EditableCellProps {
   ariaLabel: string;
   className?: string;
   disabled?: boolean;
+  showAffordance?: boolean;
 }
 
-export function EditableCell({ value, onCommit, format, ariaLabel, className = '', disabled }: EditableCellProps) {
+export function EditableCell({
+  value, onCommit, format, ariaLabel, className = '', disabled, showAffordance = true,
+}: EditableCellProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -52,9 +56,15 @@ export function EditableCell({ value, onCommit, format, ariaLabel, className = '
         type="button"
         onClick={() => setEditing(true)}
         aria-label={ariaLabel}
-        className={`tabular-nums text-right border border-transparent rounded px-1.5 py-0.5 hover:bg-white hover:border-gray-200 dark:hover:bg-white/[0.04] dark:hover:border-white/10 transition-colors ${className}`}
+        className={`group/edit inline-flex items-center justify-end gap-1 tabular-nums text-right border border-transparent rounded px-1.5 py-0.5 hover:bg-white hover:border-gray-200 dark:hover:bg-white/[0.04] dark:hover:border-white/10 transition-colors ${className}`}
       >
-        {format(value)}
+        <span>{format(value)}</span>
+        {showAffordance && (
+          <Pencil
+            size={10}
+            className="text-gray-300 group-hover/edit:text-[var(--trip-base)] transition-colors"
+          />
+        )}
       </button>
     );
   }

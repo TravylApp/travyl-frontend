@@ -116,12 +116,29 @@ export function TakeoffTransition({ visible, buttonRect, onComplete, statusMessa
     const W = () => canvas.width;
     const H = () => canvas.height;
 
-    const originX = buttonRect ? buttonRect.left + buttonRect.width / 2 : W() * 0.1;
-    const originY = buttonRect ? buttonRect.top + buttonRect.height / 2 : H() * 0.6;
+    // Spawn just below the visible area so the plane visibly enters from the
+    // bottom (a takeoff), instead of materializing where the button used to be.
+    // Start left-of-center horizontally so the path sweeps diagonally across
+    // the full viewport rather than hugging the right edge.
+    const originX = W() * 0.25;
+    const originY = H() + 80;
+    const endX = W() + 100;
+    const endY = -150;
+
+    // Quadratic Bezier control point pulled high through the middle to give
+    // the plane a graceful upward arc across the screen.
+    const cpX = W() * 0.55;
+    const cpY = H() * 0.15;
+
+    // The PaperPlane SVG nose sits at (60, 10) within a 64x64 viewbox, so its
+    // default direction is up-and-right at ~-38°. We subtract that so the
+    // bank angle aligns with the motion vector instead of stacking on top.
+    const PLANE_DEFAULT_ANGLE = Math.atan2(10 - 32, 60 - 32);
+
     const trail: { x: number; y: number; age: number }[] = [];
     const planePaths = PAPER_PLANE_PATHS.map((d) => new Path2D(d));
 
-    const FLIGHT_DUR = 1600;
+    const FLIGHT_DUR = 1800;
     const startTime = performance.now();
     let animId: number;
 
@@ -132,19 +149,20 @@ export function TakeoffTransition({ visible, buttonRect, onComplete, statusMessa
       if (elapsed < FLIGHT_DUR) {
         const p = elapsed / FLIGHT_DUR;
 
-        // Smooth ease-out curve from origin to off-screen right
-        const ease = 1 - Math.pow(1 - p, 3);
-        const endX = W() + 60;
-        const planeX = originX + ease * (endX - originX);
+        // Ease-out so the plane decelerates as it leaves the frame.
+        const t = 1 - Math.pow(1 - p, 2.5);
+        const omt = 1 - t;
 
-        // Gentle upward arc
-        const arcHeight = H() * 0.25;
-        const planeY = originY - Math.sin(p * Math.PI * 0.5) * arcHeight;
+        const planeX = omt * omt * originX + 2 * omt * t * cpX + t * t * endX;
+        const planeY = omt * omt * originY + 2 * omt * t * cpY + t * t * endY;
 
-        // Slight upward bank angle
-        const bankAngle = -0.15 - p * 0.1;
-        const planeScale = 0.5 + p * 0.5;
-        const planeAlpha = p > 0.85 ? 1 - (p - 0.85) / 0.15 : 1;
+        // Tangent of the Bezier, used to orient the plane along its path.
+        const dx = 2 * omt * (cpX - originX) + 2 * t * (endX - cpX);
+        const dy = 2 * omt * (cpY - originY) + 2 * t * (endY - cpY);
+        const bankAngle = Math.atan2(dy, dx) - PLANE_DEFAULT_ANGLE;
+
+        const planeScale = 0.65 + p * 0.3;
+        const planeAlpha = p > 0.92 ? Math.max(0, 1 - (p - 0.92) / 0.08) : 1;
 
         // Record trail
         trail.push({ x: planeX, y: planeY, age: 0 });
@@ -217,7 +235,7 @@ export function TakeoffTransition({ visible, buttonRect, onComplete, statusMessa
         style={{ width: "100%", height: "100%" }}
       />
 
-      {/* Loading content — fades in after flight */}
+      {/* Loading content, fades in after flight */}
       <div
         className="absolute inset-0 flex items-center justify-center z-20 transition-opacity duration-700"
         style={{ opacity: showContent ? 1 : 0, pointerEvents: showContent ? "auto" : "none" }}
