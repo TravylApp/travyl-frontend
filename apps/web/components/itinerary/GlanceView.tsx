@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useDayStory, useDayImages, useDestinationImage } from '@travyl/shared';
 import type { ItineraryDayViewModel } from '@travyl/shared';
 import { DaySlide } from './glance/DaySlide';
@@ -77,6 +77,30 @@ export function GlanceView({
     (heroBank.length > 0 ? heroBank[selectedDayIndex % heroBank.length] : undefined) ??
     destImage?.url ??
     null;
+
+  // Resolve the image for an arbitrary day index using the same fallback chain
+  // — so we can warm the browser cache for adjacent days before the user clicks.
+  const resolveImageForDay = (i: number): string | null => {
+    if (i < 0 || i >= days.length) return null;
+    return (
+      (dayBank.length > 0 ? dayBank[i % dayBank.length] : undefined) ??
+      (heroBank.length > 0 ? heroBank[i % heroBank.length] : undefined) ??
+      destImage?.url ??
+      null
+    );
+  };
+
+  // Prefetch images for ±1 day so swapping is instant once the user advances.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    [selectedDayIndex - 1, selectedDayIndex + 1].forEach((i) => {
+      const url = resolveImageForDay(i);
+      if (!url) return;
+      const img = new window.Image();
+      img.src = url;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDayIndex, dayBank, heroBank, destImage?.url, days.length]);
 
   if (!day) return null;
 
