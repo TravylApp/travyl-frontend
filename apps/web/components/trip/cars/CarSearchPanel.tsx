@@ -137,6 +137,70 @@ export function CarSearchPanel({
   const [showForm, setShowForm] = useState(false);
   const PAGE_SIZE = 12;
 
+  // MPG: prefer real data from fueleconomy.gov, fallback to estimates
+  function getMpg(rate: any): { mpg: number; label: string; year?: number | null } | null {
+    const vehicle = rate.vehicle as string | undefined;
+    if (vehicle) {
+      const real = mpgData[vehicle];
+      if (real?.mpg != null && real.label)
+        return { mpg: real.mpg, label: real.label, year: real.year };
+    }
+
+    // Fallback estimates by category + fuel type
+    const fuel = (rate.fuel ?? "").toLowerCase();
+    const cat = (rate.category ?? "").toLowerCase();
+
+    if (fuel.includes("electric") || fuel === "ev")
+      return { mpg: 120, label: "120 MPGe" };
+    if (fuel.includes("hybrid")) return { mpg: 45, label: "45 MPG" };
+
+    if (fuel.includes("diesel")) {
+      if (cat.includes("compact")) return { mpg: 38, label: "38 MPG" };
+      if (cat.includes("economy")) return { mpg: 40, label: "40 MPG" };
+      if (cat.includes("mid")) return { mpg: 35, label: "35 MPG" };
+      if (cat.includes("standard")) return { mpg: 32, label: "32 MPG" };
+      if (cat.includes("full") || cat.includes("large"))
+        return { mpg: 30, label: "30 MPG" };
+      if (cat.includes("suv")) return { mpg: 28, label: "28 MPG" };
+      if (cat.includes("minivan") || cat.includes("van"))
+        return { mpg: 25, label: "25 MPG" };
+      if (cat.includes("luxury") || cat.includes("premium"))
+        return { mpg: 28, label: "28 MPG" };
+      if (cat.includes("convertible") || cat.includes("sports"))
+        return { mpg: 30, label: "30 MPG" };
+      return { mpg: 32, label: "32 MPG" };
+    }
+
+    if (cat.includes("economy") || cat.includes("mini"))
+      return { mpg: 35, label: "35 MPG" };
+    if (cat.includes("compact")) return { mpg: 32, label: "32 MPG" };
+    if (cat.includes("mid") || cat.includes("intermediate"))
+      return { mpg: 28, label: "28 MPG" };
+    if (cat.includes("standard")) return { mpg: 26, label: "26 MPG" };
+    if (cat.includes("full") || cat.includes("large"))
+      return { mpg: 24, label: "24 MPG" };
+    if (cat.includes("premium")) return { mpg: 22, label: "22 MPG" };
+    if (cat.includes("luxury")) return { mpg: 20, label: "20 MPG" };
+    if (cat.includes("suv")) return { mpg: 22, label: "22 MPG" };
+    if (cat.includes("minivan") || cat.includes("van"))
+      return { mpg: 22, label: "22 MPG" };
+    if (cat.includes("convertible")) return { mpg: 24, label: "24 MPG" };
+    if (cat.includes("sports") || cat.includes("exotic"))
+      return { mpg: 18, label: "18 MPG" };
+    if (cat.includes("pickup") || cat.includes("truck"))
+      return { mpg: 18, label: "18 MPG" };
+
+    if (fuel.includes("diesel")) return { mpg: 30, label: "30 MPG" };
+    if (
+      !fuel ||
+      fuel.includes("petrol") ||
+      fuel.includes("gas") ||
+      fuel.includes("gasoline")
+    )
+      return { mpg: 28, label: "28 MPG" };
+    return null;
+  }
+
   // Reset to page 1 when filters or sort change
   useEffect(() => {
     setPage(1);
@@ -288,69 +352,6 @@ export function CarSearchPanel({
     return rates.slice(start, start + PAGE_SIZE);
   }, [rates, safePage]);
 
-  // MPG: prefer real data from fueleconomy.gov, fallback to estimates
-  const getMpg = (rate: any): { mpg: number; label: string; year?: number | null } | null => {
-    const vehicle = rate.vehicle as string | undefined;
-    if (vehicle) {
-      const real = mpgData[vehicle];
-      if (real?.mpg != null && real.label)
-        return { mpg: real.mpg, label: real.label, year: real.year };
-    }
-
-    // Fallback estimates by category + fuel type
-    const fuel = (rate.fuel ?? "").toLowerCase();
-    const cat = (rate.category ?? "").toLowerCase();
-
-    if (fuel.includes("electric") || fuel === "ev")
-      return { mpg: 120, label: "120 MPGe" };
-    if (fuel.includes("hybrid")) return { mpg: 45, label: "45 MPG" };
-
-    if (fuel.includes("diesel")) {
-      if (cat.includes("compact")) return { mpg: 38, label: "38 MPG" };
-      if (cat.includes("economy")) return { mpg: 40, label: "40 MPG" };
-      if (cat.includes("mid")) return { mpg: 35, label: "35 MPG" };
-      if (cat.includes("standard")) return { mpg: 32, label: "32 MPG" };
-      if (cat.includes("full") || cat.includes("large"))
-        return { mpg: 30, label: "30 MPG" };
-      if (cat.includes("suv")) return { mpg: 28, label: "28 MPG" };
-      if (cat.includes("minivan") || cat.includes("van"))
-        return { mpg: 25, label: "25 MPG" };
-      if (cat.includes("luxury") || cat.includes("premium"))
-        return { mpg: 28, label: "28 MPG" };
-      if (cat.includes("convertible") || cat.includes("sports"))
-        return { mpg: 30, label: "30 MPG" };
-      return { mpg: 32, label: "32 MPG" };
-    }
-
-    if (cat.includes("economy") || cat.includes("mini"))
-      return { mpg: 35, label: "35 MPG" };
-    if (cat.includes("compact")) return { mpg: 32, label: "32 MPG" };
-    if (cat.includes("mid") || cat.includes("intermediate"))
-      return { mpg: 28, label: "28 MPG" };
-    if (cat.includes("standard")) return { mpg: 26, label: "26 MPG" };
-    if (cat.includes("full") || cat.includes("large"))
-      return { mpg: 24, label: "24 MPG" };
-    if (cat.includes("premium")) return { mpg: 22, label: "22 MPG" };
-    if (cat.includes("luxury")) return { mpg: 20, label: "20 MPG" };
-    if (cat.includes("suv")) return { mpg: 22, label: "22 MPG" };
-    if (cat.includes("minivan") || cat.includes("van"))
-      return { mpg: 22, label: "22 MPG" };
-    if (cat.includes("convertible")) return { mpg: 24, label: "24 MPG" };
-    if (cat.includes("sports") || cat.includes("exotic"))
-      return { mpg: 18, label: "18 MPG" };
-    if (cat.includes("pickup") || cat.includes("truck"))
-      return { mpg: 18, label: "18 MPG" };
-
-    if (fuel.includes("diesel")) return { mpg: 30, label: "30 MPG" };
-    if (
-      !fuel ||
-      fuel.includes("petrol") ||
-      fuel.includes("gas") ||
-      fuel.includes("gasoline")
-    )
-      return { mpg: 28, label: "28 MPG" };
-    return null;
-  };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleAdd = async (rate: any) => {
