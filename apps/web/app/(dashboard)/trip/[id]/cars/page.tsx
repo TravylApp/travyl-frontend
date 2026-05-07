@@ -3,7 +3,6 @@
 import { use } from 'react'
 import { Plus } from 'lucide-react'
 import { useItineraryScreen, useHomeCurrency } from '@travyl/shared'
-import { Module } from '@/components/trip/Module'
 import { CarsModule } from '@/components/trip/cars/CarsModule'
 import type { CarRental } from '@/components/trip/cars/types'
 
@@ -36,9 +35,7 @@ export default function CarsPage({ params }: { params: Promise<{ id: string }> }
   if (isLoading) {
     return (
       <div className="w-full px-4 sm:px-6 lg:px-10 py-12">
-        <Module title="Car rentals" description="Loading…">
-          <div className="h-40 animate-pulse bg-gray-100 dark:bg-white/[0.04] rounded-xl" />
-        </Module>
+        <div className="h-40 animate-pulse bg-gray-100 dark:bg-white/[0.04] rounded-xl" />
       </div>
     )
   }
@@ -50,29 +47,34 @@ export default function CarsPage({ params }: { params: Promise<{ id: string }> }
 
   return (
     <div className="w-full px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
-      <Module
-        title="Car rentals"
-        description={description}
-        action={
-          <button
-            onClick={() => window.dispatchEvent(new CustomEvent('cars:add'))}
-            className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-[12px] font-semibold text-white shadow-sm hover:shadow-md transition-shadow"
-            style={{ backgroundColor: 'var(--trip-base)' }}
-          >
-            <Plus size={13} /> Rental
-          </button>
-        }
-      >
-        <CarsModule
-          tripId={id}
-          cars={cars}
-          defaultCurrency={tripCurrency}
-          formatPrice={formatPrice}
-          tripDestination={tripDestination}
-          tripStartDate={tripStartDate}
-          tripEndDate={tripEndDate}
-        />
-      </Module>
+      {/* Page header — no card wrapper */}
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-[26px] font-serif font-normal text-gray-900 dark:text-white tracking-tight leading-tight">
+            Car rentals
+          </h1>
+          {description && (
+            <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5">{description}</p>
+          )}
+        </div>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('cars:add'))}
+          className="flex items-center gap-1.5 px-3 h-9 rounded-xl text-[12px] font-semibold text-white shadow-sm hover:shadow-md transition-shadow"
+          style={{ backgroundColor: 'var(--trip-base)' }}
+        >
+          <Plus size={13} /> Rental
+        </button>
+      </div>
+
+      <CarsModule
+        tripId={id}
+        cars={cars}
+        defaultCurrency={tripCurrency}
+        formatPrice={formatPrice}
+        tripDestination={tripDestination}
+        tripStartDate={tripStartDate}
+        tripEndDate={tripEndDate}
+      />
     </div>
   )
 }

@@ -11,6 +11,7 @@ import {
   Fuel,
   Users,
   ArrowUpDown,
+  ChevronDown,
   X,
 } from "lucide-react";
 import {
@@ -88,8 +89,8 @@ function CarRateImage({
   const [failed, setFailed] = useState(false);
   if (!src || failed) {
     return (
-      <div className="w-full aspect-[16/10] rounded-t-xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-        <Car size={36} className="text-gray-300" />
+      <div className="w-full aspect-[16/10] rounded-t-xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-white/[0.03] dark:to-white/[0.06] flex items-center justify-center">
+        <Car size={36} className="text-gray-300 dark:text-gray-600" />
       </div>
     );
   }
@@ -98,7 +99,7 @@ function CarRateImage({
     <img
       src={src}
       alt={alt}
-      className="w-full aspect-[16/10] object-contain bg-gray-50 p-3"
+      className="w-full aspect-[16/10] object-contain bg-gray-50 dark:bg-white/[0.03] p-3"
       onError={() => setFailed(true)}
     />
   );
@@ -137,6 +138,15 @@ export function CarSearchPanel({
   >({});
   const [mpgLoading, setMpgLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const toggleSection = (name: string) => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
   const PAGE_SIZE = 12;
 
   // MPG: prefer real data from fueleconomy.gov, fallback to estimates
@@ -430,12 +440,12 @@ export function CarSearchPanel({
     <div className="space-y-4">
       {/* Search form (collapsed by default) */}
       {showForm && (
-        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+        <div className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.03] p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[13px] font-semibold text-gray-700">Search options</p>
+            <p className="text-[13px] font-semibold text-gray-700 dark:text-gray-300">Search options</p>
             <button
               onClick={() => setShowForm(false)}
-              className="text-[12px] text-gray-400 hover:text-gray-700 transition-colors"
+              className="text-[12px] text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
             >
               <X size={14} />
             </button>
@@ -484,7 +494,7 @@ export function CarSearchPanel({
         <div className="flex items-center justify-end">
           <button
             onClick={() => setShowForm(true)}
-            className="group inline-flex items-center gap-1 text-[12px] font-medium text-gray-400 hover:text-gray-700 transition-colors"
+            className="group inline-flex items-center gap-1 text-[12px] font-medium text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
             <Search size={12} />
             Change search
@@ -495,29 +505,29 @@ export function CarSearchPanel({
       {/* Loading */}
       {isLoading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 size={24} className="animate-spin text-gray-400" />
+          <Loader2 size={24} className="animate-spin text-gray-400 dark:text-gray-500" />
         </div>
       )}
 
       {/* No results / error */}
       {!isLoading && !hasResults && searchEnabled && (
         <div className="text-center py-12">
-          <Search size={22} className="mx-auto text-gray-300 mb-3" />
+          <Search size={22} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
           {apiError ? (
             <>
-              <p className="text-[13px] text-red-600 font-medium">
+              <p className="text-[13px] text-red-600 dark:text-red-400 font-medium">
                 Search failed
               </p>
-              <p className="text-[11px] text-gray-500 mt-1 max-w-sm mx-auto">
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 max-w-sm mx-auto">
                 {apiError}
               </p>
             </>
           ) : (
             <>
-              <p className="text-[13px] text-gray-500">
+              <p className="text-[13px] text-gray-500 dark:text-gray-400">
                 No car rentals found for this location and dates.
               </p>
-              <p className="text-[11px] text-gray-400 mt-1">
+              <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
                 Try a different location or adjust your dates.
               </p>
             </>
@@ -525,14 +535,14 @@ export function CarSearchPanel({
           {onAddManually && (
             <button
               onClick={onAddManually}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[13px] font-medium border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition"
+              className="mt-4 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[13px] font-medium border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
             >
               <Plus size={13} /> Add manually
             </button>
           )}
           <button
             onClick={() => setShowForm(true)}
-            className="mt-2 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[13px] font-medium border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition"
+            className="mt-2 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[13px] font-medium border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
           >
             <Search size={13} /> Change search
           </button>
@@ -542,23 +552,23 @@ export function CarSearchPanel({
       {/* Empty (no search yet) */}
       {!isLoading && !hasResults && !searchEnabled && (
         <div className="text-center py-12">
-          <Car size={22} className="mx-auto text-gray-300 mb-3" />
-          <p className="text-[13px] text-gray-500">
+          <Car size={22} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
+          <p className="text-[13px] text-gray-500 dark:text-gray-400">
             Search car rentals for your trip
           </p>
-          <p className="text-[11px] text-gray-400 mt-1">
+          <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
             Set your pickup location and dates to find available cars.
           </p>
           <button
             onClick={() => setShowForm(true)}
-            className="mt-4 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[13px] font-medium border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition"
+            className="mt-4 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[13px] font-medium border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
           >
             <Search size={13} /> Set search
           </button>
           {onAddManually && (
             <button
               onClick={onAddManually}
-              className="mt-2 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[13px] font-medium border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition"
+              className="mt-2 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[13px] font-medium border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
             >
               <Plus size={13} /> Add manually
             </button>
@@ -571,13 +581,13 @@ export function CarSearchPanel({
         <>
           {/* Toolbar: count + sort */}
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[13px] text-gray-500">
-              <span className="font-semibold text-gray-900">
+            <p className="text-[13px] text-gray-500 dark:text-gray-400">
+              <span className="font-semibold text-gray-900 dark:text-white">
                 {allRates.length}
               </span>{" "}
               cars available
               {rates.length < allRates.length && (
-                <span className="text-gray-400">
+                <span className="text-gray-400 dark:text-gray-500">
                   {" "}
                   · <span className="font-medium">{rates.length}</span> shown
                 </span>
@@ -589,7 +599,7 @@ export function CarSearchPanel({
                 <select
                   value={sortMode}
                   onChange={(e) => setSortMode(e.target.value as SortMode)}
-                  className="appearance-none text-[12px] h-8 pl-2.5 pr-7 rounded-lg border border-gray-200 bg-white text-gray-700 cursor-pointer hover:border-gray-300 focus:outline-none focus:ring-1 focus:ring-gray-300"
+                  className="appearance-none text-[12px] h-8 pl-2.5 pr-7 rounded-lg border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 cursor-pointer hover:border-gray-300 dark:hover:border-white/[0.15] focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-white/20"
                 >
                   {sortOptions.map((opt) => (
                     <option key={opt.value} value={opt.value}>
@@ -599,7 +609,7 @@ export function CarSearchPanel({
                 </select>
                 <ArrowUpDown
                   size={12}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 pointer-events-none"
                 />
               </div>
             </div>
@@ -611,8 +621,8 @@ export function CarSearchPanel({
               onClick={() => setShowFilters(!showFilters)}
               className={`text-[12px] h-8 px-3 rounded-lg border transition ${
                 hasActiveFilters
-                  ? "bg-gray-900 text-white border-gray-900"
-                  : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                  ? "bg-gray-900 text-white border-gray-900 dark:bg-blue-600 dark:border-blue-600"
+                  : "border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/[0.15]"
               }`}
             >
               Filters
@@ -628,199 +638,255 @@ export function CarSearchPanel({
                   setMinYear('');
                   setMinMpg('');
                 }}
-                className="text-[11px] text-gray-400 hover:text-gray-600 transition"
+                className="text-[11px] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition"
               >
                 Clear all
               </button>
             )}
           </div>
 
-          {/* Filter panels */}
-          {showFilters && (
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-5">
-              {/* Supplier filter */}
-              {suppliers.length > 1 && (
-                <div>
-                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                    Supplier
-                  </p>
-                  <div className="flex flex-col gap-0.5">
-                    {suppliers.map((s) => {
-                      const active = supplierFilter.includes(s);
-                      return (
-                        <button
-                          key={s}
-                          onClick={() => toggleSupplier(s)}
-                          className={`text-[12px] px-3 py-1.5 rounded-lg text-left flex items-center gap-2.5 transition ${
-                            active
-                              ? "bg-gray-900 text-white"
-                              : "text-gray-600 hover:bg-gray-100"
-                          }`}
-                        >
-                          <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                            active ? "bg-white/20 border-white/40" : "border-gray-300 bg-white"
-                          }`}>
-                            {active && (
-                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                                <path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                            )}
-                          </span>
-                          {s}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+          {/* Main content: filters sidebar + rate grid */}
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Filters sidebar */}
+            {showFilters && (
+              <div className="lg:w-56 xl:w-64 shrink-0">
+                <div className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.03] p-4 space-y-4">
 
-              {/* Brand filter */}
-              {brands.length > 1 && (
-                <div>
-                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                    Brand
-                  </p>
-                  <div className="flex flex-col gap-0.5">
-                    {brands.map((b) => {
-                      const active = brandFilter.includes(b);
-                      return (
+                  {/* Supplier filter */}
+                  {suppliers.length > 1 && (() => {
+                    const open = !collapsedSections.has("supplier");
+                    return (
+                      <div>
                         <button
-                          key={b}
-                          onClick={() => toggleBrand(b)}
-                          className={`text-[12px] px-3 py-1.5 rounded-lg text-left flex items-center gap-2.5 transition ${
-                            active
-                              ? "bg-gray-900 text-white"
-                              : "text-gray-600 hover:bg-gray-100"
-                          }`}
+                          onClick={() => toggleSection("supplier")}
+                          className="flex items-center justify-between w-full text-left"
                         >
-                          <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                            active ? "bg-white/20 border-white/40" : "border-gray-300 bg-white"
-                          }`}>
-                            {active && (
-                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                                <path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                            )}
-                          </span>
-                          <BrandIcon brand={b} className="h-3.5 w-3.5" />
-                          {b}
+                          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Supplier</p>
+                          <ChevronDown size={13} className={`text-gray-400 transition-transform ${open ? "" : "-rotate-90"}`} />
                         </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                        {open && (
+                          <div className="flex flex-col gap-0.5 mt-2">
+                            {suppliers.map((s) => {
+                              const active = supplierFilter.includes(s);
+                              return (
+                                <button
+                                  key={s}
+                                  onClick={() => toggleSupplier(s)}
+                                  className={`text-[12px] px-3 py-1.5 rounded-lg text-left flex items-center gap-2.5 transition ${
+                                    active
+                                      ? "bg-gray-900 text-white dark:bg-blue-600 dark:border-blue-600"
+                                      : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06]"
+                                  }`}
+                                >
+                                  <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                                    active ? "bg-white/20 border-white/40" : "border-gray-300 dark:border-white/30 bg-white dark:bg-transparent"
+                                  }`}>
+                                    {active && (
+                                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                        <path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                    )}
+                                  </span>
+                                  {s}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
-              {/* Category filter */}
-              {categories.length > 1 && (
-                <div>
-                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                    Category
-                  </p>
-                  <div className="flex flex-col gap-0.5">
-                    {categories.map((c) => {
-                      const active = categoryFilter.includes(c);
-                      const label = c.replace(/([a-z])([A-Z])/g, "$1 $2");
-                      return (
+                  {/* Brand filter */}
+                  {brands.length > 1 && (() => {
+                    const open = !collapsedSections.has("brand");
+                    return (
+                      <div>
                         <button
-                          key={c}
-                          onClick={() => toggleCategory(c)}
-                          className={`text-[12px] px-3 py-1.5 rounded-lg text-left flex items-center gap-2.5 transition ${
-                            active
-                              ? "bg-gray-900 text-white"
-                              : "text-gray-600 hover:bg-gray-100"
-                          }`}
+                          onClick={() => toggleSection("brand")}
+                          className="flex items-center justify-between w-full text-left"
                         >
-                          <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
-                            active ? "bg-white/20 border-white/40" : "border-gray-300 bg-white"
-                          }`}>
-                            {active && (
-                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                                <path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                            )}
-                          </span>
-                          {label}
+                          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Brand</p>
+                          <ChevronDown size={13} className={`text-gray-400 transition-transform ${open ? "" : "-rotate-90"}`} />
                         </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+                        {open && (
+                          <div className="flex flex-col gap-0.5 mt-2">
+                            {brands.map((b) => {
+                              const active = brandFilter.includes(b);
+                              return (
+                                <button
+                                  key={b}
+                                  onClick={() => toggleBrand(b)}
+                                  className={`text-[12px] px-3 py-1.5 rounded-lg text-left flex items-center gap-2.5 transition ${
+                                    active
+                                      ? "bg-gray-900 text-white dark:bg-blue-600 dark:border-blue-600"
+                                      : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06]"
+                                  }`}
+                                >
+                                  <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                                    active ? "bg-white/20 border-white/40" : "border-gray-300 dark:border-white/30 bg-white dark:bg-transparent"
+                                  }`}>
+                                    {active && (
+                                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                        <path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                    )}
+                                  </span>
+                                  <BrandIcon brand={b} className="h-3.5 w-3.5" />
+                                  {b}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
-              {/* Year filter */}
-              <div>
-                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                  Min Year
-                </p>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={1900}
-                    max={2030}
-                    value={minYear}
-                    onChange={(e) => setMinYear(e.target.value === '' ? '' : Number(e.target.value))}
-                    placeholder="e.g. 2020"
-                    className="w-28 text-[12px] h-8 px-3 rounded-lg border border-gray-200 bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  />
-                  {minYear !== '' && (
-                    <button
-                      onClick={() => setMinYear('')}
-                      className="text-[11px] px-2 py-1 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-gray-600 inline-flex items-center gap-1"
-                    >
-                      <X size={10} /> Clear
-                    </button>
-                  )}
+                  {/* Category filter */}
+                  {categories.length > 1 && (() => {
+                    const open = !collapsedSections.has("category");
+                    return (
+                      <div>
+                        <button
+                          onClick={() => toggleSection("category")}
+                          className="flex items-center justify-between w-full text-left"
+                        >
+                          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Category</p>
+                          <ChevronDown size={13} className={`text-gray-400 transition-transform ${open ? "" : "-rotate-90"}`} />
+                        </button>
+                        {open && (
+                          <div className="flex flex-col gap-0.5 mt-2">
+                            {categories.map((c) => {
+                              const active = categoryFilter.includes(c);
+                              const label = c.replace(/([a-z])([A-Z])/g, "$1 $2");
+                              return (
+                                <button
+                                  key={c}
+                                  onClick={() => toggleCategory(c)}
+                                  className={`text-[12px] px-3 py-1.5 rounded-lg text-left flex items-center gap-2.5 transition ${
+                                    active
+                                      ? "bg-gray-900 text-white dark:bg-blue-600 dark:border-blue-600"
+                                      : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/[0.06]"
+                                  }`}
+                                >
+                                  <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                                    active ? "bg-white/20 border-white/40" : "border-gray-300 dark:border-white/30 bg-white dark:bg-transparent"
+                                  }`}>
+                                    {active && (
+                                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                        <path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                      </svg>
+                                    )}
+                                  </span>
+                                  {label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Year filter */}
+                  {(() => {
+                    const open = !collapsedSections.has("year");
+                    return (
+                      <div>
+                        <button
+                          onClick={() => toggleSection("year")}
+                          className="flex items-center justify-between w-full text-left"
+                        >
+                          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Min Year</p>
+                          <ChevronDown size={13} className={`text-gray-400 transition-transform ${open ? "" : "-rotate-90"}`} />
+                        </button>
+                        {open && (
+                          <div className="flex items-center gap-2 mt-2">
+                            <input
+                              type="number"
+                              min={1900}
+                              max={2030}
+                              value={minYear}
+                              onChange={(e) => setMinYear(e.target.value === '' ? '' : Number(e.target.value))}
+                              placeholder="e.g. 2020"
+                              className="w-full text-[12px] h-8 px-3 rounded-lg border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.04] text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-white/20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                            />
+                            {minYear !== '' && (
+                              <button
+                                onClick={() => setMinYear('')}
+                                className="text-[11px] px-2 py-1 rounded-full border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.04] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 inline-flex items-center gap-1 shrink-0"
+                              >
+                                <X size={10} /> Clear
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* MPG filter */}
+                  {(() => {
+                    const open = !collapsedSections.has("mpg");
+                    return (
+                      <div>
+                        <button
+                          onClick={() => toggleSection("mpg")}
+                          className="flex items-center justify-between w-full text-left"
+                        >
+                          <p className="text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Min MPG</p>
+                          <ChevronDown size={13} className={`text-gray-400 transition-transform ${open ? "" : "-rotate-90"}`} />
+                        </button>
+                        {open && (
+                          <div className="space-y-2 mt-2">
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min={0}
+                                max={200}
+                                value={minMpg}
+                                onChange={(e) => setMinMpg(e.target.value === '' ? '' : Number(e.target.value))}
+                                placeholder="e.g. 30"
+                                className="w-full text-[12px] h-8 px-3 rounded-lg border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.04] text-gray-700 dark:text-gray-300 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-gray-300 dark:focus:ring-white/20 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                              />
+                              {minMpg !== '' && (
+                                <button
+                                  onClick={() => setMinMpg('')}
+                                  className="text-[11px] px-2 py-1 rounded-full border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.04] text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 inline-flex items-center gap-1 shrink-0"
+                                >
+                                  <X size={10} /> Clear
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {[20, 30, 40].map((val) => (
+                                <button
+                                  key={val}
+                                  onClick={() => setMinMpg(minMpg === val ? '' : val)}
+                                  className={`text-[11px] px-2.5 py-1 rounded-full border transition ${
+                                    minMpg === val
+                                      ? 'bg-gray-900 text-white border-gray-900 dark:bg-blue-600 dark:border-blue-600'
+                                      : 'bg-white dark:bg-white/[0.04] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/[0.10] hover:border-gray-300 dark:hover:border-white/[0.15]'
+                                  }`}
+                                >
+                                  {val}+ MPG
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                 </div>
               </div>
+            )}
 
-              {/* MPG filter */}
-              <div>
-                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                  Min MPG
-                </p>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={0}
-                      max={200}
-                      value={minMpg}
-                      onChange={(e) => setMinMpg(e.target.value === '' ? '' : Number(e.target.value))}
-                      placeholder="e.g. 30"
-                      className="w-28 text-[12px] h-8 px-3 rounded-lg border border-gray-200 bg-white text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-300 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    />
-                    {minMpg !== '' && (
-                      <button
-                        onClick={() => setMinMpg('')}
-                        className="text-[11px] px-2 py-1 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-gray-600 inline-flex items-center gap-1"
-                      >
-                        <X size={10} /> Clear
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {[20, 30, 40].map((val) => (
-                      <button
-                        key={val}
-                        onClick={() => setMinMpg(minMpg === val ? '' : val)}
-                        className={`text-[11px] px-2.5 py-1 rounded-full border transition ${
-                          minMpg === val
-                            ? 'bg-gray-900 text-white border-gray-900'
-                            : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        {val}+ MPG
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Rate grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {/* Rate grid - takes remaining space */}
+            <div className="flex-1 min-w-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
             {paginatedRates.map((rate: any) => {
               const dailyPrice = parseFloat(rate.daily_amount) || 0;
               const totalPrice = parseFloat(rate.total_amount) || 0;
@@ -828,7 +894,7 @@ export function CarSearchPanel({
               return (
                 <div
                   key={rate.id}
-                  className="rounded-xl border border-gray-200 bg-white overflow-hidden hover:border-gray-300 hover:shadow-sm transition-all"
+                  className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] overflow-hidden hover:border-gray-300 dark:hover:border-white/[0.12] hover:shadow-sm transition-all"
                 >
                   {/* Image */}
                   <div className="relative">
@@ -842,7 +908,7 @@ export function CarSearchPanel({
                       <img
                         src={rate.supplier_logo}
                         alt={rate.supplier}
-                        className="absolute top-2 left-2 h-5 w-auto max-w-[60px] object-contain bg-white/80 rounded px-1 py-0.5"
+                        className="absolute top-2 left-2 h-5 w-auto max-w-[60px] object-contain bg-white/80 dark:bg-gray-900/80 rounded px-1 py-0.5"
                       />
                     )}
                   </div>
@@ -852,10 +918,10 @@ export function CarSearchPanel({
                     {/* Vehicle name + Supplier row */}
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <h3 className="text-[15px] font-semibold text-gray-900 truncate leading-tight">
+                        <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white truncate leading-tight">
                           {rate.vehicle || rate.category || "Vehicle"}
                         </h3>
-                        <p className="text-[12px] text-gray-500 mt-0.5">
+                        <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">
                           {cleanSupplierName(rate.supplier)}
                           {rate.category && (
                             <>
@@ -870,7 +936,7 @@ export function CarSearchPanel({
 
                     {/* Pickup location */}
                     {rate.pickup_name && rate.pickup_name !== pickupLocation && (
-                      <p className="text-[11px] text-gray-400 mt-1.5">
+                      <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">
                         {rate.pickup_name}
                       </p>
                     )}
@@ -879,19 +945,19 @@ export function CarSearchPanel({
                     {(rate.passengers || rate.transmission || rate.fuel || mpg || mileageLabel(rate.mileage) || rate.baggage) && (
                       <div className="flex flex-wrap gap-1.5 mt-3">
                         {rate.passengers && (
-                          <span className="text-[11px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
+                          <span className="text-[11px] text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-white/[0.06] px-2 py-0.5 rounded-md inline-flex items-center gap-1">
                             <Users size={11} /> {rate.passengers}
                           </span>
                         )}
                         {rate.transmission && (
-                          <span className="text-[11px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                          <span className="text-[11px] text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-white/[0.06] px-2 py-0.5 rounded-md">
                             {rate.transmission === "Automatic"
                               ? "Auto"
                               : rate.transmission}
                           </span>
                         )}
                         {rate.fuel && (
-                          <span className="text-[11px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
+                          <span className="text-[11px] text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-white/[0.06] px-2 py-0.5 rounded-md inline-flex items-center gap-1">
                             <Fuel size={11} />{" "}
                             {rate.fuel.replace(/^(\w)/, (m: string) =>
                               m.toUpperCase(),
@@ -899,19 +965,19 @@ export function CarSearchPanel({
                           </span>
                         )}
                         {mpg && (
-                          <span className="text-[11px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                          <span className="text-[11px] text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-white/[0.06] px-2 py-0.5 rounded-md">
                             {mpg.label}
                           </span>
                         )}
                         {mileageLabel(rate.mileage)
                           ?.toString()
                           .includes("Unlimited") && (
-                          <span className="text-[11px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                          <span className="text-[11px] text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-white/[0.06] px-2 py-0.5 rounded-md">
                             Unlimited mi
                           </span>
                         )}
                         {rate.baggage && (
-                          <span className="text-[11px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                          <span className="text-[11px] text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-white/[0.06] px-2 py-0.5 rounded-md">
                             {rate.baggage} bags
                           </span>
                         )}
@@ -919,12 +985,12 @@ export function CarSearchPanel({
                     )}
 
                     {/* Divider */}
-                    <div className="border-t border-gray-100 my-3" />
+                    <div className="border-t border-gray-100 dark:border-white/[0.06] my-3" />
 
                     {/* Price + CTA row */}
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-[20px] font-bold text-gray-900 tabular-nums leading-none">
+                        <p className="text-[20px] font-bold text-gray-900 dark:text-white tabular-nums leading-none">
                           {rate.total_currency === "USD"
                             ? "$"
                             : rate.total_currency + " "}
@@ -934,7 +1000,7 @@ export function CarSearchPanel({
                           })}
                         </p>
                         {dailyPrice > 0 && (
-                          <p className="text-[12px] text-gray-400 mt-0.5">
+                          <p className="text-[12px] text-gray-400 dark:text-gray-500 mt-0.5">
                             ${dailyPrice}/day total
                           </p>
                         )}
@@ -951,6 +1017,8 @@ export function CarSearchPanel({
               );
             })}
           </div>
+          </div>
+        </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
@@ -958,7 +1026,7 @@ export function CarSearchPanel({
               <button
                 onClick={() => setPage(Math.max(1, safePage - 1))}
                 disabled={safePage <= 1}
-                className="text-[12px] h-8 px-3 rounded-lg border border-gray-200 bg-white text-gray-600 hover:border-gray-300 disabled:opacity-30 disabled:cursor-default transition"
+                className="text-[12px] h-8 px-3 rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/[0.15] disabled:opacity-30 disabled:cursor-default transition"
               >
                 Previous
               </button>
@@ -979,8 +1047,8 @@ export function CarSearchPanel({
                     onClick={() => setPage(pageNum)}
                     className={`text-[12px] h-8 min-w-[32px] px-2 rounded-lg border transition ${
                       safePage === pageNum
-                        ? "bg-gray-900 text-white border-gray-900 font-medium"
-                        : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                        ? "bg-gray-900 text-white border-gray-900 font-medium dark:bg-blue-600 dark:border-blue-600"
+                        : "border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/[0.15]"
                     }`}
                   >
                     {pageNum}
@@ -990,7 +1058,7 @@ export function CarSearchPanel({
               <button
                 onClick={() => setPage(Math.min(totalPages, safePage + 1))}
                 disabled={safePage >= totalPages}
-                className="text-[12px] h-8 px-3 rounded-lg border border-gray-200 bg-white text-gray-600 hover:border-gray-300 disabled:opacity-30 disabled:cursor-default transition"
+                className="text-[12px] h-8 px-3 rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/[0.15] disabled:opacity-30 disabled:cursor-default transition"
               >
                 Next
               </button>

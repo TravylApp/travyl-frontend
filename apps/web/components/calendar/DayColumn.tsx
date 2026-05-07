@@ -13,6 +13,8 @@ import { getWmoWeather } from './utils/wmoWeatherCode'
 import DayHealthIndicator from './DayHealthIndicator'
 import TravelTimeBadge from './TravelTimeBadge'
 import { GhostEventBlock } from './GhostEventBlock'
+import { computeBlockedRanges } from './utils/travelConstraints'
+import { TravelConstraintBlock } from './TravelConstraintBlock'
 
 interface DayColumnProps {
   dayIndex: number
@@ -153,6 +155,12 @@ export function DayColumn({
 
   const overlapLayout = computeOverlapLayout(layoutActivities)
 
+  // Compute travel constraint blocked ranges for this day
+  const blockedRanges = useMemo(
+    () => computeBlockedRanges(activities, timeRange),
+    [activities, timeRange],
+  )
+
   // Compute hidden counts: find which column-2 block should show the "+N more" badge
   // hiddenCount = count of activities in the same cluster whose column === -1
   const hiddenByCluster = new Map<string, number>()
@@ -179,7 +187,7 @@ export function DayColumn({
       {/* Day header */}
       <div
         className={[
-          'text-center text-xs font-medium py-1 border-b border-cal-border text-cal-text-secondary select-none',
+          'text-center text-xs font-medium py-1 text-cal-text-secondary select-none',
           onClickDayHeader
             ? 'cursor-pointer hover:bg-cal-border-light transition-colors'
             : '',
@@ -220,7 +228,7 @@ export function DayColumn({
         ref={setNodeRef}
         data-day-grid={dayIndex}
         className={[
-          'relative flex-1 border-l border-cal-border-light',
+          'relative flex-1',
           isOver ? 'bg-cal-drag-over' : '',
         ].join(' ')}
         style={{ minHeight: hourCount * HOUR_HEIGHT }}
@@ -235,12 +243,23 @@ export function DayColumn({
           />
         ))}
 
-        {/* Half-hour tick lines */}
+        {/* Half-hour tick lines — subtle dots */}
         {hours.map((hour) => (
           <div
             key={`half-${hour}`}
-            className="absolute w-full border-t border-dashed border-cal-grid-line-half pointer-events-none"
+            className="absolute w-full pointer-events-none"
             style={{ top: (hour - timeRange.startHour) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
+          >
+            <div className="mx-4 h-px bg-cal-grid-line-half" />
+          </div>
+        ))}
+
+        {/* Travel constraint blocks — shown for flight/transport activities */}
+        {blockedRanges.map((range, i) => (
+          <TravelConstraintBlock
+            key={`tc-${i}`}
+            range={range}
+            timeRangeStartHour={timeRange.startHour}
           />
         ))}
 

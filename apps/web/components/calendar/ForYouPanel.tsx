@@ -105,38 +105,35 @@ export function ForYouPanel({
   return (
     <aside
       style={{ width: width ?? FOR_YOU_PANEL_DEFAULT_WIDTH }}
-      className="relative flex flex-col shrink-0 self-stretch border-l border-cal-border bg-cal-surface-elevated overflow-hidden"
+      className="relative flex flex-col shrink-0 self-stretch border-l border-cal-border-light bg-cal-surface-elevated overflow-hidden"
       aria-label="Activity suggestions"
     >
-      {/* Header with gradient accent */}
-      <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent pointer-events-none" />
-        <div className="relative px-3.5 pt-3.5 pb-3">
-          <div className="flex items-center justify-between mb-2.5">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Star width={13} height={13} className="text-primary" />
-              </div>
-              <h2 className="text-sm font-semibold text-cal-text">For You</h2>
+      {/* Header */}
+      <div className="px-3.5 pt-3.5 pb-2.5">
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Star width={13} height={13} className="text-primary" />
             </div>
+            <h2 className="text-sm font-semibold text-cal-text">For You</h2>
           </div>
+        </div>
 
-          {/* Search bar */}
-          <div className="relative">
-            <Search
-              width={14}
-              height={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-cal-text-tertiary pointer-events-none"
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') commitSearch() }}
-              placeholder="Search activities..."
-              className="w-full bg-cal-bg border border-cal-border rounded-xl pl-9 pr-3 py-2.5 text-sm text-cal-text placeholder-cal-text-tertiary outline-none transition-all focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
-            />
-          </div>
+        {/* Search bar */}
+        <div className="relative">
+          <Search
+            width={14}
+            height={14}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-cal-text-tertiary pointer-events-none"
+          />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') commitSearch() }}
+            placeholder="Search activities..."
+            className="w-full bg-cal-bg border border-cal-border rounded-xl pl-9 pr-3 py-2.5 text-sm text-cal-text placeholder-cal-text-tertiary outline-none transition-all focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+          />
         </div>
       </div>
 
@@ -181,19 +178,9 @@ export function ForYouPanel({
       {/* Content area */}
       <div className="h-0 grow overflow-y-auto px-2 pb-3 scrollbar-thin">
         {isLoading ? (
-          <div className="px-1 pt-1 space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="flex gap-3 animate-pulse">
-                <div
-                  className="rounded-xl bg-cal-border shrink-0"
-                  style={{ width: 80, height: i % 2 === 0 ? 70 : 90 }}
-                />
-                <div className="flex-1 space-y-2 py-1">
-                  <div className="h-3 bg-cal-border rounded w-3/4" />
-                  <div className="h-2.5 bg-cal-border rounded w-1/2" />
-                  <div className="h-2.5 bg-cal-border rounded w-1/3" />
-                </div>
-              </div>
+          <div className="px-1 pt-1 space-y-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="rounded-xl bg-cal-border-light animate-pulse" style={{ height: [100, 80, 110, 90, 95, 85][i] }} />
             ))}
           </div>
         ) : error ? (
@@ -272,13 +259,8 @@ export function ForYouPanel({
 
       {/* Footer hint */}
       {enrichedSuggestions.length > 0 && (
-        <div className="text-center text-[11px] text-cal-text-tertiary/60 py-2.5 border-t border-cal-border/50">
-          <span className="inline-flex items-center gap-1">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-40">
-              <path d="M5 15l7-7 7 7" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            Drag cards onto the calendar
-          </span>
+        <div className="text-center text-[10px] text-cal-text-tertiary/40 py-2">
+          Drag cards onto the calendar
         </div>
       )}
 

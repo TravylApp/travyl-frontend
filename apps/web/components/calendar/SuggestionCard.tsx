@@ -1,11 +1,30 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import Image from 'next/image'
 import { useDraggable, useDndMonitor } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
 import type { SuggestionCard as SuggestionCardType } from './types'
+
+/** Derive a consistent card height from suggestion metadata to avoid layout shifts. */
+function getCardHeight(suggestion: SuggestionCardType): number {
+  const baseHeights: Record<string, number> = {
+    sightseeing: 160,
+    dining: 130,
+    tours: 150,
+    culture: 155,
+    shopping: 120,
+    nightlife: 140,
+    outdoor: 165,
+    attractions: 150,
+    entertainment: 145,
+    wellness: 135,
+  }
+  const base = baseHeights[suggestion.category.toLowerCase()] ?? 145
+  const offset = (suggestion.name.length % 5) * 6
+  return base + offset
+}
 
 interface SuggestionCardProps {
   suggestion: SuggestionCardType
@@ -46,6 +65,7 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
   const [cycleKey, setCycleKey] = useState(0)
   const [isHovered, setIsHovered] = useState(false)
   const [failedUrls, setFailedUrls] = useState<Set<string>>(new Set())
+  const cardHeight = useMemo(() => getCardHeight(suggestion), [suggestion])
 
   const rawImages = suggestion.imageUrls?.length ? suggestion.imageUrls : suggestion.imageUrl ? [suggestion.imageUrl] : []
   const images = rawImages.filter(u => !failedUrls.has(u))
@@ -113,7 +133,7 @@ export function SuggestionCard({ suggestion, onVisible, onSelect }: SuggestionCa
       {/* Image carousel */}
       <div
         className="relative w-full overflow-hidden"
-        style={{ height: [130, 150, 170, 140, 160, 120, 145, 155, 135, 165][suggestion.id.charCodeAt(suggestion.id.length - 1) % 10] }}
+        style={{ height: cardHeight }}
       >
         {/* Always show gradient behind images as fallback for broken loads */}
         <div

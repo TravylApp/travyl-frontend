@@ -792,7 +792,7 @@ export function CalendarDashboard({ tripId, userId, userName, userAvatarUrl = nu
         {/* Grid area */}
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Left: Mini month calendar sidebar */}
-          <div className="flex-shrink-0 w-[220px] border-r border-cal-border p-3 overflow-y-auto hidden lg:flex flex-col gap-3">
+          <div className="flex-shrink-0 w-[220px] p-3 overflow-y-auto hidden lg:flex flex-col gap-3">
             <MiniMonthCalendar
               tripStartDate={parsedStartDate}
               tripEndDate={parsedEndDate}

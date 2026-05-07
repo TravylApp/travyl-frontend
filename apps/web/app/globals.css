@@ -41,23 +41,23 @@
 
 /* Calendar theme tokens - light mode defaults */
 :root {
-  --cal-bg: #f9fafb;
+  --cal-bg: #ffffff;
   --cal-surface: #ffffff;
   --cal-surface-elevated: #ffffff;
   --cal-text: #111827;
   --cal-text-secondary: #6b7280;
   --cal-text-tertiary: #9ca3af;
-  --cal-border: #e5e7eb;
-  --cal-border-light: #f3f4f6;
+  --cal-border: rgba(0, 0, 0, 0.06);
+  --cal-border-light: rgba(0, 0, 0, 0.03);
   --cal-accent: #003594;
   --cal-accent-bg: #EFF4FF;
   --cal-nav-active-bg: #EFF4FF;
   --cal-nav-active-text: #003594;
   --cal-nav-inactive: #9ca3af;
-  --cal-grid-line: #f3f4f6;
-  --cal-grid-line-half: rgba(229, 231, 235, 0.6);
+  --cal-grid-line: rgba(0, 0, 0, 0.04);
+  --cal-grid-line-half: rgba(0, 0, 0, 0.02);
   --cal-drag-over: #EFF4FF;
-  --cal-hour-text: #9ca3af;
+  --cal-hour-text: #d1d5db;
 }
 
 .dark {
@@ -234,6 +234,9 @@ body::-webkit-scrollbar {
 .masonry-grid {
   column-count: 2;
   column-gap: 0.5rem;
+  column-fill: auto;
+  orphans: 1;
+  widows: 1;
 }
 
 .masonry-grid-3 {
@@ -245,6 +248,8 @@ body::-webkit-scrollbar {
   break-inside: avoid;
   page-break-inside: avoid;
   -webkit-column-break-inside: avoid;
+  display: inline-block;
+  width: 100%;
 }
 
 /* Reveal animations for overview page */

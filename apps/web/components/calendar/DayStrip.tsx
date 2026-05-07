@@ -68,7 +68,7 @@ export function DayStrip({
   }, [totalDays, tripStartDate])
 
   return (
-    <div className="flex border-b border-cal-border bg-cal-surface-elevated/50">
+    <div className="flex bg-cal-surface-elevated/50">
       <div
         ref={scrollRef}
         className="flex flex-1 overflow-x-auto scrollbar-none gap-px"
