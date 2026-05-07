@@ -7,6 +7,41 @@ import { formatDateRange, updateTripDetails, useWeather, ensureShareLinkToken, u
 import type { Trip } from '@travyl/shared';
 import { useRailCollapsed } from '@/components/trip-rail';
 
+// US state and Canadian province name → 2-letter code. We abbreviate inline in
+// the title (e.g. "San Francisco, CA") because that's the convention people
+// expect for those countries; everywhere else, the full region name reads
+// better than an opaque code.
+const US_STATE_ABBR: Record<string, string> = {
+  alabama: 'AL', alaska: 'AK', arizona: 'AZ', arkansas: 'AR', california: 'CA',
+  colorado: 'CO', connecticut: 'CT', delaware: 'DE', florida: 'FL', georgia: 'GA',
+  hawaii: 'HI', idaho: 'ID', illinois: 'IL', indiana: 'IN', iowa: 'IA',
+  kansas: 'KS', kentucky: 'KY', louisiana: 'LA', maine: 'ME', maryland: 'MD',
+  massachusetts: 'MA', michigan: 'MI', minnesota: 'MN', mississippi: 'MS', missouri: 'MO',
+  montana: 'MT', nebraska: 'NE', nevada: 'NV', 'new hampshire': 'NH', 'new jersey': 'NJ',
+  'new mexico': 'NM', 'new york': 'NY', 'north carolina': 'NC', 'north dakota': 'ND',
+  ohio: 'OH', oklahoma: 'OK', oregon: 'OR', pennsylvania: 'PA', 'rhode island': 'RI',
+  'south carolina': 'SC', 'south dakota': 'SD', tennessee: 'TN', texas: 'TX', utah: 'UT',
+  vermont: 'VT', virginia: 'VA', washington: 'WA', 'west virginia': 'WV', wisconsin: 'WI',
+  wyoming: 'WY', 'district of columbia': 'DC', 'washington dc': 'DC',
+};
+const CA_PROVINCE_ABBR: Record<string, string> = {
+  alberta: 'AB', 'british columbia': 'BC', manitoba: 'MB', 'new brunswick': 'NB',
+  'newfoundland and labrador': 'NL', 'nova scotia': 'NS', ontario: 'ON',
+  'prince edward island': 'PE', quebec: 'QC', 'québec': 'QC', saskatchewan: 'SK',
+  'northwest territories': 'NT', nunavut: 'NU', yukon: 'YT',
+};
+
+function abbreviateRegion(region: string, countryCode?: string): string {
+  if (!region) return '';
+  const trimmed = region.trim();
+  // Already a short code (2-3 chars, all caps) — leave as-is
+  if (trimmed.length <= 3 && trimmed === trimmed.toUpperCase()) return trimmed;
+  const key = trimmed.toLowerCase();
+  if (countryCode === 'US' && US_STATE_ABBR[key]) return US_STATE_ABBR[key];
+  if (countryCode === 'CA' && CA_PROVINCE_ABBR[key]) return CA_PROVINCE_ABBR[key];
+  return trimmed;
+}
+
 export function CompactTripHeader({
   tripId,
   trip,
@@ -68,21 +103,24 @@ export function CompactTripHeader({
     : rawCover;
 
   const destination = trip?.destination;
-  // Parse "City, [Region/State,] Country" — preserves region when present so
-  // we can surface it next to the country tag (e.g. "California · United States").
+  // Parse "City, [Region/State,] Country" so we can render region next to the
+  // city in the title (e.g. "San Francisco, CA") — that's the common
+  // travel-app convention and what users expect at a glance.
   const destParts = destination ? destination.split(',').map((s) => s.trim()).filter(Boolean) : [];
   const cityName = destParts[0] || '';
-  const regionName = destParts.length >= 3 ? destParts[1] : '';
+  const rawRegionName = destParts.length >= 3 ? destParts[1] : '';
   const countryName = destParts.length >= 3
     ? destParts.slice(2).join(', ')
     : (destParts[1] || '');
-  const locationTagParts = [regionName, countryName].filter(Boolean);
   const dateStr = trip?.start_date && trip?.end_date ? formatDateRange(trip.start_date, trip.end_date) : null;
   const travelersCount = trip?.travelers || 1;
 
   const countryFlag = trip?.trip_context?.country?.flag as string | undefined;
   const countryCca2 = trip?.trip_context?.country?.cca2 as string | undefined;
   const flagUrl = countryFlag || (countryCca2 ? `https://flagcdn.com/24x18/${countryCca2.toLowerCase()}.png` : null);
+  // Abbreviate US states / Canadian provinces; everything else uses the full
+  // parsed region name (e.g. "Île-de-France", "São Paulo").
+  const regionDisplay = abbreviateRegion(rawRegionName, countryCca2);
 
   // Quick info — prefer live weather, fall back to trip_context
   const ctx = trip?.trip_context as Record<string, any> | undefined;
@@ -198,20 +236,17 @@ export function CompactTripHeader({
 
         {/* Content — all on the hero image */}
         <div className={`relative z-10 flex flex-col justify-end max-w-7xl mx-auto px-6 sm:px-10 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} pb-5 transition-[padding] duration-200 ease-out`} style={{ minHeight: 300 }}>
-          {/* Country tag — flag + region/state · country (when both present) */}
-          <p
-            className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] tracking-[0.28em] uppercase font-semibold mb-2 text-white/85"
-            style={{ textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {flagUrl && <img src={flagUrl} alt="flag" width={20} height={15} className="rounded-[2px] shadow-sm" />}
-            {locationTagParts.map((part, i) => (
-              <span key={i} className="inline-flex items-center">
-                {i > 0 && <span aria-hidden className="mr-2 text-white/40">·</span>}
-                <span>{part}</span>
-              </span>
-            ))}
-          </p>
+          {/* Country tag — flag + country only (region now lives in the title) */}
+          {countryName && (
+            <p
+              className="flex items-center gap-2 text-[10px] tracking-[0.28em] uppercase font-semibold mb-2 text-white/85"
+              style={{ textShadow: '0 1px 4px rgba(0,0,0,0.5)' }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {flagUrl && <img src={flagUrl} alt="flag" width={20} height={15} className="rounded-[2px] shadow-sm" />}
+              <span>{countryName}</span>
+            </p>
+          )}
 
           {/* Title + expand toggle */}
           <div className="flex items-center gap-2">
@@ -220,6 +255,9 @@ export function CompactTripHeader({
               style={{ textShadow: '0 2px 18px rgba(0,0,0,0.45)' }}
             >
               {cityName || trip?.title || 'Untitled Trip'}
+              {regionDisplay && (
+                <span className="text-white/55 font-light">, {regionDisplay}</span>
+              )}
             </h1>
             {hasExpandContent && (
               <button
