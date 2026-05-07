@@ -53,7 +53,7 @@ export function DaySlide({
             aria-label="Previous day"
             onClick={onPrev}
             disabled={isFirst}
-            className="hidden lg:flex absolute left-4 top-1/2 -translate-y-1/2 w-[44px] h-[44px] rounded-full bg-white/90 backdrop-blur-md border border-gray-200 dark:bg-gray-900/85 dark:border-white/10 items-center justify-center z-20 shadow-lg text-gray-900 dark:text-white text-xl transition-all hover:scale-105 hover:bg-white hover:border-[var(--trip-base)] dark:hover:border-[var(--trip-base)] disabled:opacity-0 disabled:cursor-not-allowed disabled:pointer-events-none"
+            className="hidden lg:flex absolute -left-6 top-1/2 -translate-y-1/2 w-[48px] h-[48px] rounded-full bg-gray-900 text-white dark:bg-white dark:text-gray-900 border border-gray-900 dark:border-white items-center justify-center z-20 shadow-xl text-2xl leading-none transition-all hover:scale-110 hover:bg-[var(--trip-base)] hover:border-[var(--trip-base)] dark:hover:bg-[var(--trip-base)] dark:hover:text-white disabled:opacity-0 disabled:cursor-not-allowed disabled:pointer-events-none"
           >
             ‹
           </button>
@@ -62,7 +62,7 @@ export function DaySlide({
             aria-label="Next day"
             onClick={onNext}
             disabled={isLast}
-            className="hidden lg:flex absolute right-4 top-1/2 -translate-y-1/2 w-[44px] h-[44px] rounded-full bg-white/90 backdrop-blur-md border border-gray-200 dark:bg-gray-900/85 dark:border-white/10 items-center justify-center z-20 shadow-lg text-gray-900 dark:text-white text-xl transition-all hover:scale-105 hover:bg-white hover:border-[var(--trip-base)] dark:hover:border-[var(--trip-base)] disabled:opacity-0 disabled:cursor-not-allowed disabled:pointer-events-none"
+            className="hidden lg:flex absolute -right-6 top-1/2 -translate-y-1/2 w-[48px] h-[48px] rounded-full bg-gray-900 text-white dark:bg-white dark:text-gray-900 border border-gray-900 dark:border-white items-center justify-center z-20 shadow-xl text-2xl leading-none transition-all hover:scale-110 hover:bg-[var(--trip-base)] hover:border-[var(--trip-base)] dark:hover:bg-[var(--trip-base)] dark:hover:text-white disabled:opacity-0 disabled:cursor-not-allowed disabled:pointer-events-none"
           >
             ›
           </button>
