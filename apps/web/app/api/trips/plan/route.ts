@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin, rateLimit } from '@/lib/api-utils'
 
-const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
+// FastAPI backend (EC2, separate from SST API Gateway). Defaults to staging
+// so the route works without an SST infra env var.
+const API_URL = process.env.FASTAPI_URL || 'https://api.dev.gotravyl.com'
 
 export async function POST(req: NextRequest) {
   const blocked = checkOrigin(req) || rateLimit(req, 'plan', 5, 60_000)
