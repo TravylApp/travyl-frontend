@@ -31,7 +31,7 @@ Mirror Hotels and Flights:
 - **Outer wrapper:** `w-full px-4 sm:px-6 lg:px-10 py-8 lg:py-12`.
 - **Single Module:**
   - Title: `Car rentals` (26px serif).
-  - Description: `"3 rentals · 12 days total"` (or similar count + total-days), or `"No car rentals yet"` when empty.
+  - Description: `"N rentals · M days total"`, where M is the **sum of per-rental days** (e.g. three 4-day rentals = `"3 rentals · 12 days total"`). When the array is empty: `"No car rentals yet"`.
   - Header action: `+ Rental` primary button (theme color).
   - Body: empty state OR sorted list of cards.
 
@@ -48,7 +48,7 @@ Mirror Hotels and Flights:
 
 - **Tile (44×44, theme-color tinted bg + theme-color icon).** Lucide `Car` icon at 18px.
 - **Title row:** `vendor · vehicle` (15px font-semibold gray-900). Falls back to just `vendor` if no vehicle is set.
-- **Meta row chips:** dates (`May 14 → May 18`), days (`4 days`), pickup location (`SFO airport`). All neutral gray pills.
+- **Meta row chips:** dates (`May 14 → May 18`), days (`4 days`), pickup location displayed **verbatim** from `pickup_location`, truncated with CSS `max-w-[160px] truncate` so a long address doesn't blow out the chip row. All neutral gray pills.
 - **Price** (right-aligned, 13px gray-700 semibold): formatted via `useHomeCurrency().format()`. If null, omit.
 - **⋯ menu (hover-revealed):** delete (single-action menu, like Hotels/Flights).
 
@@ -69,7 +69,7 @@ Uses the existing `BookingFormPrimitives` (`FieldLabel`, `Input`, `Select`, `Dat
 | Pickup            | datetime-local   | Yes      | ISO datetime                                             |
 | Dropoff           | datetime-local   | Yes      | ISO datetime, must be ≥ pickup                           |
 | Price             | number input     | No       | Total trip price                                         |
-| Currency          | select           | No       | Defaults to trip's currency                              |
+| Currency          | select           | No       | Defaults to trip's currency. Use the same `CURRENCY_OPTIONS` array currently inlined at the top of `apps/web/components/trip/hotels/HotelForm.tsx` and `apps/web/components/trip/flights/FlightForm.tsx` (USD, EUR, GBP, JPY, CAD, AUD, MXN). Inline a copy in `CarForm.tsx` for consistency — a future cleanup PR can extract these to a shared module. |
 | Booking ref       | text input       | No       | Confirmation code                                        |
 
 **Form actions:** Same as Hotels/Flights — `Add` / `Save` primary, `Cancel` secondary, `Delete` text link bottom-left when editing. Esc cancels, Cmd/Ctrl+Enter submits.
@@ -196,6 +196,8 @@ The trip row's `postgres_changes` subscription in `useItineraryScreen.ts:367-371
 ### 4.2 datetime-local round-trip
 
 Same pattern as `FlightForm` — `isoToLocalInput` to populate, `localInputToIso` (which does `new Date(local).toISOString()`) to commit. Browser-local timezone semantics; future timezone-aware work is out of scope.
+
+The two helpers currently live as private functions inside `apps/web/components/trip/flights/FlightForm.tsx`. Copy them verbatim into `CarForm.tsx` (don't import from FlightForm — the helpers are not exported there). A future cleanup PR can extract to a shared module if a fourth caller appears.
 
 ### 4.3 Default dropoff location
 
