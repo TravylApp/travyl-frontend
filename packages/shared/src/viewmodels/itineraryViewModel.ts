@@ -99,6 +99,10 @@ export interface ActivityViewModel {
   image: string | null;
   /** Data source for the activity record */
   source: Activity['source'];
+  /** Latitude coordinate, or null if unavailable */
+  latitude: number | null;
+  /** Longitude coordinate, or null if unavailable */
+  longitude: number | null;
   /** Time-of-day bucket for grouping within the day */
   timeOfDay: TimeOfDay;
 }
@@ -134,6 +138,8 @@ function buildActivityViewModel(activity: Activity): ActivityViewModel {
     notes: activity.notes,
     image: upscaleGoogleImage((activity as any).image) ?? null,
     source: activity.source,
+    latitude: activity.latitude ?? null,
+    longitude: activity.longitude ?? null,
     timeOfDay: getTimeOfDay(activity.start_time),
   };
 }
@@ -352,6 +358,10 @@ export interface HotelViewModel {
   imageUrl: string | null;
   /** Booking confirmation reference, or null */
   bookingRef: string | null;
+  /** Latitude coordinate, or null if unavailable */
+  latitude: number | null;
+  /** Longitude coordinate, or null if unavailable */
+  longitude: number | null;
 }
 
 /**
@@ -402,6 +412,8 @@ export function buildHotelViewModel(hotel: Hotel): HotelViewModel {
     starRating: d.star_rating,
     imageUrl: d.image_url,
     bookingRef: d.booking_ref,
+    latitude: d.latitude ?? null,
+    longitude: d.longitude ?? null,
   };
 }
 
