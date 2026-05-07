@@ -813,38 +813,48 @@ export default function ItinerarySection({ tripId }: { tripId: string }) {
 
             {/* Row 2 — draggable day strip + page nav */}
             <div className="flex items-center gap-3">
-              <div className="flex-1 min-w-0 flex items-center gap-1 overflow-x-auto scrollbar-hide py-1">
-                {days.map((d, i) => (
-                  <button
-                    key={`day-${i}`}
-                    draggable
-                    onDragStart={() => { dragDayRef.current = i; }}
-                    onDragOver={(e) => { e.preventDefault(); setDragOverIdx(i); }}
-                    onDragLeave={() => setDragOverIdx(null)}
-                    onDrop={() => {
-                      if (dragDayRef.current !== null && dragDayRef.current !== i) {
-                        swapDays(dragDayRef.current, i);
-                        setSelectedDayIndex(i);
-                      }
-                      dragDayRef.current = null;
-                      setDragOverIdx(null);
-                    }}
-                    onDragEnd={() => { dragDayRef.current = null; setDragOverIdx(null); }}
-                    onClick={() => setSelectedDayIndex(i)}
-                    className={`shrink-0 px-3 py-1.5 rounded-lg text-center transition-all cursor-grab active:cursor-grabbing border ${
-                      dragOverIdx === i ? 'ring-2 ring-[var(--trip-base)]/40 scale-105' : ''
-                    } ${
-                      i === selectedDayIndex
-                        ? 'bg-[var(--trip-base)] border-[var(--trip-base)] shadow-sm'
-                        : dragOverIdx === i
-                          ? 'bg-gray-100 dark:bg-white/[0.08] border-transparent'
-                          : 'bg-white/60 dark:bg-transparent border-gray-200 dark:border-transparent hover:bg-white/80 dark:hover:bg-white/[0.06]'
-                    }`}
-                  >
-                    <span className={`block text-[10px] font-bold ${i === selectedDayIndex ? 'text-white/70' : 'text-gray-500 dark:text-white/50'}`}>{d.dayLabel.replace('Day ', 'D')}</span>
-                    <span className={`block text-[11px] font-medium ${i === selectedDayIndex ? 'text-white' : 'text-gray-700 dark:text-white/80'}`}>{d.dateLabel.replace(/,.*/, '')}</span>
-                  </button>
-                ))}
+              <div className="flex-1 min-w-0 flex items-center gap-2.5 overflow-x-auto scrollbar-hide py-1">
+                {days.map((d, i) => {
+                  // dateLabel is "Mon, Sep 5" — split into weekday + month-day
+                  const [weekday, monthDay] = d.dateLabel.split(',').map((s) => s.trim());
+                  const isActive = i === selectedDayIndex;
+                  const isHover = dragOverIdx === i;
+                  return (
+                    <button
+                      key={`day-${i}`}
+                      draggable
+                      onDragStart={() => { dragDayRef.current = i; }}
+                      onDragOver={(e) => { e.preventDefault(); setDragOverIdx(i); }}
+                      onDragLeave={() => setDragOverIdx(null)}
+                      onDrop={() => {
+                        if (dragDayRef.current !== null && dragDayRef.current !== i) {
+                          swapDays(dragDayRef.current, i);
+                          setSelectedDayIndex(i);
+                        }
+                        dragDayRef.current = null;
+                        setDragOverIdx(null);
+                      }}
+                      onDragEnd={() => { dragDayRef.current = null; setDragOverIdx(null); }}
+                      onClick={() => setSelectedDayIndex(i)}
+                      className={`shrink-0 min-w-[96px] px-4 py-2 rounded-xl text-center transition-all cursor-grab active:cursor-grabbing border ${
+                        isHover ? 'ring-2 ring-[var(--trip-base)]/40 scale-[1.04]' : ''
+                      } ${
+                        isActive
+                          ? 'bg-[var(--trip-base)] border-[var(--trip-base)] shadow-md'
+                          : isHover
+                            ? 'bg-gray-50 dark:bg-white/[0.08] border-gray-200 dark:border-white/10'
+                            : 'bg-white dark:bg-transparent border-gray-200 dark:border-white/10 hover:border-[var(--trip-base)]/40 hover:bg-gray-50 dark:hover:bg-white/[0.05]'
+                      }`}
+                    >
+                      <span className={`block font-serif text-[14px] leading-tight ${isActive ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                        {d.dayLabel}
+                      </span>
+                      <span className={`block text-[10px] font-medium uppercase tracking-[0.14em] mt-1 ${isActive ? 'text-white/75' : 'text-gray-500 dark:text-white/50'}`}>
+                        {weekday}{monthDay ? ` · ${monthDay}` : ''}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
               <div className="shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-full backdrop-blur-md bg-gray-100/80 dark:bg-black/30">
                 <span className="text-[11px] tabular-nums px-1 text-gray-600 dark:text-white/70">

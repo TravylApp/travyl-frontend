@@ -62,12 +62,19 @@ export function GlanceView({
 
   const { data: story, isLoading } = useDayStory(storyReq);
 
-  // Image fallback chain: featured → destination photo → trip hero → null
+  // Image fallback chain — varied per day so each slide feels distinct:
+  //   1. Story-featured image (a specific activity's photo)
+  //   2. Destination image bank, indexed by day so each day gets a different shot
+  //   3. Trip hero images, also indexed by day
+  //   4. Single destination url as last resort
   const { data: destImage } = useDestinationImage(destination ?? '');
+  const destBank = destImage?.images ?? [];
+  const heroBank = heroImages ?? [];
   const imageUrl =
     story?.featuredImageUrl ??
+    (destBank.length > 0 ? destBank[selectedDayIndex % destBank.length] : undefined) ??
+    (heroBank.length > 0 ? heroBank[selectedDayIndex % heroBank.length] : undefined) ??
     destImage?.url ??
-    heroImages?.[selectedDayIndex % Math.max(heroImages.length, 1)] ??
     null;
 
   if (!day) return null;
