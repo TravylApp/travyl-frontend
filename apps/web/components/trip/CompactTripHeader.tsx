@@ -121,24 +121,28 @@ export function CompactTripHeader({
   const flagUrl = countryFlag || (countryCca2 ? `https://flagcdn.com/24x18/${countryCca2.toLowerCase()}.png` : null);
 
   // Many trips were saved with destination = "City, Country" (no region).
-  // When that's the case but we have lat/lng, reverse-geocode through the
-  // existing /api/geocode proxy (Nominatim) to recover the state/province.
-  // Coordinates don't change for a trip, so cache forever.
+  // When that's the case but we have lat/lng, reverse-geocode via BigDataCloud's
+  // free CORS-enabled client API (no key, designed for browser use, much more
+  // reliable than Nominatim which rate-limits hard). Coordinates don't change
+  // for a trip, so cache forever.
   const lat = trip?.trip_context?.lat;
   const lng = trip?.trip_context?.lng;
   const needsRegionLookup = !rawRegionName && lat != null && lng != null;
   const { data: lookupRegion } = useQuery<string | null>({
     queryKey: ['reverse-region', lat, lng],
     queryFn: async () => {
-      const res = await fetch(`/api/geocode?lat=${lat}&lng=${lng}&zoom=10`);
-      if (!res.ok) return null;
-      const data = await res.json();
-      const addr = data?.address;
-      if (!addr) return null;
-      // Nominatim's `state` covers US states, Canadian provinces, French
-      // régions, etc. `region` and `county` are reasonable fallbacks for
-      // smaller administrative units.
-      return addr.state || addr.region || addr.county || null;
+      try {
+        const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+        // `principalSubdivision` is the state/province in full ("California",
+        // "Ontario", "Île-de-France"). The abbreviation map below converts
+        // US/CA names to 2-letter codes; everything else stays as-is.
+        return (data?.principalSubdivision as string | undefined) || null;
+      } catch {
+        return null;
+      }
     },
     enabled: needsRegionLookup,
     staleTime: Infinity,
