@@ -28,7 +28,7 @@ export function DaySlideImagePanel({ imageUrl, weatherLabel }: Props) {
   }, [imageUrl]);
 
   return (
-    <div className="relative overflow-hidden bg-gray-200 dark:bg-gray-900 min-h-[320px]">
+    <div className="relative overflow-hidden bg-gray-200 dark:bg-gray-900 h-[220px] sm:h-[280px] lg:h-auto lg:min-h-[320px] order-1 lg:order-none">
       {/* Previous image — painted underneath until the new one finishes decoding */}
       {prevUrl && (
         // eslint-disable-next-line @next/next/no-img-element

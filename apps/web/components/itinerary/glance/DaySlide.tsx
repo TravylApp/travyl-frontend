@@ -69,7 +69,7 @@ export function DaySlide({
         </>
       )}
 
-      <article className="grid grid-cols-1 lg:grid-cols-[1fr_1.25fr] bg-white dark:bg-[#0f1f33] border border-gray-200 dark:border-white/10 rounded-3xl overflow-hidden shadow-xl min-h-[580px] group/slide">
+      <article className="grid grid-cols-1 lg:grid-cols-[1fr_1.25fr] bg-white dark:bg-[#0f1f33] border border-gray-200 dark:border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-xl lg:min-h-[580px] group/slide">
         <DaySlideTextPanel
           tripId={tripId}
           day={day}
