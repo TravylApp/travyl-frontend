@@ -112,7 +112,7 @@ export function TransitForm({ initial, onSubmit, onCancel, onDelete, defaultCurr
         </div>
         <div className="md:col-span-3">
           <FieldLabel>Provider/Operator</FieldLabel>
-          <Input value={provider} onChange={setProvider} placeholder="JR East, MTA, SFMTA..." />
+          <Input value={provider} onChange={setProvider} placeholder="Amtrak, JR East, MTA, SFMTA..." />
         </div>
 
         <div className="md:col-span-6">

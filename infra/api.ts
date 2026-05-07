@@ -112,13 +112,13 @@ api.route('GET /recommendations/generate', {
 api.route('POST /regenerate/activity', {
   handler: 'services/regenerate.handler',
   link: [supabaseSecretKey, supabaseUrl, serpApiKey],
-  timeout: '10 seconds',
+  timeout: '20 seconds',
 })
 
 api.route('POST /regenerate/day', {
   handler: 'services/regenerate.dayHandler',
   link: [supabaseSecretKey, supabaseUrl, serpApiKey],
-  timeout: '15 seconds',
+  timeout: '30 seconds',
 })
 
 api.route('POST /invite', {
@@ -342,8 +342,8 @@ api.route('GET /weather/forecast', {
 })
 
 api.route('GET /transit/directions', {
-  handler: 'services/transit.handler',
-  link: [supabaseSecretKey, supabaseUrl, graphhopperApiKey, otpServerUrl, otpApiKey],
+  handler: 'services/transit-search.handler',
+  link: [supabaseSecretKey, supabaseUrl, otpServerUrl, otpApiKey],
   timeout: '20 seconds',
 })
 

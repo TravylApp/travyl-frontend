@@ -206,9 +206,9 @@ export function TransitsModule({ tripId, defaultCurrency = 'USD' }: TransitsModu
                   <TransitForm
                     key={vm.id}
                     initial={{ ...segment.data, id: segment.id }}
-                    onSubmit={(data) => updateMutation.mutateAsync({ id: vm.id, data })}
+                    onSubmit={async (data) => { await updateMutation.mutateAsync({ id: vm.id, data }); }}
                     onCancel={() => setEditingId(null)}
-                    onDelete={() => deleteMutation.mutateAsync(vm.id)}
+                    onDelete={async () => { await deleteMutation.mutateAsync(vm.id); }}
                     defaultCurrency={defaultCurrency}
                   />
                 );

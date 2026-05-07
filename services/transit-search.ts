@@ -50,10 +50,13 @@ function parseOtpItinerary(itinerary: OTPItinerary, originLabel: string, destLab
       num_stops: leg.numIntermediateStops,
     }));
 
+  const firstLeg = itinerary.legs[0];
+  const lastLeg = itinerary.legs[itinerary.legs.length - 1];
+
   return {
     id: crypto.randomUUID(),
-    origin: { lat: 0, lng: 0, label: originLabel },
-    destination: { lat: 0, lng: 0, label: destLabel },
+    origin: { lat: firstLeg?.from.lat ?? 0, lng: firstLeg?.from.lng ?? 0, label: originLabel },
+    destination: { lat: lastLeg?.to.lat ?? 0, lng: lastLeg?.to.lng ?? 0, label: destLabel },
     departure_at: itinerary.startTime,
     arrival_at: itinerary.endTime,
     total_duration_minutes: Math.round(itinerary.duration / 60),

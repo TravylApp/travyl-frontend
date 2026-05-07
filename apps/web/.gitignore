@@ -26,6 +26,9 @@ npm-debug.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# open-next build artifacts
+/.open-next/
+
 # vercel
 .vercel
 
