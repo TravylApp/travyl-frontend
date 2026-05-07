@@ -10,6 +10,9 @@
 /.next/
 /out/
 
+# open-next (SST build output)
+/.open-next/
+
 # amplify
 /.amplify-hosting/
 
