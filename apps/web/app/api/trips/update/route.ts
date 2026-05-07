@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
 
   const supabase = getSupabase()
   let body: any; try { body = await req.json() } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
-  const { tripId, trip_context, hotels, flights } = body
+  const { tripId, trip_context, flights } = body
 
   if (!tripId || typeof tripId !== 'string') {
     return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })
@@ -77,31 +77,9 @@ export async function POST(req: NextRequest) {
 
   const city = trip.destination?.split(',')[0]?.trim()
 
-  // Save hotels to hotels table
-  if (hotels?.length) {
-    const hotelRows = hotels.map((h: any) => ({
-      trip_id: tripId,
-      data: {
-        name: h.name,
-        address: h.address || null,
-        latitude: h.lat || null,
-        longitude: h.lng || null,
-        price_per_night: h.price_per_night,
-        total_price: h.total_price || null,
-        currency: h.currency || 'USD',
-        rating: h.rating || null,
-        star_rating: h.stars || null,
-        image_url: h.photo_url || null,
-        check_in: trip.start_date,
-        check_out: trip.end_date,
-        booking_ref: null,
-        offer_id: null,
-        amenities: h.amenities || [],
-        booking_url: h.booking_url || h.link || null,
-      },
-    }))
-    const { error: hotelErr } = await supabase.from('hotels').insert(hotelRows)
-  }
+  // Hotels are no longer auto-seeded from the AI planner's output —
+  // suggestions still live in `trip_context.hotels`, but only user-confirmed
+  // selections (search "Add to trip" or manual form) land in the hotels table.
 
   // Save flights to flights table
   if (flights?.length) {

@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
     const supabase = getSupabase()
     let body: any; try { body = await req.json() } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
-    const { title, destination, start_date, end_date, status, travelers, budget, currency, trip_context, hotels, flights, itinerary } = body
+    const { title, destination, start_date, end_date, status, travelers, budget, currency, trip_context, flights, itinerary } = body
 
     // Derive user_id from verified session — never trust body.user_id
     let user_id: string | null = null
@@ -88,31 +88,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Save hotels to hotels table (best effort)
-  if (hotels?.length) {
-    const hotelRows = hotels.map((h: any) => ({
-      trip_id: tripId,
-      data: {
-        name: h.name,
-        address: h.address || null,
-        latitude: h.lat || null,
-        longitude: h.lng || null,
-        price_per_night: h.price_per_night,
-        total_price: h.total_price || null,
-        currency: h.currency || 'USD',
-        rating: h.rating || null,
-        star_rating: h.stars || null,
-        image_url: h.photo_url || null,
-        check_in: start_date,
-        check_out: end_date,
-        booking_ref: null,
-        offer_id: null,
-        amenities: h.amenities || [],
-        booking_url: h.booking_url || h.link || null,
-      },
-    }))
-    const { error: hotelErr } = await supabase.from('hotels').insert(hotelRows)
-  }
+  // Hotels are no longer auto-seeded into the hotels table from the AI
+  // planner's output — that surfaced as fake "bookings" on the hotels tab.
+  // Suggestions still live in `trip_context.hotels` for inspiration; real
+  // bookings only land in the table when the user clicks "Add to trip"
+  // from search or fills the manual form.
 
   // Save flights to flights table (best effort)
   if (flights?.length) {
