@@ -19,6 +19,9 @@ export interface SerpHotel {
   description: string
   link: string
   source: string
+  propertyType: string | null
+  deal: string | null
+  dealDescription: string | null
 }
 
 export interface SerpHotelSearchResponse {

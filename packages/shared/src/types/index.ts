@@ -212,6 +212,8 @@ export interface Activity {
 
 export interface FlightData {
   airline: string;
+  /** Carrier logo URL (e.g. SerpAPI Google Flights image). Optional. */
+  airline_logo?: string | null;
   flight_number: string | null;
   origin_iata: string;
   origin_name: string | null;

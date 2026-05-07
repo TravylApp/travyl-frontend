@@ -86,14 +86,19 @@ export async function GET(req: NextRequest) {
 
     // Normalize flights into a consistent shape
     const normalize = (flights: any[], tier: string) =>
-      flights.map((f: any) => {
+      flights.map((f: any, idx: number) => {
         const legs = f.flights ?? []
         const firstLeg = legs[0] ?? {}
         const lastLeg = legs[legs.length - 1] ?? {}
 
+        // ID needs to be stable across re-searches (so the offer_id we save
+        // matches if user re-searches) AND unique within a single response
+        // (React key collisions otherwise — same flight number at the same
+        // time can appear twice as different fare options or as part of
+        // multi-segment itineraries). Include price + total duration + tier
+        // index to disambiguate without losing stability for identical offers.
         return {
-          // Content-derived stable ID so the same itinerary keeps the same offer_id across re-searches.
-          id: `serp:${tier}:${firstLeg.flight_number ?? ''}:${firstLeg.departure_airport?.id ?? ''}:${firstLeg.departure_airport?.time ?? ''}:${lastLeg.arrival_airport?.id ?? ''}`,
+          id: `serp:${tier}:${idx}:${firstLeg.flight_number ?? ''}:${firstLeg.departure_airport?.id ?? ''}:${firstLeg.departure_airport?.time ?? ''}:${lastLeg.arrival_airport?.id ?? ''}:${f.price ?? 'np'}:${f.total_duration ?? 0}`,
           tier,
           price: f.price ?? null,
           type: f.type ?? 'Round trip',

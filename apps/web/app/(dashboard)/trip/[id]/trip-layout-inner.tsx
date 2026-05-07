@@ -4,11 +4,11 @@ import { useState, useRef, useEffect, useCallback, Suspense } from 'react';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapPin, Map, Share2, X } from 'lucide-react';
+import { MapPin, Map, X } from 'lucide-react';
 import type { Trip } from '@travyl/shared';
 import { usePathname, useRouter } from 'next/navigation';
-import TripRail, { getTabMeta, useRailCollapsed } from '@/components/trip-rail';
-import { useItineraryScreen, useAuthStore, canViewTrip, useDestinationImage, upscaleGoogleImage, ensureShareLinkToken, updateTripVisibility } from '@travyl/shared';
+import TripRail, { useRailCollapsed } from '@/components/trip-rail';
+import { useItineraryScreen, useAuthStore, canViewTrip, useDestinationImage, upscaleGoogleImage } from '@travyl/shared';
 import { ItineraryProvider, useItineraryContext } from '@/components/itinerary/ItineraryContext';
 import { TripThemeProvider } from '@/components/trip/TripThemeContext';
 import { CompactTripHeader } from '@/components/trip/CompactTripHeader';
@@ -20,85 +20,6 @@ import { useQuery } from '@tanstack/react-query';
 import type { PlaceItem } from '@travyl/shared';
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false });
-
-// ─── Content Header Bar (per-tab) ───────────────────────────
-
-function ContentHeader({ tripId, trip, mapOpen, onToggleMap }: {
-  tripId: string;
-  trip: Trip | null | undefined;
-  mapOpen: boolean;
-  onToggleMap: () => void;
-}) {
-  const pathname = usePathname();
-  const basePath = `/trip/${tripId}`;
-  const segment = pathname.replace(basePath, '').replace(/^\//, '') || '';
-  const tab = getTabMeta(segment);
-  const [shareBusy, setShareBusy] = useState(false);
-  const [railCollapsed] = useRailCollapsed();
-
-  // Share the trip from any subpage. Generates the same `/trip/<id>/share/<token>`
-  // URL the Settings → Sharing tab and the Trips list card both produce, so a
-  // link from here is interchangeable with one shared from anywhere else.
-  const handleShare = useCallback(async () => {
-    if (!trip?.id || shareBusy) return;
-    setShareBusy(true);
-    try {
-      const token = await ensureShareLinkToken(trip.id);
-      if (trip.visibility === 'private') {
-        try { await updateTripVisibility(trip.id, 'link'); } catch {}
-      }
-      const url = `${window.location.origin}/trip/${trip.id}/share/${token}`;
-      const message = `Join me planning my trip to ${trip.destination} on Travyl: ${url}`;
-      const title = trip.title ?? `Trip to ${trip.destination}`;
-      if (typeof navigator !== 'undefined' && (navigator as any).share) {
-        try { await (navigator as any).share({ title, text: message, url }); return; } catch {}
-      }
-      try {
-        await navigator.clipboard.writeText(url);
-        window.alert(`Link copied to clipboard:\n${url}`);
-      } catch {
-        window.alert(`Share link:\n${url}`);
-      }
-    } catch (e: any) {
-      window.alert(`Share failed: ${e?.message ?? 'unknown error'}`);
-    } finally {
-      setShareBusy(false);
-    }
-  }, [trip?.id, trip?.destination, trip?.title, trip?.visibility, shareBusy]);
-
-  if (!tab) return null;
-  const Icon = tab.icon;
-
-  return (
-    <div className={`shrink-0 bg-white dark:bg-background px-5 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} pt-4 pb-3 sticky top-0 z-20 transition-[padding] duration-200 ease-out`}
-      style={{ boxShadow: '0 1px 0 rgba(0,0,0,0.04)' }}>
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm shrink-0" style={{ backgroundColor: `${tab.color}18`, color: tab.color }}>
-          <Icon size={15} />
-        </div>
-        <div className="flex-1">
-          <h2 className="text-[17px] tracking-wide font-normal text-gray-900 dark:text-white font-serif">{tab.label}</h2>
-          <p className="text-[12px] text-gray-500 dark:text-gray-400">{tab.subtitle}</p>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={handleShare}
-            disabled={!trip?.id || shareBusy}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 border-gray-200 dark:border-white/[0.12] hover:bg-gray-50 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300 disabled:opacity-50"
-            title="Share this trip"
-          >
-            <Share2 size={13} />
-            <span className="text-[12px] font-medium">{shareBusy ? '...' : 'Share'}</span>
-          </button>
-          <button onClick={onToggleMap} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all duration-200 ${mapOpen ? 'text-white shadow-md' : 'border-gray-200 dark:border-white/[0.12] hover:bg-gray-50 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300'}`} style={mapOpen ? { borderColor: 'var(--trip-base)', backgroundColor: 'var(--trip-base)' } : undefined} title={mapOpen ? 'Hide map' : 'Show map'}>
-            <Map size={13} />
-            <span className="text-[12px] font-medium">Map</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── Trip Explore Section (overview page — shows trip_context data) ──
 
@@ -469,17 +390,7 @@ function TripLayoutContent({
   const hasMarkers = mapMarkers.length > 0;
   const dir = directionRef.current;
 
-  // Track if we just came from/going to calendar to suppress the inner tab animation
-  // (the outer layout crossfade already handles the transition)
-  const wasCalendarRef = useRef(isCalendar);
-  useEffect(() => { wasCalendarRef.current = isCalendar; }, [isCalendar]);
-  const fromCalendar = wasCalendarRef.current && !isCalendar;
-
-  const pageVariants = fromCalendar ? {
-    initial: { opacity: 1, y: 0 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0 },
-  } : {
+  const pageVariants = {
     initial: { opacity: 0, y: dir > 0 ? 14 : -14 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: dir > 0 ? -8 : 8 },
@@ -487,29 +398,13 @@ function TripLayoutContent({
 
   return (
     <AnimatePresence mode="sync">
-    {isCalendar ? (
-      <motion.div
-        key="calendar-layout"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-        className="w-screen overflow-hidden relative"
-        style={{ height: '100vh', position: 'fixed', inset: 0, top: 0, zIndex: 40 }}
-      >
-        <TripRail tripId={tripId} variant={isMagazine ? 'dark' : 'light'} />
-        <div className={`h-full transition-[padding] duration-200 ease-out ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'}`}>
-          {children}
-        </div>
-      </motion.div>
-    ) : (
     <motion.div
-      key="standard-layout"
+      key="trip-layout"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className={`pb-14 md:pb-0 ${isMagazine ? 'relative' : 'bg-white dark:bg-background'}`}
+      className={`${isCalendar ? 'flex flex-col h-[calc(100vh-48px)] overflow-hidden' : 'pb-14 md:pb-0'} ${isMagazine ? 'relative' : 'bg-white dark:bg-background'}`}
     >
       {/* Sidebar */}
       <TripRail tripId={tripId} variant={isMagazine ? 'dark' : 'light'} />
@@ -519,26 +414,30 @@ function TripLayoutContent({
         <TripMagazineHero tripId={tripId} trip={trip} compact={!isOverview} onTripUpdate={refetch}
           overrideImage={destImageData?.url ?? undefined} suppressFallback={destImageLoading} />
       ) : (
-        <CompactTripHeader tripId={tripId} trip={trip} onTripUpdate={refetch} overrideImage={destImageData?.url ?? undefined} />
+        <CompactTripHeader
+          tripId={tripId}
+          trip={trip}
+          onTripUpdate={refetch}
+          overrideImage={destImageData?.url ?? undefined}
+          mapOpen={mapOpen}
+          onToggleMap={isCalendar ? undefined : () => setMapOpen(!mapOpen)}
+        />
       )}
 
       {/* Content area */}
-      <div className="relative z-10">
-        <div className={isMagazine ? '' : 'mx-auto max-w-[1800px]'}>
-          {!isMagazine && (
-            <ContentHeader
-              tripId={tripId}
-              trip={trip}
-              mapOpen={mapOpen}
-              onToggleMap={() => setMapOpen(!mapOpen)}
-            />
-          )}
-
+      <div className={`relative z-10 ${isCalendar ? 'flex-1 flex flex-col min-h-0' : ''}`}>
+        <div className={isCalendar ? 'flex-1 flex flex-col min-h-0 w-full' : isMagazine ? '' : 'mx-auto max-w-[1800px]'}>
           {isOverview && <TripOnboardingBanner />}
 
-          <div className="flex">
+          <div className={`flex ${isCalendar ? 'flex-1 min-h-0' : ''}`}>
             {/* Main content */}
-            <div className={`flex-1 min-w-0 relative overflow-hidden transition-[padding] duration-200 ease-out ${isMagazine ? `px-6 sm:px-10 ${railCollapsed ? 'md:pl-[96px]' : 'md:pl-[260px]'} md:pr-10` : `px-5 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} pt-4 pb-5`}`}>
+            <div className={`flex-1 min-w-0 relative overflow-hidden transition-[padding] duration-200 ease-out ${
+              isCalendar
+                ? `${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} flex flex-col`
+                : isMagazine
+                  ? `px-6 sm:px-10 ${railCollapsed ? 'md:pl-[96px]' : 'md:pl-[260px]'} md:pr-10`
+                  : `px-5 ${railCollapsed ? 'md:pl-[76px]' : 'md:pl-[240px]'} pt-4 pb-5`
+            }`}>
               <AnimatePresence mode="popLayout" initial={false}>
                 <motion.div
                   key={`tab-${currentSegment}`}
@@ -546,14 +445,21 @@ function TripLayoutContent({
                   animate={pageVariants.animate}
                   exit={pageVariants.exit}
                   transition={{ duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }}
-                  className={isMagazine ? (isOverview ? 'pt-2' : 'bg-white/85 backdrop-blur-xl rounded-2xl p-5 sm:p-6 mt-4 mb-8') : ''}
+                  className={
+                    isCalendar
+                      ? 'flex-1 min-h-0 flex flex-col'
+                      : isMagazine
+                        ? (isOverview ? 'pt-2' : 'bg-white/85 backdrop-blur-xl rounded-2xl p-5 sm:p-6 mt-4 mb-8')
+                        : ''
+                  }
                 >
                   {children}
                 </motion.div>
               </AnimatePresence>
             </div>
 
-            {/* Map side panel */}
+            {/* Map side panel — hidden on calendar (it has its own Map tab in the right panel) */}
+            {!isCalendar && (
             <AnimatePresence>
               {mapOpen && (
                 <motion.div
@@ -616,12 +522,13 @@ function TripLayoutContent({
                 </motion.div>
               )}
             </AnimatePresence>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Below-the-fold content */}
-      {isOverview && (
+      {/* Below-the-fold content — overview only, never calendar */}
+      {isOverview && !isCalendar && (
         <div className="relative z-10">
           {isMagazine ? (
             <div className={`px-6 sm:px-10 ${railCollapsed ? 'md:pl-[96px]' : 'md:pl-[260px]'} md:pr-10 mt-4 pb-8 transition-[padding] duration-200 ease-out`}>
@@ -636,12 +543,11 @@ function TripLayoutContent({
       )}
 
       {/* Magazine footer — gradient floor so the page has a defined end */}
-      {isMagazine && (
+      {isMagazine && !isCalendar && (
         <div className="relative z-10 h-40 pointer-events-none"
           style={{ background: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.6) 50%, rgba(0,0,0,0.85) 100%)' }} />
       )}
     </motion.div>
-    )}
     </AnimatePresence>
   );
 }

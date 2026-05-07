@@ -11,7 +11,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useTripTheme } from '@/components/trip/TripThemeContext';
-import { useItineraryScreen } from '@travyl/shared';
+import { useItineraryScreen, formatDateRange } from '@travyl/shared';
 import { HistoryPanel } from '@/components/trip/TripHistoryPanel';
 
 // ── Collapsed state — localStorage + custom event for cross-component sync ──
@@ -92,14 +92,6 @@ interface TripRailProps {
 }
 
 // ── Helpers ──────────────────────────────────────────────────
-
-function formatDateRange(start?: string | null, end?: string | null): string {
-  if (!start || !end) return '';
-  const s = new Date(start);
-  const e = new Date(end);
-  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-  return `${s.toLocaleDateString(undefined, opts)} – ${e.toLocaleDateString(undefined, opts)}`;
-}
 
 function travelerCount(t: number | null | undefined): number {
   if (t == null) return 1;
@@ -207,7 +199,7 @@ function RailDesktop({
                 {trip.destination ?? 'Trip'}
               </div>
               <div className={`text-[11px] mt-1 ${metaColor}`}>
-                {formatDateRange(trip.start_date, trip.end_date)}
+                {trip.start_date && trip.end_date ? formatDateRange(trip.start_date, trip.end_date) : ''}
                 {count > 0 && (
                   <>
                     <span className="mx-1.5">·</span>

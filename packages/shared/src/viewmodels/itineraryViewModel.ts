@@ -223,6 +223,8 @@ export interface FlightViewModel {
   id: string;
   /** Airline name (e.g. "Delta") */
   airline: string;
+  /** Airline carrier logo URL (e.g. SerpAPI Google Flights image), or null */
+  airlineLogo: string | null;
   /** Flight number (e.g. "DL 123"), or null */
   flightNumber: string | null;
   /** Route string (e.g. "JFK → CDG") */
@@ -285,6 +287,7 @@ export function buildFlightViewModel(flight: Flight): FlightViewModel {
   return {
     id: flight.id,
     airline: d.airline,
+    airlineLogo: d.airline_logo ?? null,
     flightNumber: d.flight_number,
     route: `${d.origin_iata} → ${d.dest_iata}`,
     originIata: d.origin_iata,

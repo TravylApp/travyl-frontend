@@ -67,6 +67,10 @@ export function mapSerpFlightToFlightData(serp: SerpFlight): FlightData {
   const price = serp.price ?? null
   return {
     airline: first?.airline ?? '',
+    // Prefer the per-leg logo (more specific for codeshares) and fall back
+    // to the itinerary-level logo. Persisted so the saved booking card can
+    // render it without re-querying SerpAPI.
+    airline_logo: first?.airlineLogo || serp.airlineLogo || null,
     flight_number: first?.flightNumber || null,
     origin_iata: first?.departure.id ?? '',
     origin_name: first?.departure.airport ?? null,
