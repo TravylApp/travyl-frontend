@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { MapPin, Luggage, User, Settings, LogOut, Sun, Moon, Menu, X } from "lucide-react";
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import { PlaceholderAvatar } from "@/components/ui/PlaceholderAvatar";
-import { useAuthStore, useTrips } from "@travyl/shared";
+import { useAuthStore, useTrips, useProfile } from "@travyl/shared";
 
 const baseNavLinks = [
   { href: "/places", label: "Explore", icon: MapPin },
@@ -21,14 +21,17 @@ export default function GlobalNavbar() {
   const loading = useAuthStore((s) => s.loading);
   const signOut = useAuthStore((s) => s.signOut);
   const { data: trips } = useTrips();
+  const { data: profile } = useProfile();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const displayName = user?.user_metadata?.display_name || user?.user_metadata?.full_name;
+  const displayName = profile?.display_name || user?.user_metadata?.display_name || user?.user_metadata?.full_name || user?.user_metadata?.name;
   const email = user?.email;
+  // Avatar priority: Supabase profile upload → Google OAuth photo → email-only sign-in shows initials.
+  const avatarUrl = profile?.avatar_url || user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null;
 
   const hasTrips = !!user;
 
@@ -260,7 +263,14 @@ export default function GlobalNavbar() {
                   aria-expanded={dropdownOpen}
                   className="flex items-center rounded-full hover:ring-2 hover:ring-[#1e3a5f]/20 dark:hover:ring-white/20 transition-all"
                 >
-                  <PlaceholderAvatar key={user?.id ?? 'anon'} userId={user?.id} size={32} />
+                  <PlaceholderAvatar
+                    key={user?.id ?? 'anon'}
+                    userId={user?.id}
+                    name={displayName}
+                    email={email}
+                    avatarUrl={avatarUrl}
+                    size={32}
+                  />
                 </button>
 
                 {dropdownOpen && (
@@ -276,7 +286,14 @@ export default function GlobalNavbar() {
                   >
                     <div className="px-3 py-2 border-b border-gray-100 dark:border-[#1e3a5f]/20">
                       <div className="flex items-center gap-2.5">
-                        <PlaceholderAvatar key={user?.id ?? 'anon'} userId={user?.id} size={32} />
+                        <PlaceholderAvatar
+                          key={user?.id ?? 'anon'}
+                          userId={user?.id}
+                          name={displayName}
+                          email={email}
+                          avatarUrl={avatarUrl}
+                          size={32}
+                        />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-gray-900 dark:text-[#f5efe8] truncate">
                             {displayName || "User"}

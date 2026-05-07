@@ -183,13 +183,13 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
         <div className="max-w-5xl mx-auto px-4 py-8">
           <div className="flex items-center gap-4">
             {/* Avatar */}
-            <div className="w-20 h-20 rounded-full overflow-hidden shrink-0">
-              {profile.avatar_url ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img src={profile.avatar_url} alt="" width={80} height={80}  className="object-cover" />
-              ) : (
-                <PlaceholderAvatar userId={profile.id} size={80} />
-              )}
+            <div className="shrink-0">
+              <PlaceholderAvatar
+                userId={profile.id}
+                name={profile.display_name}
+                avatarUrl={profile.avatar_url}
+                size={80}
+              />
             </div>
 
             {/* Info */}
