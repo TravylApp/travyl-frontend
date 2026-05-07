@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { Plane, MoreHorizontal } from 'lucide-react'
 import type { FlightViewModel } from '@travyl/shared'
 
@@ -15,6 +16,7 @@ function isNextDay(departureAt: string | null, arrivalAt: string | null): boolea
 }
 
 export function FlightCard({ flight, onEdit, onDelete }: FlightCardProps) {
+  const [logoFailed, setLogoFailed] = useState(false)
   const titleParts = [
     flight.airline,
     flight.flightNumber,
@@ -39,12 +41,23 @@ export function FlightCard({ flight, onEdit, onDelete }: FlightCardProps) {
       className="group rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4 transition-colors cursor-pointer hover:bg-gray-50 dark:hover:bg-white/[0.04]"
     >
       <div className="flex items-start gap-4">
-        <div
-          className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0"
-          style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.10)', color: 'var(--trip-base)' }}
-        >
-          <Plane size={18} />
-        </div>
+        {flight.airlineLogo && !logoFailed ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={flight.airlineLogo}
+            alt={flight.airline}
+            referrerPolicy="no-referrer"
+            onError={() => setLogoFailed(true)}
+            className="w-11 h-11 rounded-lg object-contain bg-white border border-gray-100 dark:border-white/[0.06] p-1 shrink-0"
+          />
+        ) : (
+          <div
+            className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0"
+            style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.10)', color: 'var(--trip-base)' }}
+          >
+            <Plane size={18} />
+          </div>
+        )}
 
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
