@@ -4,7 +4,6 @@ import { useEffect, useRef } from 'react'
 import { useCommandRegistry } from '@/stores/commandRegistry'
 
 const CHORD_TIMEOUT_MS = 500
-const CHORD_PREFIX_KEYS = new Set(['g'])  // Only 'g' prefix activates chord mode
 
 export function useChordShortcuts() {
   const pushChord = useCommandRegistry((s) => s.pushChord)
@@ -40,13 +39,17 @@ export function useChordShortcuts() {
 
       // Only 'g' prefix starts a chord sequence (avoids conflicts with calendar shortcuts like T, D, W)
       if (e.key === 'g') {
+        e.preventDefault()
+        // If chord mode is already active (pressing 'g' again), clear and restart
+        if (isChordActive()) clearChord()
         pushChord('g')
         startTimeout()
         return
       }
 
-      // If chord mode is active, accept second key
-      if (isChordActive() && (e.key.length === 1 || e.key === '+')) {
+      // If chord mode is active, accept second key (single character)
+      if (isChordActive() && e.key.length === 1) {
+        e.preventDefault()
         const match = pushChord(e.key.toLowerCase())
         if (match) {
           // Chord matched — execute and clear
