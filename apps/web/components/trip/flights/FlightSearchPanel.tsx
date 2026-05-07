@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Search, X } from 'lucide-react'
 import { FieldLabel, Input, Select, DateInput, PrimaryButton } from '@/components/trip/BookingFormPrimitives'
 import { AirportAutocomplete } from './AirportAutocomplete'
+import { searchAirports } from './airportSearch'
 import { searchFlights, type FlightSearchInput, type SerpFlight } from './flightSearch'
 import type { FlightSearchState } from './FlightResultsList'
 
@@ -14,15 +15,18 @@ const CABIN_OPTIONS = [
   { value: 'first', label: 'First' },
 ]
 
+type AirportValue = { iata: string; name: string; city: string } | null
+
 export interface FlightSearchPanelProps {
-  trip: { id: string; start_date: string; end_date: string }
+  trip: { id: string; start_date: string; end_date: string; destination?: string | null }
+  defaultFrom?: AirportValue
   onResultsChange: (state: FlightSearchState) => void
   onClose?: () => void
 }
 
-export function FlightSearchPanel({ trip, onResultsChange, onClose }: FlightSearchPanelProps) {
-  const [from, setFrom] = useState<{ iata: string; name: string; city: string } | null>(null)
-  const [to, setTo] = useState<{ iata: string; name: string; city: string } | null>(null)
+export function FlightSearchPanel({ trip, defaultFrom, onResultsChange, onClose }: FlightSearchPanelProps) {
+  const [from, setFrom] = useState<AirportValue>(defaultFrom ?? null)
+  const [to, setTo] = useState<AirportValue>(null)
   const [date, setDate] = useState(trip.start_date ?? '')
   const [returnDate, setReturnDate] = useState(trip.end_date ?? '')
   const [oneWay, setOneWay] = useState(false)
@@ -30,6 +34,29 @@ export function FlightSearchPanel({ trip, onResultsChange, onClose }: FlightSear
   const [cabin, setCabin] = useState<FlightSearchInput['cabin']>('economy')
   const [busy, setBusy] = useState(false)
   const [errors, setErrors] = useState<{ from?: boolean; to?: boolean; date?: boolean }>({})
+
+  useEffect(() => {
+    if (defaultFrom && !from) setFrom(defaultFrom)
+    // We only want this to fire when defaultFrom resolves on first load.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultFrom?.iata])
+
+  useEffect(() => {
+    let cancelled = false
+    const query = trip.destination?.trim()
+    if (!query || to) return
+    void (async () => {
+      try {
+        const matches = await searchAirports(query)
+        if (cancelled) return
+        const pick = matches.find((m) => m.type === 'airport') ?? matches[0]
+        if (pick) setTo({ iata: pick.iata, name: pick.name, city: pick.city })
+      } catch {}
+    })()
+    return () => { cancelled = true }
+    // We only want to auto-resolve once when trip.destination first appears.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trip.destination])
 
   const validate = () => {
     const next: typeof errors = {}
@@ -80,7 +107,7 @@ export function FlightSearchPanel({ trip, onResultsChange, onClose }: FlightSear
   }
 
   return (
-    <div onKeyDown={handleKey} className="rounded-xl border border-[var(--trip-base)]/30 bg-white dark:bg-white/[0.04] p-5 space-y-4 relative">
+    <div onKeyDown={handleKey} className="space-y-4 relative pb-2">
       {onClose && (
         <button
           onClick={onClose}

@@ -96,7 +96,7 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
  * @returns The updated Profile object
  * @throws PostgrestError if the update fails
  */
-export async function updateProfile(userId: string, updates: Partial<Pick<Profile, 'display_name' | 'avatar_url' | 'city' | 'country' | 'preferences' | 'onboarding_completed'>>): Promise<Profile> {
+export async function updateProfile(userId: string, updates: Partial<Pick<Profile, 'display_name' | 'avatar_url' | 'city' | 'country' | 'home_airport' | 'preferences' | 'onboarding_completed'>>): Promise<Profile> {
   const { data, error } = await supabase
     .from('profiles')
     .update(updates)

@@ -11,6 +11,7 @@ export interface Profile {
   avatar_url: string | null;
   city: string | null;
   country: string | null;
+  home_airport: string | null;
   onboarding_completed: boolean;
   preferences: Record<string, any>;
   created_at: string;

@@ -10,6 +10,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
+import { useProfile } from './useProfile';
 
 // On web: use our own API proxy routes (relative URLs, no prefix needed)
 // On mobile: use the web proxy (Next.js API routes for extract/plan), NOT the backend API
@@ -181,6 +182,9 @@ export function useTripPlanner() {
   const [state, setState] = useState<PlannerState>({ phase: 'idle' });
   const promptRef = useRef('');
   const contextRef = useRef<{ city?: string; country?: string }>({});
+  const { data: profile } = useProfile();
+  const profileCity = profile?.city ?? undefined;
+  const profileCountry = profile?.country ?? undefined;
 
   /**
    * Sends the user's natural-language trip description to `/api/trips/extract`.
@@ -208,8 +212,8 @@ export function useTripPlanner() {
         },
         body: JSON.stringify({
           prompt,
-          city: context?.city ?? contextRef.current.city,
-          country: context?.country ?? contextRef.current.country,
+          city: context?.city ?? contextRef.current.city ?? profileCity,
+          country: context?.country ?? contextRef.current.country ?? profileCountry,
         }),
       });
 
@@ -244,7 +248,7 @@ export function useTripPlanner() {
     } catch (err) {
       setState({ phase: 'error', message: err instanceof Error ? err.message : 'Extraction failed' });
     }
-  }, []);
+  }, [profileCity, profileCountry]);
 
   /**
    * Submits user responses to follow-up clarification questions, then calls
@@ -282,8 +286,8 @@ export function useTripPlanner() {
         },
         body: JSON.stringify({
           prompt,
-          city: contextRef.current.city,
-          country: contextRef.current.country,
+          city: contextRef.current.city ?? profileCity,
+          country: contextRef.current.country ?? profileCountry,
           answers,
         }),
       });

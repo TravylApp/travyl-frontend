@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, LogOut, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Loader2, LogOut, Eye, EyeOff, Ruler, Coins } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { AvatarUpload } from "@/components/AvatarUpload";
 import { PasswordStrengthMeter } from "@/components/PasswordStrengthMeter";
 import { LoadingBar } from "@/components/LoadingBar";
+import { LocationPicker, type LocationValue } from "@/components/settings/LocationPicker";
 import { useAuthStore, supabase, useSettingsStore, CURRENCIES } from "@travyl/shared";
 import { fetchProfile, updateProfile, uploadAvatar, updateUserPassword } from "@travyl/shared";
 import type { Profile } from "@travyl/shared";
@@ -17,9 +18,18 @@ interface ProfileForm {
   displayName: string;
   city: string;
   country: string;
+  lat: number | null;
+  lng: number | null;
 }
 
-const EMPTY_FORM: ProfileForm = { avatar: null, displayName: "", city: "", country: "" };
+const EMPTY_FORM: ProfileForm = {
+  avatar: null,
+  displayName: "",
+  city: "",
+  country: "",
+  lat: null,
+  lng: null,
+};
 
 type SectionId = "profile" | "display" | "password";
 
@@ -28,6 +38,16 @@ const SECTIONS: { id: SectionId; label: string }[] = [
   { id: "display", label: "Display" },
   { id: "password", label: "Password" },
 ];
+
+function googleAvatarFromUser(user: { user_metadata?: Record<string, unknown> } | null): string | null {
+  if (!user?.user_metadata) return null;
+  const meta = user.user_metadata as Record<string, unknown>;
+  const candidates = [meta.avatar_url, meta.picture, meta.image];
+  for (const c of candidates) {
+    if (typeof c === "string" && c.startsWith("http")) return c;
+  }
+  return null;
+}
 
 export default function ProfileSettings() {
   const router = useRouter();
@@ -81,18 +101,61 @@ export default function ProfileSettings() {
         if (!user) return;
         const profile = await fetchProfile(user.id);
         if (cancelled) return;
-        const next: ProfileForm = {
-          avatar: profile?.avatar_url ?? null,
-          displayName:
-            profile?.display_name ??
-            (user.user_metadata?.display_name as string | undefined) ??
-            (user.user_metadata?.name as string | undefined) ??
-            "",
+
+        // Sync Google avatar into profile.avatar_url on first load if absent.
+        const googleAvatar = googleAvatarFromUser(user);
+        const effectiveAvatar = profile?.avatar_url ?? googleAvatar ?? null;
+        if (!profile?.avatar_url && googleAvatar) {
+          updateProfile(user.id, { avatar_url: googleAvatar }).catch(() => {});
+        }
+
+        const baseDisplayName =
+          profile?.display_name ??
+          (user.user_metadata?.display_name as string | undefined) ??
+          (user.user_metadata?.name as string | undefined) ??
+          "";
+
+        let nextForm: ProfileForm = {
+          avatar: effectiveAvatar,
+          displayName: baseDisplayName,
           city: profile?.city ?? "",
           country: profile?.country ?? "",
+          lat: null,
+          lng: null,
         };
-        setForm(next);
-        setOriginal(next);
+
+        // First-load IP prefill: only when no city/country saved yet.
+        if (!nextForm.city && !nextForm.country) {
+          try {
+            const res = await fetch("/api/geo/me");
+            if (res.ok) {
+              const geo = await res.json();
+              if (!cancelled && geo?.city && geo?.country) {
+                nextForm = {
+                  ...nextForm,
+                  city: geo.city,
+                  country: geo.country,
+                  lat: typeof geo.lat === "number" ? geo.lat : null,
+                  lng: typeof geo.lng === "number" ? geo.lng : null,
+                };
+              }
+            }
+          } catch {
+            // ignore — user can fill manually
+          }
+        }
+
+        setForm(nextForm);
+        // `original` mirrors the persisted DB state so the IP-prefilled location
+        // shows as a pending change (Save button enables).
+        setOriginal({
+          avatar: profile?.avatar_url ?? googleAvatar ?? null,
+          displayName: baseDisplayName,
+          city: profile?.city ?? "",
+          country: profile?.country ?? "",
+          lat: null,
+          lng: null,
+        });
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load profile");
       } finally {
@@ -193,12 +256,21 @@ export default function ProfileSettings() {
     }
   };
 
+  const location: LocationValue = useMemo(
+    () => ({ city: form.city, country: form.country, lat: form.lat, lng: form.lng }),
+    [form.city, form.country, form.lat, form.lng],
+  );
+
+  const onLocationChange = useCallback((next: LocationValue) => {
+    setForm((f) => ({ ...f, city: next.city, country: next.country, lat: next.lat, lng: next.lng }));
+  }, []);
+
   if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="w-6 h-6 text-[#1e3a5f] animate-spin" />
-          <p className="text-sm text-gray-500">Loading settings…</p>
+          <p className="text-sm text-muted-foreground">Loading settings…</p>
         </div>
       </div>
     );
@@ -206,13 +278,13 @@ export default function ProfileSettings() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center px-6">
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
         <div className="max-w-sm w-full text-center">
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">Couldn&apos;t load settings</h1>
-          <p className="text-sm text-gray-600 mb-6">{error}</p>
+          <h1 className="text-2xl font-serif font-normal text-foreground mb-2 tracking-wide">Couldn&apos;t load settings</h1>
+          <p className="text-sm text-muted-foreground mb-6">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-[#1e3a5f] hover:bg-[#16314f] text-white rounded-lg text-sm font-semibold transition-colors"
+            className="px-5 py-2.5 bg-[#1e3a5f] hover:bg-[#162d4a] text-white rounded-xl text-sm font-semibold transition-colors"
           >
             Try again
           </button>
@@ -228,46 +300,64 @@ export default function ProfileSettings() {
     .toUpperCase()
     .slice(0, 2) || (user?.email?.[0]?.toUpperCase() ?? "?");
 
+  const distanceExample = distanceUnits === "miles" ? "12 mi · 76 °F" : "19 km · 24 °C";
+  const currencySymbol = CURRENCIES.find((c) => c.code === currency)?.symbol ?? "$";
+  const currencyExample = `${currencySymbol}1,250 ${currency}`;
+  const usingGoogleAvatar = !!googleAvatarFromUser(user) && form.avatar === googleAvatarFromUser(user);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-background">
+      {/* Soft sand wash echoing the home hero — fades into bg-background */}
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_at_top,_rgba(242,230,216,0.55),_transparent_70%)] pointer-events-none"
+      />
       <LoadingBar isLoading={isSavingProfile || isSavingPassword} />
 
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
+      <main className="relative max-w-5xl mx-auto px-4 sm:px-6 py-12 md:py-16">
         <button
           onClick={() => router.push("/profile")}
-          className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 transition-colors mb-6"
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8"
         >
           <ArrowLeft size={16} />
           Back to profile
         </button>
 
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage your profile, preferences, and password.</p>
+        <div className="mb-10 text-center sm:text-left">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-[#1e3a5f] mb-3">
+            Your account
+          </p>
+          <h1 className="text-3xl md:text-4xl font-serif font-normal tracking-wide text-foreground">
+            Settings
+          </h1>
+          <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto sm:mx-0">
+            Manage your profile, preferences, and password.
+          </p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="grid grid-cols-1 md:grid-cols-[240px_1fr]">
+        <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+          <div className="grid grid-cols-1 md:grid-cols-[260px_1fr]">
             {/* Left rail */}
-            <aside className="p-6 border-b md:border-b-0 md:border-r border-gray-100 flex flex-col">
+            <aside className="p-6 border-b md:border-b-0 md:border-r border-border bg-[var(--magazine-surface)]/40 flex flex-col">
               <div className="flex flex-col items-center text-center pb-6 mb-2">
                 <div className="relative">
                   {form.avatar ? (
                     <img
                       src={form.avatar}
                       alt={form.displayName}
-                      className="w-16 h-16 rounded-full object-cover shadow-md"
+                      referrerPolicy="no-referrer"
+                      className="w-20 h-20 rounded-full object-cover shadow-md ring-4 ring-background"
                     />
                   ) : (
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-white text-lg font-bold shadow-md">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#1e3a5f] to-[#162d4a] flex items-center justify-center text-white text-xl font-serif tracking-wide shadow-md ring-4 ring-background">
                       {initials}
                     </div>
                   )}
                 </div>
-                <p className="mt-3 text-sm font-semibold text-gray-900 truncate max-w-full">
+                <p className="mt-4 text-base font-serif text-foreground truncate max-w-full">
                   {form.displayName || user?.email?.split("@")[0] || "You"}
                 </p>
-                <p className="text-xs text-gray-500 truncate max-w-full">{user?.email}</p>
+                <p className="text-xs text-muted-foreground truncate max-w-full mt-0.5">{user?.email}</p>
               </div>
 
               <nav className="space-y-1">
@@ -275,8 +365,10 @@ export default function ProfileSettings() {
                   <button
                     key={s.id}
                     onClick={() => setSection(s.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      section === s.id ? "bg-[#1e3a5f]/10 text-[#1e3a5f]" : "text-gray-600 hover:bg-gray-50"
+                    className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+                      section === s.id
+                        ? "bg-[#1e3a5f] text-white shadow-sm"
+                        : "text-muted-foreground hover:bg-background hover:text-foreground"
                     }`}
                   >
                     {s.label}
@@ -284,10 +376,10 @@ export default function ProfileSettings() {
                 ))}
               </nav>
 
-              <div className="mt-auto pt-4 border-t border-gray-100">
+              <div className="mt-auto pt-4 border-t border-border">
                 <button
                   onClick={handleSignOut}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  className="w-full flex items-center gap-2 px-3.5 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors"
                 >
                   <LogOut size={16} /> Sign out
                 </button>
@@ -295,18 +387,25 @@ export default function ProfileSettings() {
             </aside>
 
             {/* Right pane */}
-            <div className="p-6 sm:p-8 min-h-[420px]">
+            <div className="p-6 sm:p-10 min-h-[460px]">
               {section === "profile" && (
-                <div className="space-y-5">
+                <div className="space-y-7">
+                  <div>
+                    <h2 className="text-xl font-serif text-foreground tracking-wide">Profile</h2>
+                    <p className="text-sm text-muted-foreground mt-1">How you appear to collaborators and how we tailor inspiration.</p>
+                  </div>
+
                   <div className="flex items-center gap-4">
                     <AvatarUpload
                       currentImage={form.avatar || undefined}
                       onImageChange={(url) => setForm((f) => ({ ...f, avatar: url }))}
-                      size={64}
+                      size={72}
                     />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">Profile photo</p>
-                      <p className="text-xs text-gray-500">Click the photo to change it.</p>
+                      <p className="text-sm font-medium text-foreground">Profile photo</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {usingGoogleAvatar ? "Using your Google photo. Click to change." : "Click the photo to change it."}
+                      </p>
                     </div>
                   </div>
 
@@ -328,36 +427,17 @@ export default function ProfileSettings() {
                       disabled
                       className={`${inputClass} opacity-60 cursor-not-allowed`}
                     />
-                    <p className="text-xs text-gray-500 mt-1">Contact support to change your email.</p>
+                    <p className="text-xs text-muted-foreground mt-1">Contact support to change your email.</p>
                   </Field>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Field label="City" htmlFor="city">
-                      <input
-                        id="city"
-                        value={form.city}
-                        onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-                        placeholder="San Francisco"
-                        className={inputClass}
-                      />
-                    </Field>
-                    <Field label="Country" htmlFor="country">
-                      <input
-                        id="country"
-                        value={form.country}
-                        onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
-                        placeholder="United States"
-                        className={inputClass}
-                      />
-                    </Field>
-                  </div>
+                  <LocationPicker value={location} onChange={onLocationChange} disabled={isSavingProfile} />
 
-                  <div className="flex items-center justify-end gap-3 pt-2">
+                  <div className="flex items-center justify-end gap-3 pt-2 border-t border-border -mx-10 px-10 pt-5">
                     {profileChanged && (
                       <button
-                        onClick={() => setForm(original)}
+                        onClick={() => setForm({ ...original, lat: form.lat, lng: form.lng })}
                         disabled={isSavingProfile}
-                        className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors disabled:opacity-50"
+                        className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                       >
                         Discard
                       </button>
@@ -365,7 +445,7 @@ export default function ProfileSettings() {
                     <button
                       onClick={handleSaveProfile}
                       disabled={!profileChanged || isSavingProfile}
-                      className="flex items-center gap-2 px-4 py-2 bg-[#1e3a5f] hover:bg-[#16314f] disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-colors"
+                      className="flex items-center gap-2 px-5 py-2.5 bg-[#1e3a5f] hover:bg-[#162d4a] disabled:bg-gray-300 dark:disabled:bg-white/10 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-colors"
                     >
                       {isSavingProfile && <Loader2 size={14} className="animate-spin" />}
                       {isSavingProfile ? "Saving…" : "Save changes"}
@@ -375,26 +455,58 @@ export default function ProfileSettings() {
               )}
 
               {section === "display" && (
-                <div className="space-y-5">
-                  <Field label="Units" htmlFor="distanceUnits">
-                    <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1">
+                <div className="space-y-7">
+                  <div>
+                    <h2 className="text-xl font-serif text-foreground tracking-wide">Display</h2>
+                    <p className="text-sm text-muted-foreground mt-1">How distances, temperature, and prices appear across your trips. Saved automatically.</p>
+                  </div>
+
+                  <div className="rounded-2xl border border-border bg-[var(--magazine-surface)]/40 p-5">
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="w-9 h-9 rounded-xl bg-[#1e3a5f]/10 flex items-center justify-center text-[#1e3a5f] shrink-0">
+                        <Ruler size={16} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <h3 className="text-base font-serif text-foreground">Units &amp; temperature</h3>
+                          <span className="text-xs font-medium tabular-nums text-[#1e3a5f]">{distanceExample}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Used for trip overviews, weather forecasts, and place distances.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="inline-flex rounded-xl border border-border bg-card p-1">
                       {(["miles", "kilometers"] as const).map((unit) => (
                         <button
                           key={unit}
                           type="button"
                           onClick={() => setDistanceUnits(unit)}
-                          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                            distanceUnits === unit ? "bg-[#1e3a5f] text-white" : "text-gray-600 hover:text-gray-900"
+                          className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                            distanceUnits === unit ? "bg-[#1e3a5f] text-white" : "text-muted-foreground hover:text-foreground"
                           }`}
                         >
                           {unit === "miles" ? "Miles · °F" : "Kilometers · °C"}
                         </button>
                       ))}
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">Used for distance and temperature on trip pages. Saved automatically.</p>
-                  </Field>
+                  </div>
 
-                  <Field label="Currency" htmlFor="currency">
+                  <div className="rounded-2xl border border-border bg-[var(--magazine-surface)]/40 p-5">
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="w-9 h-9 rounded-xl bg-[#1e3a5f]/10 flex items-center justify-center text-[#1e3a5f] shrink-0">
+                        <Coins size={16} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <h3 className="text-base font-serif text-foreground">Home currency</h3>
+                          <span className="text-xs font-medium tabular-nums text-[#1e3a5f]">{currencyExample}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Trip budgets, expenses, and price tags convert to this currency.
+                        </p>
+                      </div>
+                    </div>
                     <select
                       id="currency"
                       value={currency}
@@ -405,13 +517,17 @@ export default function ProfileSettings() {
                         <option key={c.code} value={c.code}>{c.code} · {c.name} ({c.symbol})</option>
                       ))}
                     </select>
-                    <p className="text-xs text-gray-500 mt-2">Used to display trip budgets and prices. Saved automatically.</p>
-                  </Field>
+                  </div>
                 </div>
               )}
 
               {section === "password" && (
-                <div className="space-y-5">
+                <div className="space-y-7">
+                  <div>
+                    <h2 className="text-xl font-serif text-foreground tracking-wide">Password</h2>
+                    <p className="text-sm text-muted-foreground mt-1">Change the password you use to sign in with email.</p>
+                  </div>
+
                   <Field label="Current password" htmlFor="currentPassword">
                     <div className="relative">
                       <input
@@ -425,7 +541,7 @@ export default function ProfileSettings() {
                       <button
                         type="button"
                         onClick={() => setShowCurrent((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                         aria-label={showCurrent ? "Hide password" : "Show password"}
                       >
                         {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -446,7 +562,7 @@ export default function ProfileSettings() {
                       <button
                         type="button"
                         onClick={() => setShowNew((v) => !v)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                         aria-label={showNew ? "Hide password" : "Show password"}
                       >
                         {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -455,11 +571,11 @@ export default function ProfileSettings() {
                     {newPassword && <div className="mt-2"><PasswordStrengthMeter password={newPassword} /></div>}
                   </Field>
 
-                  <div className="flex items-center justify-end gap-3 pt-2">
+                  <div className="flex items-center justify-end gap-3 pt-2 border-t border-border -mx-10 px-10 pt-5">
                     <button
                       onClick={handleSavePassword}
                       disabled={!currentPassword || !newPassword || isSavingPassword}
-                      className="flex items-center gap-2 px-4 py-2 bg-[#1e3a5f] hover:bg-[#16314f] disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-colors"
+                      className="flex items-center gap-2 px-5 py-2.5 bg-[#1e3a5f] hover:bg-[#162d4a] disabled:bg-gray-300 dark:disabled:bg-white/10 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition-colors"
                     >
                       {isSavingPassword && <Loader2 size={14} className="animate-spin" />}
                       {isSavingPassword ? "Updating…" : "Update password"}
@@ -476,12 +592,12 @@ export default function ProfileSettings() {
 }
 
 const inputClass =
-  "w-full h-10 px-3 text-sm text-gray-900 bg-white border border-gray-200 rounded-lg placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/40 transition-colors";
+  "w-full h-11 px-3.5 text-sm text-foreground bg-card border border-border rounded-xl placeholder:text-muted-foreground/70 focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/20 focus:border-[#1e3a5f]/40 transition-colors [&:-webkit-autofill]:[transition:background-color_5000s_ease-in-out_0s] [&:-webkit-autofill]:[-webkit-text-fill-color:var(--foreground)]";
 
 function Field({ label, htmlFor, children }: { label: string; htmlFor?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="block text-sm font-medium text-gray-700 mb-1.5">
+      <label htmlFor={htmlFor} className="block text-sm font-medium text-foreground mb-1.5">
         {label}
       </label>
       {children}
