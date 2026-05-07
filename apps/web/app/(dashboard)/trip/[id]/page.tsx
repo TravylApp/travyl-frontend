@@ -10,13 +10,12 @@ function safeDate(d: string | null | undefined): string {
   return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 import Image from 'next/image';
-import { Plus, ChevronLeft, ChevronRight, MapPin, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList } from 'lucide-react';
+import { Plus, ChevronLeft, ChevronRight, MapPin, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList, Newspaper, Sparkles, Wallet, Compass } from 'lucide-react';
 import { useItineraryScreen, useWeather, useEvents, upscaleGoogleImage, supabase, useHomeCurrency } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 import type { TripContextData, PlaceItem } from '@travyl/shared';
 import { AnimatePresence } from 'motion/react';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
-import { TripExploreSection } from './trip-layout-inner';
 import OverviewBudgetSummary from '@/components/trip/OverviewBudgetSummary';
 import { useTripPreload } from '@/lib/preload/useTripPreload';
 import ItinerarySection from '@/components/itinerary/ItinerarySection';
@@ -54,6 +53,35 @@ function useRevealOnScroll(ready: boolean) {
 
 
 // ── Reusable components ─────────────────────────────────────
+
+/** Consistent section header used across the overview — small uppercase
+ * eyebrow over a serif title, matching the "At a Glance" style. */
+function SectionHeader({
+  eyebrow,
+  title,
+  icon: Icon,
+  action,
+}: {
+  eyebrow: string;
+  title: string;
+  icon?: React.ComponentType<{ size?: number; className?: string }>;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-4 flex items-end justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-gray-500 dark:text-white/70">
+          {eyebrow}
+        </p>
+        <h2 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif flex items-center gap-2">
+          {Icon && <Icon size={18} className="text-[color:var(--trip-base)] shrink-0" />}
+          <span className="truncate">{title}</span>
+        </h2>
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
+  );
+}
 
 function AddToTripButton({ isAdded, onToggle }: { isAdded: boolean; onToggle: () => void }) {
   return (
@@ -102,28 +130,26 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
 
   return (
     <section>
-      <div className="mb-4 flex items-end justify-between">
-        <div>
-          <h2 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif">Things to Do</h2>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-white/[0.06]">
-          {!gridView && (
-            <>
-              <span className="text-[11px] tabular-nums mr-1 text-gray-500 dark:text-white/80">
-                {activeIdx + 1} / {items.length}
-              </span>
-              <button onClick={() => { const i = Math.max(0, activeIdx - 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === 0}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
-                <ChevronLeft size={14} className="text-gray-600 dark:text-white" />
-              </button>
-              <button onClick={() => { const i = Math.min(items.length - 1, activeIdx + 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === items.length - 1}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
-                <ChevronRight size={14} className="text-gray-600 dark:text-white" />
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+      <SectionHeader
+        eyebrow="Discover"
+        title="Things to Do"
+        icon={Compass}
+        action={!gridView ? (
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-white/[0.06]">
+            <span className="text-[11px] tabular-nums mr-1 text-gray-500 dark:text-white/80">
+              {activeIdx + 1} / {items.length}
+            </span>
+            <button onClick={() => { const i = Math.max(0, activeIdx - 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === 0}
+              className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
+              <ChevronLeft size={14} className="text-gray-600 dark:text-white" />
+            </button>
+            <button onClick={() => { const i = Math.min(items.length - 1, activeIdx + 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === items.length - 1}
+              className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
+              <ChevronRight size={14} className="text-gray-600 dark:text-white" />
+            </button>
+          </div>
+        ) : null}
+      />
 
       {!gridView ? (
         <>
@@ -204,28 +230,55 @@ function NewsSection({ news }: { news: NonNullable<TripContextData['news']> }) {
 
   return (
     <section>
-      <h2 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-4 font-serif">News</h2>
+      <SectionHeader eyebrow="Updates" title="News" icon={Newspaper} />
 
-      {/* Scrollable news list capped to match What's Going On card height */}
-      <div className="max-h-[360px] overflow-y-auto scrollbar-hide pr-1">
-        <div className="divide-y divide-gray-200 dark:divide-white/[0.08]">
+      {/* Scrollable news list capped to match What's Going On card height.
+       *  Sans-serif headlines for legibility at small sizes; serif is reserved
+       *  for section titles. Larger thumbnails (88×66) and roomier spacing. */}
+      <div className="max-h-[360px] overflow-y-auto scrollbar-hide pr-1 -mr-1">
+        <div className="divide-y divide-gray-100 dark:divide-white/[0.06]">
           {newsItems.map((item) => (
-            <a key={item.id} href={item.url || '#'} target="_blank" rel="noopener noreferrer"
-              className="flex gap-3 py-3.5 first:pt-0 hover:opacity-80 transition-opacity">
-              {(item as any).image && (
-                <div className="relative flex-shrink-0 w-[72px] h-[54px] rounded-lg overflow-hidden bg-gray-800">
-                  <Image src={upscaleGoogleImage((item as any).image) || (item as any).image} alt="" fill className="object-cover" sizes="72px" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }} />
+            <a
+              key={item.id}
+              href={item.url || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex gap-3.5 py-3.5 first:pt-0 last:pb-0 transition-colors hover:bg-gray-50/60 dark:hover:bg-white/[0.02] rounded-lg -mx-2 px-2"
+            >
+              {(item as any).image ? (
+                <div className="relative flex-shrink-0 w-[88px] h-[66px] rounded-lg overflow-hidden bg-gray-100 dark:bg-white/[0.04]">
+                  <Image
+                    src={upscaleGoogleImage((item as any).image) || (item as any).image}
+                    alt=""
+                    fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    sizes="88px"
+                    onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }}
+                  />
+                </div>
+              ) : (
+                <div className="relative flex-shrink-0 w-[88px] h-[66px] rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 dark:from-white/[0.04] dark:to-white/[0.02] flex items-center justify-center">
+                  <Newspaper size={20} className="text-gray-400 dark:text-white/30" />
                 </div>
               )}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] uppercase tracking-wider font-bold text-[color:var(--trip-base)]">{item.category}</span>
+              <div className="flex-1 min-w-0 py-0.5">
+                <div className="flex items-center gap-1.5 mb-1 text-[9px] uppercase tracking-[0.18em] font-bold">
+                  <span className="text-[color:var(--trip-base)]">{item.category}</span>
                   {item.source && (
-                    <span className="text-[10px] uppercase tracking-wider font-bold text-[color:var(--trip-base)] opacity-50">· {item.source}</span>
+                    <>
+                      <span className="text-gray-300 dark:text-white/20">·</span>
+                      <span className="text-gray-500 dark:text-white/40 truncate">{item.source}</span>
+                    </>
                   )}
                 </div>
-                <h3 className="text-[14px] font-normal leading-snug mb-0.5 line-clamp-2 text-gray-900 dark:text-white font-serif">{item.title}</h3>
-                <p className="text-[12px] leading-relaxed line-clamp-1 text-gray-600 dark:text-gray-400 opacity-60">{item.snippet}</p>
+                <h3 className="text-[14px] font-semibold leading-snug line-clamp-2 text-gray-900 dark:text-white group-hover:text-[color:var(--trip-base)] transition-colors">
+                  {item.title}
+                </h3>
+                {item.snippet && (
+                  <p className="mt-0.5 text-[12px] leading-relaxed line-clamp-1 text-gray-500 dark:text-gray-400">
+                    {item.snippet}
+                  </p>
+                )}
               </div>
             </a>
           ))}
@@ -257,24 +310,26 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
 
   return (
     <section>
-      <div className="mb-4 flex items-end justify-between">
-        <div>
-          <h2 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif">What&apos;s Going On</h2>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-white/[0.06]">
-          <span className="text-[11px] tabular-nums mr-1 text-gray-500 dark:text-white/80">
-            {activeIdx + 1} / {events.length}
-          </span>
-          <button onClick={() => { const i = Math.max(0, activeIdx - 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === 0}
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
-            <ChevronLeft size={14} className="text-gray-600 dark:text-white" />
-          </button>
-          <button onClick={() => { const i = Math.min(events.length - 1, activeIdx + 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === events.length - 1}
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
-            <ChevronRight size={14} className="text-gray-600 dark:text-white" />
-          </button>
-        </div>
-      </div>
+      <SectionHeader
+        eyebrow="Happening"
+        title="What's Going On"
+        icon={Sparkles}
+        action={(
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-white/[0.06]">
+            <span className="text-[11px] tabular-nums mr-1 text-gray-500 dark:text-white/80">
+              {activeIdx + 1} / {events.length}
+            </span>
+            <button onClick={() => { const i = Math.max(0, activeIdx - 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === 0}
+              className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
+              <ChevronLeft size={14} className="text-gray-600 dark:text-white" />
+            </button>
+            <button onClick={() => { const i = Math.min(events.length - 1, activeIdx + 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === events.length - 1}
+              className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
+              <ChevronRight size={14} className="text-gray-600 dark:text-white" />
+            </button>
+          </div>
+        )}
+      />
 
       <div ref={scrollRef}
         className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory"
@@ -340,15 +395,15 @@ function NearbyCitiesSection({ cities }: { cities: NonNullable<TripContextData['
   if (!cities.length) return null;
   return (
     <section>
-      <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-4 font-serif">Also Consider Visiting</h3>
+      <SectionHeader eyebrow="Day Trips" title="Also Consider Visiting" icon={MapPin} />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {cities.map((city) => (
-          <div key={city.id} className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm p-4 transition-all hover:scale-[1.02]">
+          <div key={city.id} className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm p-4 transition-all hover:scale-[1.02] hover:shadow-md">
             <div className="flex items-center gap-2 mb-1">
               <MapPin size={12} className="text-[color:var(--trip-base)]" />
-              <span className="text-[14px] font-normal text-gray-900 dark:text-white font-serif">{city.name}</span>
+              <span className="text-[14px] font-semibold text-gray-900 dark:text-white">{city.name}</span>
             </div>
-            <p className="text-[11px] text-gray-600 dark:text-gray-400 opacity-60">{city.country}</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">{city.country}</p>
             <p className="text-[11px] font-semibold mt-1 text-[color:var(--trip-base)]">{Math.round(city.distance)} km away</p>
           </div>
         ))}
@@ -391,7 +446,7 @@ function CostOfLivingSection({ cost, localCurrency }: { cost: NonNullable<TripCo
 
   return (
     <section>
-      <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-4 font-serif">Cost Per Diem{headingSuffix}</h3>
+      <SectionHeader eyebrow="Cost of Living" title={`Cost Per Diem${headingSuffix}`} icon={Wallet} />
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
         {items.map(({ icon: Icon, label, value, raw }) => (
           <div key={label} className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm p-3 text-center">
@@ -486,11 +541,11 @@ function PhrasesSection({ phrases, language }: { phrases: Record<string, string>
 
   return (
     <section>
-      <div className="flex items-center gap-2 mb-4">
-        <Languages size={14} className="text-[color:var(--trip-base)]" />
-        <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif">Essential Phrases</h3>
-        {language && <span className="text-xs font-medium text-gray-500 dark:text-gray-400">({language})</span>}
-      </div>
+      <SectionHeader
+        eyebrow="Local Language"
+        title={`Essential Phrases${language ? ` · ${language}` : ''}`}
+        icon={Languages}
+      />
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {entries.map(([english, translated]) => (
           <button key={english}
@@ -862,9 +917,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
               {/* Must-Try Restaurants — real places with photos, ratings, addresses */}
               {hasRestaurants && (
                 <div className="shrink-0 w-full lg:w-[380px]">
-                  <div className="mb-4">
-                    <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif">Must-Try Restaurants</h3>
-                  </div>
+                  <SectionHeader eyebrow="Where to Eat" title="Must-Try Restaurants" icon={UtensilsCrossed} />
                   <div className="flex gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory">
                     {restaurantData.slice(0, 6).map((r: any) => (
                       <div key={r.id} className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start cursor-pointer group" style={{ height: 360 }}

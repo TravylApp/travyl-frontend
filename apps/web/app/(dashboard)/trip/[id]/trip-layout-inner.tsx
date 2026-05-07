@@ -525,20 +525,9 @@ function TripLayoutContent({
         </div>
       </div>
 
-      {/* Below-the-fold content — overview only, never calendar */}
-      {isOverview && !isCalendar && (
-        <div className="relative z-10">
-          {isMagazine ? (
-            <div className={`px-6 sm:px-10 ${railCollapsed ? 'md:pl-[96px]' : 'md:pl-[200px]'} md:pr-10 mt-4 pb-8 transition-[padding] duration-200 ease-out`}>
-              <TripExploreSection trip={trip} embedded />
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-background">
-              <TripExploreSection trip={trip} />
-            </div>
-          )}
-        </div>
-      )}
+      {/* Below-the-fold content — Explore section is now part of the
+       *  TripDashboard rendered inside the overview page itself, so the
+       *  legacy full-width grid is no longer rendered here. */}
 
       {/* Magazine footer — gradient floor so the page has a defined end */}
       {isMagazine && !isCalendar && (
