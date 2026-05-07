@@ -15,25 +15,32 @@ const CURRENCY_OPTIONS = [
 ]
 
 export interface HotelFormProps {
-  initial: Partial<HotelData> & { id: string }
+  /** Existing booking to edit. Omit when creating a new one. */
+  initial?: Partial<HotelData> & { id: string }
   defaultCurrency?: string
   onSubmit: (data: HotelData) => Promise<void>
   onCancel: () => void
-  onDelete: () => Promise<void>
+  /** Only relevant when editing an existing booking. */
+  onDelete?: () => Promise<void>
 }
 
 export function HotelForm({ initial, defaultCurrency = 'USD', onSubmit, onCancel, onDelete }: HotelFormProps) {
-  const [checkIn, setCheckIn] = useState(initial.check_in ?? '')
-  const [checkOut, setCheckOut] = useState(initial.check_out ?? '')
-  const [pricePerNight, setPricePerNight] = useState(initial.price_per_night?.toString() ?? '')
-  const [totalPrice, setTotalPrice] = useState(initial.total_price?.toString() ?? '')
-  const [currency, setCurrency] = useState(initial.currency ?? defaultCurrency)
-  const [bookingRef, setBookingRef] = useState(initial.booking_ref ?? '')
+  const initialData = initial ?? ({} as Partial<HotelData>)
+  const isEditing = !!initial
+  const [name, setName] = useState(initialData.name ?? '')
+  const [address, setAddress] = useState(initialData.address ?? '')
+  const [checkIn, setCheckIn] = useState(initialData.check_in ?? '')
+  const [checkOut, setCheckOut] = useState(initialData.check_out ?? '')
+  const [pricePerNight, setPricePerNight] = useState(initialData.price_per_night?.toString() ?? '')
+  const [totalPrice, setTotalPrice] = useState(initialData.total_price?.toString() ?? '')
+  const [currency, setCurrency] = useState(initialData.currency ?? defaultCurrency)
+  const [bookingRef, setBookingRef] = useState(initialData.booking_ref ?? '')
   const [busy, setBusy] = useState(false)
-  const [errors, setErrors] = useState<{ checkIn?: boolean; checkOut?: boolean }>({})
+  const [errors, setErrors] = useState<{ name?: boolean; checkIn?: boolean; checkOut?: boolean }>({})
 
   const validate = () => {
     const next: typeof errors = {}
+    if (!isEditing && !name.trim()) next.name = true
     if (!checkIn) next.checkIn = true
     if (!checkOut) next.checkOut = true
     else if (checkIn && checkOut < checkIn) next.checkOut = true
@@ -46,20 +53,20 @@ export function HotelForm({ initial, defaultCurrency = 'USD', onSubmit, onCancel
     setBusy(true)
     try {
       const data: HotelData = {
-        name: initial.name ?? '',
-        address: initial.address ?? null,
-        latitude: initial.latitude ?? null,
-        longitude: initial.longitude ?? null,
+        name: isEditing ? (initialData.name ?? '') : name.trim(),
+        address: isEditing ? (initialData.address ?? null) : (address.trim() || null),
+        latitude: initialData.latitude ?? null,
+        longitude: initialData.longitude ?? null,
         check_in: checkIn,
         check_out: checkOut,
         price_per_night: pricePerNight ? Number(pricePerNight) : null,
         total_price: totalPrice ? Number(totalPrice) : null,
         currency: (pricePerNight || totalPrice) ? currency : null,
-        rating: initial.rating ?? null,
-        star_rating: initial.star_rating ?? null,
-        image_url: initial.image_url ?? null,
+        rating: initialData.rating ?? null,
+        star_rating: initialData.star_rating ?? null,
+        image_url: initialData.image_url ?? null,
         booking_ref: bookingRef.trim() || null,
-        offer_id: initial.offer_id ?? null,
+        offer_id: initialData.offer_id ?? null,
       }
       await onSubmit(data)
     } finally {
@@ -79,12 +86,29 @@ export function HotelForm({ initial, defaultCurrency = 'USD', onSubmit, onCancel
 
   return (
     <div onKeyDown={handleKey} className="rounded-xl border border-[var(--trip-base)]/30 bg-white dark:bg-white/[0.04] p-5 space-y-4">
-      <div className="space-y-2">
-        <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white">{initial.name}</h3>
-        {initial.address && <p className="text-[12px] text-gray-500 dark:text-gray-400">{initial.address}</p>}
-      </div>
+      {isEditing ? (
+        <div className="space-y-2">
+          <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white">{initialData.name}</h3>
+          {initialData.address && <p className="text-[12px] text-gray-500 dark:text-gray-400">{initialData.address}</p>}
+        </div>
+      ) : (
+        <h3 className="text-[15px] font-semibold text-gray-900 dark:text-white">Add a hotel</h3>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-6 gap-x-4 gap-y-3">
+        {!isEditing && (
+          <>
+            <div className="md:col-span-6">
+              <FieldLabel>Hotel name</FieldLabel>
+              <Input value={name} onChange={setName} placeholder="e.g. Park Hyatt Tokyo" autoFocus />
+              {errors.name && <p className="text-[11px] text-red-500 mt-1">Required</p>}
+            </div>
+            <div className="md:col-span-6">
+              <FieldLabel>Address (optional)</FieldLabel>
+              <Input value={address} onChange={setAddress} placeholder="Street, city" />
+            </div>
+          </>
+        )}
         <div className="md:col-span-3">
           <FieldLabel>Check-in</FieldLabel>
           <DateInput value={checkIn} onChange={setCheckIn} invalid={errors.checkIn} />
@@ -112,16 +136,20 @@ export function HotelForm({ initial, defaultCurrency = 'USD', onSubmit, onCancel
       </div>
 
       <div className="flex items-center justify-between pt-2">
-        <button
-          onClick={onDelete}
-          disabled={busy}
-          className="text-[13px] font-medium text-red-600 dark:text-red-400 hover:underline disabled:opacity-50"
-        >
-          Delete hotel
-        </button>
+        {onDelete ? (
+          <button
+            onClick={onDelete}
+            disabled={busy}
+            className="text-[13px] font-medium text-red-600 dark:text-red-400 hover:underline disabled:opacity-50"
+          >
+            Delete hotel
+          </button>
+        ) : (
+          <span />
+        )}
         <div className="flex items-center gap-2">
           <SecondaryButton onClick={onCancel} disabled={busy}>Cancel</SecondaryButton>
-          <PrimaryButton onClick={handleSubmit} busy={busy}>Save</PrimaryButton>
+          <PrimaryButton onClick={handleSubmit} busy={busy}>{isEditing ? 'Save' : 'Add hotel'}</PrimaryButton>
         </div>
       </div>
     </div>

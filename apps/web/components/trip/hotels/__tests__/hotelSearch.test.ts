@@ -20,6 +20,9 @@ const baseSerp: SerpHotel = {
   description: 'Luxury hotel',
   link: 'https://google.com/hotel/abc',
   source: 'serpapi',
+  propertyType: 'Hotel',
+  deal: null,
+  dealDescription: null,
 }
 
 describe('mapSerpHotelToHotelData', () => {
