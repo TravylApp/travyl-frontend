@@ -55,14 +55,18 @@ interface ThemePickerProps {
   currentTheme: string;
   customColor?: string | null;
   onSelectTheme: (themeId: string, customColor?: string) => void;
-  tabColors: Record<string, string>;
-  tabColorOverrides: Record<string, string>;
-  onTabColorChange: (tabName: string, color: string) => void;
-  onResetTabColors: () => void;
-  itineraryColors: TripTheme['itineraryColors'];
-  itineraryColorOverrides: Record<string, string>;
-  onItineraryColorChange: (section: string, color: string) => void;
-  onResetItineraryColors: () => void;
+  // The per-tab and per-itinerary-section color customization is opt-in:
+  // when callers don't pass setters (current settings page case), those
+  // sections of the picker are hidden and the picker just shows the
+  // base theme grid + custom hex input.
+  tabColors?: Record<string, string>;
+  tabColorOverrides?: Record<string, string>;
+  onTabColorChange?: (tabName: string, color: string) => void;
+  onResetTabColors?: () => void;
+  itineraryColors?: TripTheme['itineraryColors'];
+  itineraryColorOverrides?: Record<string, string>;
+  onItineraryColorChange?: (section: string, color: string) => void;
+  onResetItineraryColors?: () => void;
 }
 
 export function ThemePicker({
@@ -78,6 +82,8 @@ export function ThemePicker({
   onItineraryColorChange,
   onResetItineraryColors,
 }: ThemePickerProps) {
+  const showTabColors = !!(tabColors && tabColorOverrides && onTabColorChange && onResetTabColors);
+  const showItineraryColors = !!(itineraryColors && itineraryColorOverrides && onItineraryColorChange && onResetItineraryColors);
   const [showCustom, setShowCustom] = useState(currentTheme === 'custom');
   const [hexInput, setHexInput] = useState(customColor ?? '#3498db');
   const [editingTab, setEditingTab] = useState<string | null>(null);
@@ -186,10 +192,11 @@ export function ThemePicker({
       </div>
 
       {/* ── Day Colors ── */}
+      {showItineraryColors && (
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-900">Day Colors</h3>
-          {Object.keys(itineraryColorOverrides).length > 0 && (
+          {Object.keys(itineraryColorOverrides!).length > 0 && (
             <button onClick={onResetItineraryColors} className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition">
               <RotateCcw size={11} />
               Reset
@@ -198,7 +205,7 @@ export function ThemePicker({
         </div>
         <div className="flex flex-wrap gap-2">
           {DAY_SECTIONS.map(({ key, label, icon: Icon }) => {
-            const color = itineraryColorOverrides[key] ?? itineraryColors[key as keyof typeof itineraryColors] ?? '#1e3a5f';
+            const color = itineraryColorOverrides![key] ?? itineraryColors![key as keyof typeof itineraryColors] ?? '#1e3a5f';
             const isEditing = editingDay === key;
             return (
               <button
@@ -224,11 +231,11 @@ export function ThemePicker({
             </p>
             <div className="flex flex-wrap gap-2">
               {COLOR_SWATCHES.map((color) => {
-                const isActive = (itineraryColorOverrides[editingDay] ?? itineraryColors[editingDay as keyof typeof itineraryColors]) === color;
+                const isActive = (itineraryColorOverrides![editingDay] ?? itineraryColors![editingDay as keyof typeof itineraryColors]) === color;
                 return (
                   <button
                     key={color}
-                    onClick={() => onItineraryColorChange(editingDay, color)}
+                    onClick={() => onItineraryColorChange!(editingDay, color)}
                     className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
                     style={{
                       backgroundColor: color,
@@ -243,12 +250,14 @@ export function ThemePicker({
           </div>
         )}
       </div>
+      )}
 
       {/* ── Tab Colors ── */}
+      {showTabColors && (
       <div>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-900">Tab Colors</h3>
-          {Object.keys(tabColorOverrides).length > 0 && (
+          {Object.keys(tabColorOverrides!).length > 0 && (
             <button onClick={onResetTabColors} className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition">
               <RotateCcw size={11} />
               Reset
@@ -257,7 +266,7 @@ export function ThemePicker({
         </div>
         <div className="flex flex-wrap gap-2">
           {TAB_LIST.map(({ name, title, icon: Icon }) => {
-            const color = tabColorOverrides[name] ?? tabColors[name] ?? '#1e3a5f';
+            const color = tabColorOverrides![name] ?? tabColors![name] ?? '#1e3a5f';
             const isEditing = editingTab === name;
             return (
               <button
@@ -283,11 +292,11 @@ export function ThemePicker({
             </p>
             <div className="flex flex-wrap gap-2">
               {COLOR_SWATCHES.map((color) => {
-                const isActive = (tabColorOverrides[editingTab] ?? tabColors[editingTab]) === color;
+                const isActive = (tabColorOverrides![editingTab] ?? tabColors![editingTab]) === color;
                 return (
                   <button
                     key={color}
-                    onClick={() => onTabColorChange(editingTab, color)}
+                    onClick={() => onTabColorChange!(editingTab, color)}
                     className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
                     style={{
                       backgroundColor: color,
@@ -302,6 +311,7 @@ export function ThemePicker({
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

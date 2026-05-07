@@ -12,7 +12,6 @@ import { savePlanToSupabase } from "@travyl/shared/src/services/api";
 import { PaperPlane } from "@/components/icons/PaperPlane";
 import { TypeWriter } from "@/components/TypeWriter";
 import { useCyclingPlaceholder } from "@/hooks/useCyclingPlaceholder";
-import { SafeImage } from "@/components/ui/SafeImage";
 import dynamic from "next/dynamic";
 
 const TakeoffTransition = dynamic(
@@ -27,32 +26,17 @@ const ProductDemo = dynamic(
   () => import("@/components/home/ProductDemo").then((m) => ({ default: m.ProductDemo })),
   { ssr: false }
 );
-const UseCases = dynamic(
-  () => import("@/components/home/UseCases").then((m) => ({ default: m.UseCases })),
-  { ssr: false }
-);
+// `UseCases`, `PressStats`, `PressMarquee`, `FinalCTA`, `MobileShowcase`
+// were imported here from `bcaba4e7 feat: UI homogenization` but the
+// component files themselves were never committed. Removing the imports
+// + their JSX usage below so the homepage builds; restore the imports
+// (and the corresponding sections) once the components actually land.
 const Testimonials = dynamic(
   () => import("@/components/home/Testimonials").then((m) => ({ default: m.Testimonials })),
   { ssr: false }
 );
-const PressStats = dynamic(
-  () => import("@/components/home/PressStats").then((m) => ({ default: m.PressStats })),
-  { ssr: false }
-);
-const PressMarquee = dynamic(
-  () => import("@/components/home/PressMarquee").then((m) => ({ default: m.PressMarquee })),
-  { ssr: false }
-);
-const FinalCTA = dynamic(
-  () => import("@/components/home/FinalCTA").then((m) => ({ default: m.FinalCTA })),
-  { ssr: false }
-);
 const TagUs = dynamic(
   () => import("@/components/home/TagUs").then((m) => ({ default: m.TagUs })),
-  { ssr: false }
-);
-const MobileShowcase = dynamic(
-  () => import("@/components/home/MobileShowcase").then((m) => ({ default: m.MobileShowcase })),
   { ssr: false }
 );
 
@@ -977,12 +961,6 @@ export default function Home() {
 
       {/* ─── Tag Us — social feed ─────────────────────────── */}
       <TagUs trendingDestinations={trendingDestinations} />
-
-      {/* ─── Final CTA — full-bleed dark ──────────────────── */}
-      <FinalCTA />
-
-      {/* ─── Mobile Showcase — iOS device mockup ───────────── */}
-      <MobileShowcase />
 
       {/* ─── Footer ────────────────────────────────────────── */}
       <Footer />
