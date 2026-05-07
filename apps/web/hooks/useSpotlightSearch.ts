@@ -4,8 +4,8 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useParams, usePathname } from 'next/navigation'
 import { useAuthStore, useTrip, mergeSearchResults, type SpotlightResult } from '@travyl/shared'
-import { useCalendarCommandsStore } from '@/stores/calendarCommandsStore'
 import { fuzzyMatch } from '@/components/spotlight/fuzzyMatch'
+import { SITE_ROUTES } from '@/lib/sitemap'
 
 const RECENT_SEARCHES_KEY = 'travyl:recentSearches'
 const PINNED_RESULTS_KEY = 'travyl:pinnedResults'
@@ -24,16 +24,6 @@ const ENTITY_TYPE_TO_SCOPE: Partial<Record<string, SearchScope>> = {
   restaurant: 'restaurants',
   activity: 'activities',
 }
-
-// Static navigation items
-const NAV_ITEMS: SpotlightResult[] = [
-  { id: 'nav-home', type: 'navigation', title: 'Home', subtitle: 'Discover destinations', href: '/', score: 1 },
-  { id: 'nav-trips', type: 'navigation', title: 'My Trips', subtitle: 'View all trips', href: '/trips', score: 1 },
-  { id: 'nav-places', type: 'navigation', title: 'Places', subtitle: 'Browse places', href: '/places', score: 1 },
-  { id: 'nav-explore', type: 'navigation', title: 'Explore', subtitle: 'Explore destinations', href: '/explore', score: 1 },
-  { id: 'nav-profile', type: 'navigation', title: 'Profile', subtitle: 'Your profile', href: '/profile', score: 1 },
-  { id: 'nav-settings', type: 'navigation', title: 'Settings', subtitle: 'App settings', href: '/profile/settings', score: 1 },
-]
 
 // --- New interfaces for the two-phase pipeline ---
 
@@ -182,7 +172,6 @@ export function useSpotlightSearch() {
   const token = useAuthStore((s) => s.session?.access_token)
   const pathname = usePathname()
   const params = useParams()
-  const commands = useCalendarCommandsStore((s) => s.commands)
 
   // Detect if we're inside a trip context
   const tripId = (params?.id as string) ?? null
@@ -221,52 +210,44 @@ export function useSpotlightSearch() {
     staleTime: 60_000,
   })
 
-  // Client-side filter for navigation items using fuzzy match
+  // Memoize keyword lookup for SITE_ROUTES
+  const routeKeywords = useMemo(() => {
+    const kw: Record<string, string[]> = {}
+    for (const route of SITE_ROUTES) {
+      kw[`nav-${route.path}`] = [route.title, route.description, ...route.keywords].map((s) => s.toLowerCase())
+    }
+    return kw
+  }, [])
+
+  // Client-side filter for navigation items using fuzzy match against route registry
   const navResults = useMemo((): Record<string, SpotlightResult[]> => {
     if (debouncedQuery.length < 1) return {}
-    if (scope && scope !== 'commands') return {} // scope filters out nav items
+    if (scope && scope !== 'commands') return {}
     const q = debouncedQuery.toLowerCase()
-    const matched = NAV_ITEMS
+
+    const navItems: SpotlightResult[] = SITE_ROUTES.map((route) => ({
+      id: `nav-${route.path}`,
+      type: 'navigation' as const,
+      title: route.title,
+      subtitle: route.description,
+      href: route.path,
+      score: 1,
+    }))
+
+    const matched = navItems
       .map((item) => {
         const titleScore = fuzzyMatch(item.title, q)
         const subtitleScore = fuzzyMatch(item.subtitle, q)
-        const bestScore = Math.max(titleScore ?? -1, subtitleScore ?? -1)
+        const kwScore = fuzzyMatchKeywords(routeKeywords[item.id] ?? [], q)
+        const bestScore = Math.max(titleScore ?? -1, subtitleScore ?? -1, kwScore ?? -1)
         return bestScore >= 0 ? { item, score: bestScore } : null
       })
       .filter((m): m is { item: SpotlightResult; score: number } => m !== null)
       .sort((a, b) => b.score - a.score)
       .map((m) => m.item)
+
     return matched.length ? { navigation: matched } : {}
-  }, [debouncedQuery, scope])
-
-  // Client-side filter for calendar commands using fuzzy match
-  const commandResults = useMemo((): Record<string, SpotlightResult[]> => {
-    if (!commands?.length || debouncedQuery.length < 1) return {}
-    if (scope && scope !== 'commands') return {} // scope filters out commands unless scoped to commands
-    const q = debouncedQuery.toLowerCase()
-    const matched: (SpotlightResult & { _fuzzyScore: number })[] = commands
-      .filter((cmd) => cmd.isEnabled)
-      .map((cmd) => {
-        const score = fuzzyMatch(cmd.label, q)
-        if (score === null) return null
-        return {
-          id: `cmd-${cmd.id}`,
-          type: 'command' as const,
-          title: cmd.label,
-          subtitle: cmd.group,
-          href: '',
-          score: 1,
-          shortcut: cmd.shortcut,
-          execute: cmd.execute,
-          _fuzzyScore: score,
-        }
-      })
-      .filter((r): r is NonNullable<typeof r> => r !== null)
-      .sort((a, b) => b._fuzzyScore - a._fuzzyScore)
-
-    const cleaned = matched.map(({ _fuzzyScore, ...rest }) => rest)
-    return cleaned.length ? { command: cleaned } : {}
-  }, [commands, debouncedQuery, scope])
+  }, [debouncedQuery, scope, routeKeywords])
 
   // Transform Phase 1 trip results
   const tripResults = useMemo((): Record<string, SpotlightResult[]> => {
@@ -367,10 +348,10 @@ export function useSpotlightSearch() {
   // Merge all sources
   const results = useMemo(() => {
     return mergeSearchResults(
-      [actionResults, tripResults, quickEntityResults, deepEntityResults, navResults, commandResults],
+      [actionResults, tripResults, quickEntityResults, deepEntityResults, navResults],
       { maxPerCategory: 5 },
     )
-  }, [actionResults, tripResults, quickEntityResults, deepEntityResults, navResults, commandResults])
+  }, [actionResults, tripResults, quickEntityResults, deepEntityResults, navResults])
 
   // Recent searches
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
@@ -444,4 +425,13 @@ export function useSpotlightSearch() {
     unpinResult,
     isPinned,
   }
+}
+
+function fuzzyMatchKeywords(keywords: string[], query: string): number | null {
+  let best: number | null = null
+  for (const kw of keywords) {
+    const score = fuzzyMatch(kw, query)
+    if (score !== null && (best === null || score > best)) best = score
+  }
+  return best
 }
