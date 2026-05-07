@@ -19,6 +19,7 @@ import {
   PrimaryButton,
   DateInput,
 } from "@/components/trip/BookingFormPrimitives";
+import { BrandIcon } from "./carBrandIcons";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function futureDate(d: string | undefined, fallbackDays = 3): string {
@@ -125,6 +126,7 @@ export function CarSearchPanel({
   const [addingId, setAddingId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>("price-asc");
   const [supplierFilter, setSupplierFilter] = useState<string[]>([]);
+  const [brandFilter, setBrandFilter] = useState<string[]>([]);
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(true);
   const [minYear, setMinYear] = useState<number | ''>('');
@@ -204,7 +206,7 @@ export function CarSearchPanel({
   // Reset to page 1 when filters or sort change
   useEffect(() => {
     setPage(1);
-  }, [supplierFilter, categoryFilter, sortMode, minYear, minMpg]);
+  }, [supplierFilter, brandFilter, categoryFilter, sortMode, minYear, minMpg]);
 
   // Sync props → state when trip data loads asynchronously
   const prevProps = useRef({ tripDestination, tripStartDate, tripEndDate });
@@ -267,6 +269,16 @@ export function CarSearchPanel({
     return Array.from(set).sort();
   }, [allRates]);
 
+  // Extract unique brands (first word of vehicle name)
+  const brands = useMemo(() => {
+    const set = new Set<string>();
+    allRates.forEach((r: any) => {
+      const brand = r.vehicle?.split(" ")[0];
+      if (brand) set.add(brand);
+    });
+    return Array.from(set).sort();
+  }, [allRates]);
+
   // Filter and sort rates
   const rates = useMemo(() => {
     let filtered = [...allRates];
@@ -275,6 +287,12 @@ export function CarSearchPanel({
       filtered = filtered.filter((r: any) =>
         supplierFilter.includes(r.supplier),
       );
+    }
+    if (brandFilter.length > 0) {
+      filtered = filtered.filter((r: any) => {
+        const brand = r.vehicle?.split(" ")[0];
+        return brand && brandFilter.includes(brand);
+      });
     }
     if (categoryFilter.length > 0) {
       filtered = filtered.filter((r: any) =>
@@ -318,7 +336,7 @@ export function CarSearchPanel({
     });
 
     return filtered;
-  }, [allRates, supplierFilter, categoryFilter, sortMode, minYear, minMpg, mpgData]);
+  }, [allRates, supplierFilter, brandFilter, categoryFilter, sortMode, minYear, minMpg, mpgData]);
 
   // Fetch real MPG from fueleconomy.gov when rates change
   useEffect(() => {
@@ -379,6 +397,11 @@ export function CarSearchPanel({
       prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s],
     );
   };
+  const toggleBrand = (b: string) => {
+    setBrandFilter((prev) =>
+      prev.includes(b) ? prev.filter((x) => x !== b) : [...prev, b],
+    );
+  };
   const toggleCategory = (c: string) => {
     setCategoryFilter((prev) =>
       prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c],
@@ -401,7 +424,7 @@ export function CarSearchPanel({
   ];
 
   const hasActiveFilters =
-    supplierFilter.length > 0 || categoryFilter.length > 0 || minYear !== '' || minMpg !== '';
+    supplierFilter.length > 0 || brandFilter.length > 0 || categoryFilter.length > 0 || minYear !== '' || minMpg !== '';
 
   return (
     <div className="space-y-4">
@@ -546,7 +569,7 @@ export function CarSearchPanel({
       {/* Results toolbar + list */}
       {hasResults && (
         <>
-          {/* Toolbar: count + sort + filter toggle */}
+          {/* Toolbar: count + sort */}
           <div className="flex items-center justify-between gap-3">
             <p className="text-[13px] text-gray-500">
               <span className="font-semibold text-gray-900">
@@ -579,54 +602,111 @@ export function CarSearchPanel({
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
                 />
               </div>
-
-              {/* Filter toggle */}
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`text-[12px] h-8 px-3 rounded-lg border transition ${
-                  hasActiveFilters
-                    ? "bg-gray-900 text-white border-gray-900"
-                    : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                }`}
-              >
-                Filters
-                {hasActiveFilters &&
-                  ` (${supplierFilter.length + categoryFilter.length + (minYear !== '' ? 1 : 0) + (minMpg !== '' ? 1 : 0)})`}
-              </button>
             </div>
+          </div>
+
+          {/* Filter toggle row */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`text-[12px] h-8 px-3 rounded-lg border transition ${
+                hasActiveFilters
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+              }`}
+            >
+              Filters
+              {hasActiveFilters &&
+                ` (${supplierFilter.length + brandFilter.length + categoryFilter.length + (minYear !== '' ? 1 : 0) + (minMpg !== '' ? 1 : 0)})`}
+            </button>
+            {hasActiveFilters && (
+              <button
+                onClick={() => {
+                  setSupplierFilter([]);
+                  setBrandFilter([]);
+                  setCategoryFilter([]);
+                  setMinYear('');
+                  setMinMpg('');
+                }}
+                className="text-[11px] text-gray-400 hover:text-gray-600 transition"
+              >
+                Clear all
+              </button>
+            )}
           </div>
 
           {/* Filter panels */}
           {showFilters && (
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4">
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-5">
               {/* Supplier filter */}
               {suppliers.length > 1 && (
                 <div>
                   <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
                     Supplier
                   </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {suppliers.map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => toggleSupplier(s)}
-                        className={`text-[11px] px-2.5 py-1 rounded-full border transition ${
-                          supplierFilter.includes(s)
-                            ? "bg-gray-900 text-white border-gray-900"
-                            : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                    {supplierFilter.length > 0 && (
-                      <button
-                        onClick={() => setSupplierFilter([])}
-                        className="text-[11px] px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-gray-600 inline-flex items-center gap-1"
-                      >
-                        <X size={10} /> Clear
-                      </button>
-                    )}
+                  <div className="flex flex-col gap-0.5">
+                    {suppliers.map((s) => {
+                      const active = supplierFilter.includes(s);
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => toggleSupplier(s)}
+                          className={`text-[12px] px-3 py-1.5 rounded-lg text-left flex items-center gap-2.5 transition ${
+                            active
+                              ? "bg-gray-900 text-white"
+                              : "text-gray-600 hover:bg-gray-100"
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                            active ? "bg-white/20 border-white/40" : "border-gray-300 bg-white"
+                          }`}>
+                            {active && (
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                <path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </span>
+                          {s}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Brand filter */}
+              {brands.length > 1 && (
+                <div>
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                    Brand
+                  </p>
+                  <div className="flex flex-col gap-0.5">
+                    {brands.map((b) => {
+                      const active = brandFilter.includes(b);
+                      return (
+                        <button
+                          key={b}
+                          onClick={() => toggleBrand(b)}
+                          className={`text-[12px] px-3 py-1.5 rounded-lg text-left flex items-center gap-2.5 transition ${
+                            active
+                              ? "bg-gray-900 text-white"
+                              : "text-gray-600 hover:bg-gray-100"
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                            active ? "bg-white/20 border-white/40" : "border-gray-300 bg-white"
+                          }`}>
+                            {active && (
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                <path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </span>
+                          <BrandIcon brand={b} className="h-3.5 w-3.5" />
+                          {b}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -637,31 +717,37 @@ export function CarSearchPanel({
                   <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
                     Category
                   </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {categories.map((c) => (
-                      <button
-                        key={c}
-                        onClick={() => toggleCategory(c)}
-                        className={`text-[11px] px-2.5 py-1 rounded-full border transition ${
-                          categoryFilter.includes(c)
-                            ? "bg-gray-900 text-white border-gray-900"
-                            : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
-                        }`}
-                      >
-                        {c.replace(/([a-z])([A-Z])/g, "$1 $2")}
-                      </button>
-                    ))}
-                    {categoryFilter.length > 0 && (
-                      <button
-                        onClick={() => setCategoryFilter([])}
-                        className="text-[11px] px-2.5 py-1 rounded-full border border-gray-200 bg-white text-gray-400 hover:text-gray-600 inline-flex items-center gap-1"
-                      >
-                        <X size={10} /> Clear
-                      </button>
-                    )}
+                  <div className="flex flex-col gap-0.5">
+                    {categories.map((c) => {
+                      const active = categoryFilter.includes(c);
+                      const label = c.replace(/([a-z])([A-Z])/g, "$1 $2");
+                      return (
+                        <button
+                          key={c}
+                          onClick={() => toggleCategory(c)}
+                          className={`text-[12px] px-3 py-1.5 rounded-lg text-left flex items-center gap-2.5 transition ${
+                            active
+                              ? "bg-gray-900 text-white"
+                              : "text-gray-600 hover:bg-gray-100"
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                            active ? "bg-white/20 border-white/40" : "border-gray-300 bg-white"
+                          }`}>
+                            {active && (
+                              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                                <path d="M2 5l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </span>
+                          {label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
+
               {/* Year filter */}
               <div>
                 <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
@@ -762,67 +848,75 @@ export function CarSearchPanel({
                   </div>
 
                   {/* Content */}
-                  <div className="p-3.5">
-                    {/* Supplier */}
-                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-0.5">
-                      {cleanSupplierName(rate.supplier)}
-                    </p>
-
-                    {/* Vehicle name */}
-                    <h3 className="text-[14px] font-semibold text-gray-900 truncate leading-tight">
-                      {mpg?.year ? `${mpg.year} ` : ""}
-                      {rate.vehicle || rate.category || "Vehicle"}
-                    </h3>
-
-                    {/* Category + location */}
-                    <p className="text-[10px] text-gray-400 mt-0.5 truncate">
-                      {rate.category?.replace(/([a-z])([A-Z])/g, "$1 $2")}
-                      {rate.category && rate.pickup_name ? " · " : ""}
-                      {rate.pickup_name && rate.pickup_name !== pickupLocation
-                        ? rate.pickup_name
-                        : ""}
-                    </p>
-
-                    {/* Specs tags */}
-                    <div className="flex items-center gap-1 mt-2.5 flex-wrap">
-                      {rate.passengers && (
-                        <span className="text-[10px] text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
-                          <Users size={9} /> {rate.passengers}
-                        </span>
-                      )}
-                      {rate.transmission && (
-                        <span className="text-[10px] text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-full">
-                          {rate.transmission === "Automatic"
-                            ? "Auto"
-                            : rate.transmission}
-                        </span>
-                      )}
-                      {rate.fuel && (
-                        <span className="text-[10px] text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
-                          <Fuel size={9} />{" "}
-                          {rate.fuel.replace(/^(\w)/, (m: string) =>
-                            m.toUpperCase(),
+                  <div className="p-4">
+                    {/* Vehicle name + Supplier row */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h3 className="text-[15px] font-semibold text-gray-900 truncate leading-tight">
+                          {rate.vehicle || rate.category || "Vehicle"}
+                        </h3>
+                        <p className="text-[12px] text-gray-500 mt-0.5">
+                          {cleanSupplierName(rate.supplier)}
+                          {rate.category && (
+                            <>
+                              {" · "}
+                              {rate.category.replace(/([a-z])([A-Z])/g, "$1 $2")}
+                            </>
                           )}
-                        </span>
-                      )}
-                      {mpg && (
-                        <span className="text-[10px] text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-full">
-                          {mpg.label}
-                        </span>
-                      )}
-                      {mileageLabel(rate.mileage)
-                        ?.toString()
-                        .includes("Unlimited") && (
-                        <span className="text-[10px] text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-full">
-                          Unlimited mi
-                        </span>
-                      )}
-                      {rate.baggage && (
-                        <span className="text-[10px] text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-full">
-                          {rate.baggage} bags
-                        </span>
-                      )}
+                          {mpg?.year && ` · ${mpg.year}`}
+                        </p>
+                      </div>
                     </div>
+
+                    {/* Pickup location */}
+                    {rate.pickup_name && rate.pickup_name !== pickupLocation && (
+                      <p className="text-[11px] text-gray-400 mt-1.5">
+                        {rate.pickup_name}
+                      </p>
+                    )}
+
+                    {/* Specs tags - cleaner layout */}
+                    {(rate.passengers || rate.transmission || rate.fuel || mpg || mileageLabel(rate.mileage) || rate.baggage) && (
+                      <div className="flex flex-wrap gap-1.5 mt-3">
+                        {rate.passengers && (
+                          <span className="text-[11px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
+                            <Users size={11} /> {rate.passengers}
+                          </span>
+                        )}
+                        {rate.transmission && (
+                          <span className="text-[11px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                            {rate.transmission === "Automatic"
+                              ? "Auto"
+                              : rate.transmission}
+                          </span>
+                        )}
+                        {rate.fuel && (
+                          <span className="text-[11px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
+                            <Fuel size={11} />{" "}
+                            {rate.fuel.replace(/^(\w)/, (m: string) =>
+                              m.toUpperCase(),
+                            )}
+                          </span>
+                        )}
+                        {mpg && (
+                          <span className="text-[11px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                            {mpg.label}
+                          </span>
+                        )}
+                        {mileageLabel(rate.mileage)
+                          ?.toString()
+                          .includes("Unlimited") && (
+                          <span className="text-[11px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                            Unlimited mi
+                          </span>
+                        )}
+                        {rate.baggage && (
+                          <span className="text-[11px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
+                            {rate.baggage} bags
+                          </span>
+                        )}
+                      </div>
+                    )}
 
                     {/* Divider */}
                     <div className="border-t border-gray-100 my-3" />
@@ -830,13 +924,7 @@ export function CarSearchPanel({
                     {/* Price + CTA row */}
                     <div className="flex items-center justify-between">
                       <div>
-                        {dailyPrice > 0 && (
-                          <p className="text-[11px] text-gray-400 leading-none">
-                            ${dailyPrice}
-                            <span className="text-[9px]">/day</span>
-                          </p>
-                        )}
-                        <p className="text-[17px] font-bold text-gray-900 tabular-nums leading-none mt-0.5">
+                        <p className="text-[20px] font-bold text-gray-900 tabular-nums leading-none">
                           {rate.total_currency === "USD"
                             ? "$"
                             : rate.total_currency + " "}
@@ -845,6 +933,11 @@ export function CarSearchPanel({
                             maximumFractionDigits: 0,
                           })}
                         </p>
+                        {dailyPrice > 0 && (
+                          <p className="text-[12px] text-gray-400 mt-0.5">
+                            ${dailyPrice}/day total
+                          </p>
+                        )}
                       </div>
                       <PrimaryButton
                         onClick={() => handleAdd(rate)}

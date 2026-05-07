@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { motion, useScroll, useMotionValueEvent, useInView } from "motion/react";
-import { Check, Users, CalendarDays, Globe, Sparkles, MapPin } from "lucide-react";
+import { Check, Users, CalendarDays, Globe, Sparkles, MapPin, ChevronDown } from "lucide-react";
 
 const STATE_COUNT = 3;
 
@@ -37,62 +37,45 @@ function MockSearchBar({ inView, onComplete }: { inView: boolean; onComplete?: (
   const [displayedText, setDisplayedText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const fullText = "5 days in Tokyo with friends";
-  const typingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isTypingRef = useRef(false);
-  const hasStartedRef = useRef(false);
   const completedRef = useRef(false);
 
   const startTyping = useCallback(() => {
-    if (typingRef.current) return;
-    setIsTyping(true);
-    isTypingRef.current = true;
+    if (completedRef.current) return;
     setDisplayedText("");
+    setIsTyping(true);
     let i = 0;
-    typingRef.current = setInterval(() => {
+    const interval = setInterval(() => {
       i++;
       setDisplayedText(fullText.slice(0, i));
       if (i >= fullText.length) {
-        clearInterval(typingRef.current!);
-        typingRef.current = null;
+        clearInterval(interval);
         setIsTyping(false);
-        isTypingRef.current = false;
-        if (!completedRef.current) {
-          completedRef.current = true;
-          onComplete?.();
-        }
+        completedRef.current = true;
+        onComplete?.();
       }
     }, 45);
   }, [onComplete]);
 
   useEffect(() => {
-    if (inView && !hasStartedRef.current) {
-      hasStartedRef.current = true;
-      const timeout = setTimeout(startTyping, 300);
-      return () => clearTimeout(timeout);
+    if (inView) {
+      if (!completedRef.current) {
+        const timeout = setTimeout(startTyping, 400);
+        return () => clearTimeout(timeout);
+      }
+    } else {
+      setDisplayedText(fullText);
+      setIsTyping(false);
+      completedRef.current = false;
     }
   }, [inView, startTyping]);
 
-  // Fill on cleanup
-  useEffect(() => {
-    if (!inView) {
-      setDisplayedText(fullText);
-      if (typingRef.current) {
-        clearInterval(typingRef.current);
-        typingRef.current = null;
-      }
-      setIsTyping(false);
-      isTypingRef.current = false;
-      hasStartedRef.current = true;
-    }
-  }, [inView]);
-
   return (
     <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-[#f5f0eb] dark:bg-white/10 border border-[#e8ddd0] dark:border-white/[0.08]">
-      <Globe size={16} className="text-[#8a7a6a] dark:text-magazine-text/60 shrink-0" />
-      <span className="text-sm text-[#5c4a3a] dark:text-magazine-text font-medium">
+      <Globe size={15} className="text-[#8a7a6a] dark:text-magazine-text/60 shrink-0" />
+      <span className="text-sm text-[#5c4a3a] dark:text-magazine-text font-medium tabular-nums">
         {displayedText}
         {isTyping && (
-          <span className="inline-block w-[2px] h-[14px] bg-[#5c4a3a] ml-0.5 align-text-top animate-pulse" />
+          <span className="inline-block w-[2px] h-[14px] bg-[#C4622D] ml-0.5 align-text-top animate-pulse" />
         )}
       </span>
     </div>
@@ -425,9 +408,26 @@ export function ProductDemo() {
     let state = 0;
     if (v > 0.6) state = 2;
     else if (v > 0.25) state = 1;
+
+    // Handle state transitions
     if (state !== prevStateRef.current) {
       prevStateRef.current = state;
       setActiveState(state);
+    }
+
+    // Scroll-driven itinerary progression (state 2, v: 0.6 → 1.0)
+    if (state === 2) {
+      const ITINERARY_START = 0.6;
+      const ITINERARY_END = 1.0;
+      const DAY_COUNT = ITINERARY_DAYS.length;
+      const ACTS_PER_DAY = ITINERARY_DAYS[0].activities.length;
+      const totalSteps = DAY_COUNT * ACTS_PER_DAY;
+      const progress = Math.min((v - ITINERARY_START) / (ITINERARY_END - ITINERARY_START), 1);
+      const step = Math.min(Math.floor(progress * totalSteps), totalSteps - 1);
+      const day = Math.min(Math.floor(step / ACTS_PER_DAY), DAY_COUNT - 1);
+      const subPhase = Math.min((step % ACTS_PER_DAY) + 1, ACTS_PER_DAY);
+      setItineraryDay(day);
+      setItinerarySubPhase(subPhase);
     }
   });
 
@@ -485,41 +485,16 @@ export function ProductDemo() {
     return () => timers.forEach(clearTimeout);
   }, [activeState]);
 
-  // Itinerary sub-phase cycling — cascades through days then reveals activities
+  // Reset itinerary when entering state 2
   useEffect(() => {
-    if (activeState !== 2) return;
-    setItineraryDay(0);
-    setItinerarySubPhase(0);
-    const DAY_COUNT = ITINERARY_DAYS.length;
-    const ACTIVITIES_PER_DAY = ITINERARY_DAYS[0].activities.length;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-
-    // Cycle through days and sub-phases
-    for (let day = 0; day < DAY_COUNT; day++) {
-      for (let act = 1; act <= ACTIVITIES_PER_DAY; act++) {
-        const delay = (day * ACTIVITIES_PER_DAY + act) * 250;
-        timers.push(
-          setTimeout(() => {
-            setItineraryDay(day);
-            setItinerarySubPhase(act);
-          }, delay)
-        );
-      }
-      // Brief pause between days
-      if (day < DAY_COUNT - 1) {
-        timers.push(
-          setTimeout(() => {
-            setItineraryDay(day + 1);
-            setItinerarySubPhase(1);
-          }, (day + 1) * ACTIVITIES_PER_DAY * 250 + 400)
-        );
-      }
+    if (activeState === 2) {
+      setItineraryDay(0);
+      setItinerarySubPhase(0);
     }
-    return () => timers.forEach(clearTimeout);
   }, [activeState]);
 
   return (
-    <section className="py-24 px-6 bg-gradient-to-b from-[#f5efe8] to-[#fafaf8] dark:from-[var(--magazine-surface)] dark:to-[var(--magazine-bg)]">
+    <section className="py-28 px-6 bg-[#f5efe8] dark:bg-[var(--magazine-bg)] dark:from-[var(--magazine-surface)] dark:to-[var(--magazine-bg)]">
       <div className="max-w-5xl mx-auto">
         {/* Scroll-driven container */}
         <div
@@ -530,54 +505,67 @@ export function ProductDemo() {
           <div className="sticky top-[96px]">
             {/* Section heading — inside sticky so it stays below navbar during parallax */}
             <div className="text-center mb-10">
-              <h2 className="text-3xl md:text-4xl font-serif font-normal text-magazine-heading tracking-wide mb-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-[#C4622D] dark:text-magazine-accent mb-4">
+                The Experience
+              </p>
+              <h2 className="text-4xl md:text-5xl font-serif font-normal text-[#2a1f17] dark:text-magazine-heading tracking-wide leading-tight mb-4">
                 See It <span className="italic">In Action</span>
               </h2>
-              <p className="text-sm md:text-base text-magazine-text max-w-lg mx-auto leading-relaxed">
+              <p className="text-sm md:text-base text-[#5c4a3a] dark:text-magazine-text max-w-lg mx-auto leading-relaxed">
                 Scroll through how Travyl turns a simple idea into a complete,
                 shareable trip plan.
               </p>
             </div>
 
-            {/* Step indicator */}
-            <div className="max-w-3xl mx-auto mb-6">
-              <div className="flex items-center justify-center gap-0">
+            {/* Step indicator — refined dot timeline */}
+            <div className="max-w-2xl mx-auto mb-8">
+              <div className="flex items-start justify-center gap-0">
                 {STEPS.map((step, i) => (
                   <div key={i} className="flex items-center">
                     <button
                       onClick={() => scrollToStep(i)}
                       aria-label={`Go to step ${i + 1}: ${step.label}`}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all duration-500 ${
-                        i === activeState
-                          ? "bg-[#1e3a5f] dark:bg-primary text-white shadow-md"
-                          : i < activeState
-                            ? "text-[#8a7a6a] dark:text-magazine-text/60 hover:bg-[#e8ddd0]/50 dark:hover:bg-white/10"
-                            : "text-[#b8a898] dark:text-magazine-text/40 hover:bg-[#e8ddd0]/30 dark:hover:bg-white/5"
-                      }`}
+                      className="flex flex-col items-center gap-2.5 group"
                     >
-                      <span
-                        className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-500 ${
+                      {/* Dot */}
+                      <div
+                        className={`relative w-7 h-7 rounded-full flex items-center justify-center transition-all duration-500 ${
                           i === activeState
-                            ? "bg-white/20 text-white"
+                            ? "bg-[#C4622D] dark:bg-[#D4733D] shadow-[0_0_0_4px_rgba(196,98,45,0.15)] dark:shadow-[0_0_0_4px_rgba(212,115,61,0.15)]"
                             : i < activeState
-                              ? "bg-[#C4622D]/15 dark:bg-[#C4622D]/30 text-[#C4622D]"
-                              : "bg-[#e8ddd0] dark:bg-white/10 text-[#b8a898] dark:text-magazine-text/40"
+                              ? "bg-white dark:bg-[#1e3a5f] border-2 border-[#C4622D] dark:border-[#D4733D]"
+                              : "bg-white dark:bg-[#1e3a5f] border-2 border-[#e0d4c8] dark:border-white/20 group-hover:border-[#c4a882] dark:group-hover:border-white/40"
                         }`}
                       >
                         {i < activeState ? (
-                          <Check size={10} strokeWidth={2.5} />
+                          <Check size={12} className="text-[#C4622D] dark:text-[#D4733D]" strokeWidth={2.5} />
                         ) : (
-                          LABEL_KEYS[i]
+                          <span
+                            className={`text-[10px] font-bold transition-colors duration-500 ${
+                              i === activeState ? "text-white" : "text-[#b8a898] dark:text-white/40"
+                            }`}
+                          >
+                            {LABEL_KEYS[i]}
+                          </span>
                         )}
+                      </div>
+                      {/* Label below */}
+                      <span
+                        className={`text-[11px] font-semibold tracking-wide transition-colors duration-500 ${
+                          i === activeState
+                            ? "text-[#2a1f17] dark:text-magazine-heading"
+                            : i < activeState
+                              ? "text-[#8a7a6a] dark:text-magazine-text/60"
+                              : "text-[#c4a882] dark:text-magazine-text/40"
+                        }`}
+                      >
+                        {step.label}
                       </span>
-                      {step.label}
                     </button>
                     {i < STEPS.length - 1 && (
                       <div
-                        className={`w-8 h-[1.5px] mx-1 transition-colors duration-500 ${
-                          i < activeState
-                            ? "bg-[#C4622D]/30"
-                            : "bg-[#e8ddd0] dark:bg-white/10"
+                        className={`w-16 md:w-20 h-px mt-3 mb-8 mx-3 transition-colors duration-500 ${
+                          i < activeState ? "bg-[#C4622D]/40 dark:bg-[#D4733D]/40" : "bg-[#e0d4c8] dark:bg-white/10"
                         }`}
                       />
                     )}
@@ -593,7 +581,7 @@ export function ProductDemo() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C4622D] mb-2"
+                className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#C4622D] dark:text-[#D4733D] mb-2"
               >
                 {LABEL_KEYS[activeState]}
               </motion.p>
@@ -619,13 +607,21 @@ export function ProductDemo() {
 
             {/* Mockup card — fixed width, no horizontal resizing */}
             <div className="max-w-3xl mx-auto w-full">
-              <div className="rounded-2xl overflow-hidden bg-white dark:bg-card shadow-xl shadow-[#2a1f17]/8 dark:shadow-black/20 border border-[#e8ddd0] dark:border-white/[0.08]">
+              <div className="rounded-2xl overflow-hidden bg-white dark:bg-card shadow-2xl shadow-[#2a1f17]/10 dark:shadow-black/20 border border-[#e8ddd0] dark:border-white/[0.08]">
+                {/* Terracotta accent bar */}
+                <div className="h-[3px] bg-gradient-to-r from-[#C4622D] to-[#D4733D]" />
                 {/* Mockup content — constant-width container */}
                 <div ref={mockupRef} className="p-6 min-h-[320px] relative w-full">
+                  <motion.div
+                    key={activeState}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 0.35 }}
+                  >
                   {activeState === 0 && (
                     <div className="space-y-5">
                       <div>
-                        <p className="text-[10px] text-[#8a7a6a] dark:text-magazine-text/60 uppercase tracking-wider font-semibold mb-2">
+                        <p className="text-[9px] text-[#b8a898] dark:text-magazine-text/40 uppercase tracking-[0.15em] font-semibold mb-2.5">
                           Search
                         </p>
                         <MockSearchBar inView={searchInView} onComplete={() => setShowSuggestions(true)} />
@@ -641,7 +637,7 @@ export function ProductDemo() {
                           overflow: "hidden",
                         }}
                       >
-                        <p className="text-[10px] text-[#8a7a6a] dark:text-magazine-text/60 uppercase tracking-wider font-semibold">
+                        <p className="text-[9px] text-[#b8a898] dark:text-magazine-text/40 uppercase tracking-[0.15em] font-semibold">
                           Refine your trip
                         </p>
                         <div className="flex flex-wrap gap-2">
@@ -672,7 +668,7 @@ export function ProductDemo() {
 
                   {activeState === 1 && (
                     <div className="space-y-5">
-                      <p className="text-[10px] text-[#8a7a6a] dark:text-magazine-text/60 uppercase tracking-wider font-semibold">
+                      <p className="text-[9px] text-[#b8a898] dark:text-magazine-text/40 uppercase tracking-[0.15em] font-semibold">
                         Planning
                       </p>
                       <PlanProgress phase={planPhase} />
@@ -693,7 +689,7 @@ export function ProductDemo() {
                   {activeState === 2 && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <p className="text-[10px] text-[#8a7a6a] dark:text-magazine-text/60 uppercase tracking-wider font-semibold">
+                        <p className="text-[9px] text-[#b8a898] dark:text-magazine-text/40 uppercase tracking-[0.15em] font-semibold">
                           Day-by-day itinerary
                         </p>
                         <span className="text-[9px] text-[#C4622D] font-medium">
@@ -704,37 +700,38 @@ export function ProductDemo() {
                     </div>
                   )}
 
+                  </motion.div>
                 </div>
               </div>
             </div>
 
             {/* Progress bar */}
-            <div className="max-w-3xl mx-auto mt-5 h-[2px] rounded-full bg-[#e8ddd0] dark:bg-white/10 overflow-hidden">
+            <div className="max-w-3xl mx-auto mt-5 h-[2px] rounded-full bg-[#e0d4c8] dark:bg-white/10 overflow-hidden">
               <motion.div
-                className="h-full bg-[#C4622D]/50 origin-left rounded-full"
+                className="h-full bg-gradient-to-r from-[#C4622D] to-[#D4733D] origin-left rounded-full"
                 style={{ scaleX: scrollYProgress }}
               />
             </div>
 
-            {/* Scroll hint */}
-            <div
-              className="mt-4 flex items-center justify-center gap-2 transition-opacity duration-300"
-              style={{
-                opacity:
-                  activeState < STATE_COUNT - 1 ? 0.5 : 0,
-              }}
+            {/* Scroll hint — subtle bouncing chevron */}
+            <motion.div
+              className="mt-5 flex flex-col items-center gap-1.5"
+              animate={{ opacity: activeState < STATE_COUNT - 1 ? 0.5 : 0 }}
+              transition={{ duration: 0.3 }}
             >
-              <div className="w-5 h-8 rounded-full border-2 border-[#b8a898] dark:border-white/20 flex items-start justify-center pt-1.5">
-                <div className="w-1 h-1.5 rounded-full bg-[#8a7a6a] dark:bg-white/40 animate-[scrollDot_1.5s_ease-in-out_infinite]" />
-              </div>
-              <span className="text-[#b8a898] dark:text-white/40 text-[10px] font-medium uppercase tracking-wider">
+              <motion.div
+                animate={{ y: [0, 5, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <ChevronDown size={16} className="text-[#b8a898]" strokeWidth={1.5} />
+              </motion.div>
+              <span className="text-[#b8a898] text-[9px] font-medium uppercase tracking-[0.15em]">
                 Scroll
               </span>
-            </div>
+            </motion.div>
           </div>
         </div>
       </div>
-      <style>{`@keyframes scrollDot { 0%, 100% { transform: translateY(0); opacity: 1; } 50% { transform: translateY(10px); opacity: 0.3; } }`}</style>
     </section>
   );
 }

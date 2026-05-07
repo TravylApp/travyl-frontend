@@ -575,13 +575,6 @@ export default function Home() {
     if (tripQuery && validationError) setValidationError(null);
   }, [tripQuery]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const requireAuth = (prompt: string) => {
-    if (user) return false;
-    try { sessionStorage.setItem('pending-trip-prompt', prompt); } catch {}
-    setShowAuthGate(true);
-    return true;
-  };
-
   // Validate trip queries — catch obviously nonsensical inputs
   const validateTripQuery = (query: string): string | null => {
     const lower = query.toLowerCase().trim();
@@ -639,19 +632,37 @@ export default function Home() {
     const prompt = words <= 3 && !val.match(/\d/)
       ? `Plan a 5-day trip to ${val}`
       : val;
-    if (requireAuth(prompt)) return;
     planner.submitPrompt(prompt);
     setTripQuery("");
   };
 
-  // Resume a pending trip prompt after the user signs in
+  // After sign-in: save a stored plan or resume a pending trip prompt
   useEffect(() => {
     if (!user) return;
+    setShowAuthGate(false);
+
+    let storedPlan: string | null = null;
+    try { storedPlan = sessionStorage.getItem('pending-trip-plan'); } catch {}
+    if (storedPlan) {
+      try { sessionStorage.removeItem('pending-trip-plan'); } catch {}
+      (async () => {
+        try {
+          const plan = JSON.parse(storedPlan);
+          const tripId = await savePlanToSupabase(plan as any);
+          queryClient.invalidateQueries({ queryKey: ['trips'] });
+          router.push(`/trip/${tripId}`);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Failed to save trip';
+          setLoadingError(msg);
+        }
+      })();
+      return;
+    }
+
     let pending: string | null = null;
     try { pending = sessionStorage.getItem('pending-trip-prompt'); } catch {}
     if (!pending) return;
     try { sessionStorage.removeItem('pending-trip-prompt'); } catch {}
-    setShowAuthGate(false);
     skipQuestionsRef.current = true;
     skipRetryCountRef.current = 0;
     clarifyRoundRef.current = 0;
@@ -708,8 +719,8 @@ export default function Home() {
           isSaving.current = false;
         }
       } else {
-        // Not logged in — show clean auth gate (should have been caught earlier,
-        // but guard here in case a plan completed before user signed in)
+        // Not logged in — store plan and show auth gate
+        try { sessionStorage.setItem('pending-trip-plan', JSON.stringify(plan)); } catch {}
         setShowTakeoff(false);
         isSaving.current = false;
         setShowAuthGate(true);
@@ -864,8 +875,7 @@ export default function Home() {
                 </button>
               </div>
             </div>
-              </div>
-            </div>
+          </motion.div>
 
             {/* Questions — only shown if user clicked Refine */}
             {isClarifying && showQuestions && currentQuestion && (
@@ -957,7 +967,6 @@ export default function Home() {
                               const promptForCategory = pillCategory === 0
                                 ? `Plan a trip to ${s.label}`
                                 : `Plan a ${s.label.toLowerCase()}`;
-                              if (requireAuth(promptForCategory)) return;
                               skipQuestionsRef.current = true;
                               skipRetryCountRef.current = 0;
                               planner.submitPrompt(promptForCategory);
@@ -985,7 +994,6 @@ export default function Home() {
               </div>
             )}
           </motion.div>
-        </motion.div>
 
       </section>
 

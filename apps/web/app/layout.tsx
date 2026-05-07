@@ -31,6 +31,7 @@ export const metadata: Metadata = {
   description: "AI-powered travel assistant",
   icons: {
     icon: "/icon.svg",
+    apple: "/icon.svg",
   },
   other: {
     "developed-by": "JPB Developments — https://www.jpbdevelopments.com",

@@ -9,12 +9,12 @@ const STATS = [
 
 export function PressStats() {
   return (
-    <section className="py-16 sm:py-20 px-6 bg-[#f5f1eb]">
+    <section className="py-16 sm:py-20 px-6 bg-[#ede5db] dark:bg-magazine-surface">
       <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
         {STATS.map(({ value, label }) => (
           <div key={label}>
-            <p className="text-3xl sm:text-4xl font-serif font-normal text-[#1e3a5f] mb-1">{value}</p>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">{label}</p>
+            <p className="text-3xl sm:text-4xl font-serif font-normal text-[#2a1f17] dark:text-magazine-heading mb-1">{value}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5c4a3a]/60 dark:text-magazine-text/60">{label}</p>
           </div>
         ))}
       </div>

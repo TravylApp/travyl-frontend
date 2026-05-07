@@ -10,10 +10,11 @@ export interface BudgetMetricStripProps {
   daysElapsed: number;
   formatAmount: (n: number) => string;
   onChangeTotalBudget: (next: number) => void;
+  compact?: boolean;
 }
 
 export function BudgetMetricStrip({
-  totalBudgeted, totalActual, daysInTrip, daysElapsed, formatAmount, onChangeTotalBudget,
+  totalBudgeted, totalActual, daysInTrip, daysElapsed, formatAmount, onChangeTotalBudget, compact,
 }: BudgetMetricStripProps) {
   const remaining = totalBudgeted - totalActual;
   const pct = totalBudgeted > 0 ? (totalActual / totalBudgeted) * 100 : 0;
@@ -37,7 +38,7 @@ export function BudgetMetricStrip({
     : 'on track';
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 px-2 pb-5 mb-5 border-b border-gray-100 dark:border-white/[0.06]">
+    <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 px-2 ${compact ? '' : 'pb-5 mb-5 border-b border-gray-100 dark:border-white/[0.06]'}`}>
       <div>
         <div className="text-[9px] uppercase tracking-[0.1em] font-semibold text-gray-400 mb-1">Total budget</div>
         <EditableCell

@@ -42,6 +42,7 @@
     "react-dom": "^19.2.3",
     "react-responsive-masonry": "^2.7.1",
     "sharp": "^0.34.5",
+    "simple-icons": "^16.18.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.5.0",
     "three": "^0.184.0",

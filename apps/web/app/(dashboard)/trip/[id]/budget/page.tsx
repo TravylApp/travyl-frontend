@@ -6,6 +6,7 @@ import { useItineraryScreen, useHomeCurrency } from '@travyl/shared';
 import { supabase } from '@travyl/shared';
 import { Module } from '@/components/trip/Module';
 import { BudgetMetricStrip } from '@/components/trip/budget/BudgetMetricStrip';
+import { BudgetPieChart } from '@/components/trip/budget/BudgetPieChart';
 import { BudgetTable } from '@/components/trip/budget/BudgetTable';
 import { BudgetMobileList } from '@/components/trip/budget/BudgetMobileList';
 import { computeTotals, scaleBudgetsProportionally } from '@/components/trip/budget/budgetMath';
@@ -269,14 +270,18 @@ export default function Budget({ params }: { params: Promise<{ id: string }> }) 
           </button>
         }
       >
-        <BudgetMetricStrip
-          totalBudgeted={totalBudgeted}
-          totalActual={totalActual}
-          daysInTrip={daysInTrip}
-          daysElapsed={daysElapsed}
-          formatAmount={formatAmount}
-          onChangeTotalBudget={handleChangeTotalBudget}
-        />
+        <div className="flex flex-col md:flex-row gap-6 md:gap-10 items-start pb-6 mb-5 border-b border-gray-100 dark:border-white/[0.06]">
+          <BudgetPieChart items={budgetData} formatAmount={formatAmount} />
+          <BudgetMetricStrip
+            totalBudgeted={totalBudgeted}
+            totalActual={totalActual}
+            daysInTrip={daysInTrip}
+            daysElapsed={daysElapsed}
+            formatAmount={formatAmount}
+            onChangeTotalBudget={handleChangeTotalBudget}
+            compact
+          />
+        </div>
         <BudgetTable
           items={budgetData}
           formatAmount={formatAmount}
