@@ -141,7 +141,8 @@ function useInfoData(tripId: string) {
     queryFn: async () => {
       if (!lat || !lng) {
         // Geocode destination
-        const geoRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(trip?.destination ?? '')}&format=json&limit=1`);
+        const geoRes = await fetch(`/api/geocode?q=${encodeURIComponent(trip?.destination ?? '')}`);
+        if (!geoRes.ok) return [];
         const geo = await geoRes.json();
         if (!geo[0]) return [];
         const res = await fetch(`/api/foursquare?lat=${geo[0].lat}&lng=${geo[0].lon}&category=restaurant&limit=4`);

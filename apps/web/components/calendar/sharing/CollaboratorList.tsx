@@ -72,7 +72,7 @@ export function CollaboratorList({
       {/* Owner row */}
       <div className="flex items-center justify-between border-b border-white/10 py-2">
         <div className="flex items-center gap-3">
-          {renderAvatar(ownerName || ownerEmail || 'U', ownerAvatarUrl, 'bg-[#003594]')}
+          {renderAvatar(ownerName || ownerEmail || 'U', ownerAvatarUrl, 'bg-primary')}
           <div>
             <div className="text-sm text-white">{ownerName}</div>
             <div className="text-xs text-white/40">{ownerEmail}</div>

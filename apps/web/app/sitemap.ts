@@ -1,15 +1,14 @@
-import type { MetadataRoute } from 'next'
+import { SITE_ROUTES } from '@/lib/sitemap'
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://gotravyl.com'
-  return [
-    { url: baseUrl, lastModified: new Date(), changeFrequency: 'daily', priority: 1 },
-    { url: `${baseUrl}/places`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
-    { url: `${baseUrl}/explore`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.8 },
-    { url: `${baseUrl}/login`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
-    { url: `${baseUrl}/signup`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
-    { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.4 },
-    { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
-    { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
-  ]
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://gotravyl.com'
+
+export default function sitemap() {
+  return SITE_ROUTES
+    .filter((route) => route.seo && !route.requiresAuth)
+    .map((route) => ({
+      url: `${BASE_URL}${route.path}`,
+      lastModified: new Date(),
+      changeFrequency: (route.path === '/' ? 'daily' : 'monthly') as 'daily' | 'monthly',
+      priority: route.path === '/' ? 1.0 : 0.8,
+    }))
 }

@@ -1,8 +1,12 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
   transpilePackages: ["@travyl/shared"],
+  turbopack: {
+    root: path.resolve(__dirname, "../../"),
+  },
   experimental: {
     optimizePackageImports: ["lucide-react", "iconoir-react"],
   },
@@ -12,7 +16,6 @@ const nextConfig: NextConfig = {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     remotePatterns: [
-      { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "images.pexels.com" },
       { protocol: "https", hostname: "i.pravatar.cc" },
       { protocol: "https", hostname: "flagcdn.com" },

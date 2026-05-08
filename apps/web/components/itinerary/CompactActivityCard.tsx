@@ -40,7 +40,7 @@ export function CompactActivityCard({
 
   return (
     <div
-      className="rounded-xl bg-white dark:bg-[var(--muted)] border border-gray-200 dark:border-white/[0.08] overflow-hidden cursor-pointer group transition-all hover:shadow-lg hover:scale-[1.01]"
+      className="rounded-xl bg-white dark:bg-muted border border-gray-200 dark:border-white/[0.08] overflow-hidden cursor-pointer group transition-all hover:shadow-lg hover:scale-[1.01]"
       onClick={onClick}
     >
       {/* Image section */}

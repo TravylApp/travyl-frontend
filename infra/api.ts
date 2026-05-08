@@ -1,6 +1,6 @@
-import { activityCdn, cacheTable, placeIndex, userInteractions } from './storage'
+import { activityCdn, cacheTable, placeIndex, userInteractions, documentUploads } from './storage'
 import { bus } from './events'
-import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey, ticketmasterApiKey, openTableAffiliateKey, duffelApiToken, graphhopperApiKey, openchargeApiKey, openExchangeRatesAppId, predicthqApiKey } from './secrets'
+import { supabaseSecretKey, supabaseUrl, serpApiKey, pexels, foursquareApiKey, ticketmasterApiKey, openTableAffiliateKey, duffelApiToken, graphhopperApiKey, openchargeApiKey, openExchangeRatesAppId, predicthqApiKey, otpServerUrl, otpApiKey } from './secrets'
 
 export const email = new sst.aws.Email('TravylEmail', {
   sender: 'gotravyl.com',
@@ -109,6 +109,18 @@ api.route('GET /recommendations/generate', {
   timeout: '20 seconds',
 })
 
+api.route('POST /regenerate/activity', {
+  handler: 'services/regenerate.handler',
+  link: [supabaseSecretKey, supabaseUrl, serpApiKey],
+  timeout: '20 seconds',
+})
+
+api.route('POST /regenerate/day', {
+  handler: 'services/regenerate.dayHandler',
+  link: [supabaseSecretKey, supabaseUrl, serpApiKey],
+  timeout: '30 seconds',
+})
+
 api.route('POST /invite', {
   handler: 'services/invite.handler',
   link: [supabaseSecretKey, supabaseUrl, email],
@@ -154,6 +166,16 @@ api.route('GET /parse-intent', {
   ],
 })
 
+// Trip extraction + planning are routed to the FastAPI backend
+// (api.dev.gotravyl.com / api.gotravyl.com) via the Next.js proxy at
+// apps/web/app/api/trips/{extract,plan}/route.ts. The Bedrock-based SST
+// handlers below were retired with Justin's commit but the route
+// registrations were left over and broke `sst deploy` because
+// services/extract.ts and services/plan.ts were never committed.
+//
+// api.route('POST /api/trips/extract', { handler: 'services/extract.handler', ... })
+// api.route('POST /api/trips/plan',    { handler: 'services/plan.handler',    ... })
+
 api.route('GET /search/quick', {
   handler: 'services/search-quick.handler',
   link: [supabaseSecretKey, supabaseUrl],
@@ -167,7 +189,7 @@ api.route('GET /search/quick', {
 
 api.route('GET /search/deep', {
   handler: 'services/search-deep.handler',
-  link: [supabaseSecretKey, supabaseUrl, serpApiKey, foursquareApiKey, cacheTable],
+  link: [supabaseSecretKey, supabaseUrl, serpApiKey, cacheTable],
   permissions: [
     {
       actions: ['bedrock:InvokeModel'],
@@ -206,11 +228,6 @@ api.route('GET /events', {
   link: [cacheTable, supabaseSecretKey, supabaseUrl, ticketmasterApiKey],
 })
 
-api.route('GET /api/events/search', {
-  handler: 'services/events.handler',
-  link: [cacheTable, supabaseSecretKey, supabaseUrl, ticketmasterApiKey],
-})
-
 api.route('GET /events/{id}/details', {
   handler: 'services/events.detailsHandler',
   link: [supabaseSecretKey, supabaseUrl, ticketmasterApiKey],
@@ -245,6 +262,35 @@ api.route('POST /trips/{id}/duplicate', {
   handler: 'services/trips.duplicateHandler',
   link: [supabaseSecretKey, supabaseUrl],
   timeout: '15 seconds',
+})
+
+// Document OCR — upload presigned URL + parse via Claude Vision
+api.route('POST /documents/upload-url', {
+  handler: 'services/documents.handler',
+  link: [supabaseSecretKey, supabaseUrl, documentUploads],
+  permissions: [
+    {
+      actions: ['s3:PutObject'],
+      resources: [$interpolate`${documentUploads.arn}/*`],
+    },
+  ],
+  timeout: '10 seconds',
+})
+
+api.route('POST /documents/parse', {
+  handler: 'services/documents.handler',
+  link: [supabaseSecretKey, supabaseUrl, documentUploads],
+  permissions: [
+    {
+      actions: ['s3:GetObject', 's3:DeleteObject'],
+      resources: [$interpolate`${documentUploads.arn}/*`],
+    },
+    {
+      actions: ['bedrock:InvokeModel'],
+      resources: ['arn:aws:bedrock:*::foundation-model/anthropic.claude-3-5-haiku-20241022-v1:0'],
+    },
+  ],
+  timeout: '60 seconds',
 })
 
 // Deprecated: use /restaurants/search instead
@@ -296,15 +342,37 @@ api.route('GET /weather/forecast', {
 })
 
 api.route('GET /transit/directions', {
-  handler: 'services/transit.handler',
-  link: [supabaseSecretKey, supabaseUrl, graphhopperApiKey],
+  handler: 'services/transit-search.handler',
+  link: [supabaseSecretKey, supabaseUrl, otpServerUrl, otpApiKey],
   timeout: '20 seconds',
 })
 
 api.route('POST /transit/optimize-route', {
   handler: 'services/transit.optimizeHandler',
-  link: [supabaseSecretKey, supabaseUrl, graphhopperApiKey],
+  link: [supabaseSecretKey, supabaseUrl, graphhopperApiKey, otpServerUrl, otpApiKey],
   timeout: '30 seconds',
+})
+
+// Transit bookings CRUD
+api.route('GET /transit/bookings', {
+  handler: 'services/transit-bookings.listHandler',
+  link: [supabaseSecretKey, supabaseUrl],
+  timeout: '10 seconds',
+})
+api.route('POST /transit/book', {
+  handler: 'services/transit-bookings.createHandler',
+  link: [supabaseSecretKey, supabaseUrl],
+  timeout: '10 seconds',
+})
+api.route('PUT /transit/book/{id}', {
+  handler: 'services/transit-bookings.updateHandler',
+  link: [supabaseSecretKey, supabaseUrl],
+  timeout: '10 seconds',
+})
+api.route('DELETE /transit/book/{id}', {
+  handler: 'services/transit-bookings.deleteHandler',
+  link: [supabaseSecretKey, supabaseUrl],
+  timeout: '10 seconds',
 })
 
 api.route('GET /timezone/convert', {
@@ -343,3 +411,16 @@ api.route('GET /places/nearby', {
   link: [supabaseSecretKey, supabaseUrl, foursquareApiKey],
   timeout: '15 seconds',
 })
+
+// `services/place-detail.handler` was added by `bcaba4e7 feat: UI
+// homogenization` but the handler file itself was never committed —
+// SST then refused to deploy with "Handler not found". The Next.js
+// route at `apps/web/app/api/search/place-detail/route.ts` already
+// covers the same surface for the web app, so commenting this Lambda
+// out doesn't lose any user-visible functionality. Restore once the
+// real `services/place-detail.ts` lands.
+// api.route('GET /api/places/{id}', {
+//   handler: 'services/place-detail.handler',
+//   link: [foursquareApiKey],
+//   timeout: '10 seconds',
+// })

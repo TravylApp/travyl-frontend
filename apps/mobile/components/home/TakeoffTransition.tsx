@@ -12,8 +12,20 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
-import { Blue, TAKEOFF_LOADING_MESSAGES, TextStyles } from '@travyl/shared';
+import { Blue, TextStyles, FontFamily } from '@travyl/shared';
 import { PaperPlane } from './PaperPlane';
+
+// Local message set — richer than the shared 4-item list, mirrors web's
+// 7 phases so it doesn't feel like a tight loop while planning takes 10–30s.
+const LOADING_MESSAGES = [
+  'Understanding your trip...',
+  'Searching for the best places...',
+  'Checking weather forecasts...',
+  'Finding hidden gems...',
+  'Building your day-by-day plan...',
+  'Curating hotels & flights...',
+  'Almost there...',
+] as const;
 
 // ─── Timing ────────────────────────────────────────────────────
 const PASS1_DUR = 600;
@@ -21,7 +33,6 @@ const GAP_DUR = 200;
 const PASS2_DUR = 1600;
 const FLIGHT_TOTAL = PASS1_DUR + GAP_DUR + PASS2_DUR; // 2400
 const LOADING_START = 2600;
-const ANIMATION_END = 4600;
 const TRAIL_COUNT = 8;
 
 // Normalized phase boundaries (0-1)
@@ -32,15 +43,22 @@ interface TakeoffTransitionProps {
   visible: boolean;
   buttonLayout: { x: number; y: number; width: number; height: number } | null;
   onComplete: () => void;
+  /** Flip true when planner.state.phase === 'complete' so the progress bar snaps to 100%. */
+  completed?: boolean;
 }
 
 export function TakeoffTransition({
   visible,
   buttonLayout,
   onComplete,
+  completed,
 }: TakeoffTransitionProps) {
   const [phase, setPhase] = useState<'fly' | 'loading'>('fly');
   const [msgIndex, setMsgIndex] = useState(0);
+  // Fake-progress state — eases toward 90% during planning, snaps to 100%
+  // when `completed` flips. Mirrors web's pattern so the user always sees
+  // forward motion even while we wait on a long backend call.
+  const [progressPct, setProgressPct] = useState(0);
   const { width: screenW, height: screenH } = Dimensions.get('window');
 
   // Single progress value drives the entire flight — animated on UI thread
@@ -126,15 +144,20 @@ export function TakeoffTransition({
       );
     }, LOADING_START);
 
-    const t2 = setTimeout(() => {
-      overlayOpacity.value = withTiming(0, { duration: 200 });
-      setTimeout(() => stableOnComplete(), 200);
-    }, ANIMATION_END);
+    // Note: previously this auto-faded the overlay at ANIMATION_END (4.6s)
+    // and called onComplete. But trip generation can take 10–30s, so the
+    // overlay would disappear before the new trip page rendered, flashing
+    // the home screen. Now we let the loading dots loop indefinitely and
+    // rely on the parent toggling `visible=false` to dismiss us.
+    return () => { clearTimeout(t1); };
+  }, [visible]);
 
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+  // Fade out when parent flips visible → false
+  useEffect(() => {
+    if (visible) return;
+    overlayOpacity.value = withTiming(0, { duration: 200 });
+    const t = setTimeout(() => stableOnComplete(), 200);
+    return () => clearTimeout(t);
   }, [visible]);
 
   // ─── Plane style — ALL math runs on UI thread ─────────────────
@@ -230,12 +253,37 @@ export function TakeoffTransition({
 
   useEffect(() => {
     if (phase !== 'loading') return;
+    // 2200ms cycle matches web — slow enough that each message reads as
+    // intentional progress instead of a tight loop.
     const interval = setInterval(
-      () => setMsgIndex((i) => (i + 1) % TAKEOFF_LOADING_MESSAGES.length),
-      700
+      () => setMsgIndex((i) => (i + 1) % LOADING_MESSAGES.length),
+      2200
     );
     return () => clearInterval(interval);
   }, [phase]);
+
+  // Fake progress that decelerates as it approaches 90%. Once the parent flips
+  // `completed`, we snap to 100%. Resets every time the overlay reappears.
+  useEffect(() => {
+    if (!visible) return;
+    setProgressPct(0);
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible || phase !== 'loading' || completed) return;
+    const interval = setInterval(() => {
+      setProgressPct((p) => {
+        if (p >= 90) return p;
+        const increment = Math.max(0.5, (90 - p) * 0.06);
+        return Math.min(90, p + increment);
+      });
+    }, 150);
+    return () => clearInterval(interval);
+  }, [visible, phase, completed]);
+
+  useEffect(() => {
+    if (completed) setProgressPct(100);
+  }, [completed]);
 
   if (!visible) return null;
 
@@ -288,15 +336,19 @@ export function TakeoffTransition({
           <Animated.View style={[styles.spinnerRing, spinnerStyle]} />
         </View>
 
-        <Text style={styles.loadingMessage}>
-          {TAKEOFF_LOADING_MESSAGES[msgIndex]}
+        <Text style={styles.loadingMessage} key={LOADING_MESSAGES[msgIndex]}>
+          {LOADING_MESSAGES[msgIndex]}
         </Text>
 
-        <View style={styles.dotsRow}>
-          <Animated.View style={[styles.dot, dot0Style]} />
-          <Animated.View style={[styles.dot, dot1Style]} />
-          <Animated.View style={[styles.dot, dot2Style]} />
+        {/* Progress bar — eases to 90% during planning, snaps to 100% on complete */}
+        <View style={styles.progressTrack}>
+          <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
         </View>
+        <Text style={styles.progressLabel}>{Math.round(progressPct)}%</Text>
+
+        <Text style={styles.tip}>
+          Travyl uses AI to find the best restaurants, hidden gems, and optimal routes for your trip.
+        </Text>
       </Animated.View>
     </Animated.View>
   );
@@ -414,17 +466,38 @@ const styles = StyleSheet.create({
   loadingMessage: {
     color: 'white',
     ...TextStyles.subhead,
+    fontFamily: FontFamily.sansBold,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
   },
-  dotsRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  dot: {
-    width: 6,
+  progressTrack: {
+    width: 240,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.4)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderRadius: 3,
+  },
+  progressLabel: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 11,
+    fontFamily: FontFamily.sans,
+    marginTop: 6,
+    width: 240,
+    textAlign: 'right',
+    letterSpacing: 0.5,
+  },
+  tip: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 12,
+    fontFamily: FontFamily.sans,
+    textAlign: 'center',
+    marginTop: 24,
+    maxWidth: 280,
+    lineHeight: 17,
   },
 });

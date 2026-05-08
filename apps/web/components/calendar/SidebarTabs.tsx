@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Star, MapPin, Calendar } from 'iconoir-react'
 
 type Tab = 'for-you' | 'events' | 'map'
 
@@ -11,18 +12,18 @@ interface SidebarTabsProps {
   width?: number
 }
 
+const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
+  { id: 'for-you', label: 'For You', icon: <Star width={14} height={14} /> },
+  { id: 'events', label: 'Events', icon: <Calendar width={14} height={14} /> },
+  { id: 'map', label: 'Map', icon: <MapPin width={14} height={14} /> },
+]
+
 export default function SidebarTabs({
   forYouContent,
   eventsContent,
   mapContent,
 }: SidebarTabsProps) {
   const [activeTab, setActiveTab] = useState<Tab>('for-you')
-
-  const tabs: { id: Tab; label: string }[] = [
-    { id: 'for-you', label: 'For You' },
-    { id: 'events', label: 'Events' },
-    { id: 'map', label: 'Map' },
-  ]
 
   const content =
     activeTab === 'for-you' ? forYouContent
@@ -31,22 +32,36 @@ export default function SidebarTabs({
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex border-b border-[var(--cal-border)]">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={[
-              'px-4 py-2 text-sm font-medium transition-colors',
-              activeTab === tab.id
-                ? 'text-[#003594] border-b-2 border-[#003594]'
-                : 'text-[var(--cal-text-secondary)] hover:text-[var(--cal-text)]',
-            ].join(' ')}
-          >
-            {tab.label}
-          </button>
-        ))}
+      {/* Tab bar */}
+      <div role="tablist" className="flex w-full border-b border-cal-border bg-cal-surface-elevated">
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setActiveTab(tab.id)}
+              className={[
+                'flex-1 min-w-0 flex items-center justify-center gap-1.5 py-3 text-[12.5px] font-semibold tracking-tight transition-colors relative',
+                isActive
+                  ? 'text-cal-text'
+                  : 'text-cal-text-tertiary hover:text-cal-text-secondary',
+              ].join(' ')}
+            >
+              <span className={isActive ? 'text-primary' : 'text-cal-text-tertiary'}>
+                {tab.icon}
+              </span>
+              <span>{tab.label}</span>
+              {isActive && (
+                <div className="absolute -bottom-px left-4 right-4 h-[2px] rounded-full bg-primary" />
+              )}
+            </button>
+          )
+        })}
       </div>
+
+      {/* Content */}
       <div className="flex-1 overflow-hidden">
         {content}
       </div>

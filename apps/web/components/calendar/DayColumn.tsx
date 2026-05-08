@@ -1,7 +1,9 @@
 'use client'
 import { useMemo } from 'react'
+import { Sparks } from 'iconoir-react'
+import { Tooltip } from '@/components/ui/tooltip'
 import { useDroppable } from '@dnd-kit/core'
-import { HOUR_HEIGHT } from './constants'
+import { useHourHeight } from './HourHeightContext'
 import { EventBlock } from './EventBlock'
 import { PostItNote } from './PostItNote'
 import type { CalendarActivity, UserAwareness, TimeRange } from './types'
@@ -13,6 +15,8 @@ import { getWmoWeather } from './utils/wmoWeatherCode'
 import DayHealthIndicator from './DayHealthIndicator'
 import TravelTimeBadge from './TravelTimeBadge'
 import { GhostEventBlock } from './GhostEventBlock'
+import { computeBlockedRanges } from './utils/travelConstraints'
+import { TravelConstraintBlock } from './TravelConstraintBlock'
 
 interface DayColumnProps {
   dayIndex: number
@@ -42,6 +46,7 @@ interface DayColumnProps {
   bookingStatuses?: Map<string, 'matched' | 'opened'>
   tripId?: string
   isDayView?: boolean
+  onRegenerateDay?: (dayIndex: number) => void
   ghostActivities?: CalendarActivity[]
   onConfirmGhost?: (activity: CalendarActivity) => void
   onDismissGhost?: (id: string) => void
@@ -56,6 +61,7 @@ function CurrentTimeIndicator({
   tripStartDate: Date
   timeRange: TimeRange
 }) {
+  const HOUR_HEIGHT = useHourHeight()
   const now = new Date()
   // Compute the UTC date for this column
   const columnDate = new Date(tripStartDate.getTime() + dayIndex * 24 * 60 * 60 * 1000)
@@ -115,7 +121,9 @@ export function DayColumn({
   ghostActivities = [],
   onConfirmGhost,
   onDismissGhost,
+  onRegenerateDay,
 }: DayColumnProps) {
+  const HOUR_HEIGHT = useHourHeight()
   const date = useMemo(() => {
     const d = new Date(tripStartDate.getTime() + dayIndex * 24 * 60 * 60 * 1000)
     return d.toISOString().slice(0, 10)
@@ -126,10 +134,6 @@ export function DayColumn({
   const sortedActivities = useMemo(
     () => [...activities].sort((a, b) => a.startHour - b.startHour),
     [activities],
-  )
-
-  const dayCollaborators = viewers.filter(
-    (c) => (c.selectedDayIndex ?? 0) === dayIndex,
   )
 
   const handleBackgroundClick = (e: React.MouseEvent) => {
@@ -157,6 +161,12 @@ export function DayColumn({
 
   const overlapLayout = computeOverlapLayout(layoutActivities)
 
+  // Compute travel constraint blocked ranges for this day
+  const blockedRanges = useMemo(
+    () => computeBlockedRanges(activities, timeRange),
+    [activities, timeRange],
+  )
+
   // Compute hidden counts: find which column-2 block should show the "+N more" badge
   // hiddenCount = count of activities in the same cluster whose column === -1
   const hiddenByCluster = new Map<string, number>()
@@ -183,9 +193,9 @@ export function DayColumn({
       {/* Day header */}
       <div
         className={[
-          'text-center text-xs font-medium py-1 border-b border-[var(--cal-border)] text-[var(--cal-text-secondary)] select-none',
+          'text-center text-xs font-medium py-1 text-cal-text-secondary select-none group',
           onClickDayHeader
-            ? 'cursor-pointer hover:bg-[var(--cal-border-light)] transition-colors'
+            ? 'cursor-pointer hover:bg-cal-border-light transition-colors'
             : '',
         ].join(' ')}
         onClick={onClickDayHeader}
@@ -201,11 +211,11 @@ export function DayColumn({
               }
             : undefined
         }
-      >
+        >
         <span className="inline-flex items-center gap-1">
           {label}
           {dayIntel?.weather && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] text-[var(--cal-text-secondary)]">
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-cal-text-secondary">
               {getWmoWeather(dayIntel.weather.weatherCode).icon}
               {dayIntel.weather.tempMaxC !== null && `${Math.round(dayIntel.weather.tempMaxC)}°`}
             </span>
@@ -216,33 +226,21 @@ export function DayColumn({
               travelTimeConflictCount={Object.values(dayIntel.activities).filter(a => a.conflicts.travelTime).length}
             />
           )}
-        </span>
-        {dayCollaborators.length > 0 && (
-          <div
-            className="flex items-center justify-center gap-0 mt-0.5"
-            aria-label={`Viewing: ${dayCollaborators.map((c) => c.name).join(', ')}`}
-          >
-            {dayCollaborators.slice(0, 3).map((c, i) => (
-              <div
-                key={c.userId}
-                title={c.name}
-                style={{
-                  backgroundColor: c.color,
-                  marginLeft: i === 0 ? 0 : '-4px',
-                  zIndex: 3 - i,
+          {onRegenerateDay && (
+            <Tooltip content="Regenerate day suggestions">
+              <button
+                type="button"
+                className="ml-0.5 p-0.5 rounded hover:bg-cal-border-light text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onRegenerateDay(dayIndex)
                 }}
-                className="w-4 h-4 rounded-full text-[8px] font-bold text-white flex items-center justify-center ring-1 ring-[var(--cal-surface)]"
               >
-                {c.avatarInitial}
-              </div>
-            ))}
-            {dayCollaborators.length > 3 && (
-              <span className="text-[9px] text-[var(--cal-text-tertiary)] ml-1">
-                +{dayCollaborators.length - 3}
-              </span>
-            )}
-          </div>
-        )}
+                <Sparks width={14} height={14} />
+              </button>
+            </Tooltip>
+          )}
+        </span>
       </div>
 
       {/* Droppable grid */}
@@ -250,8 +248,8 @@ export function DayColumn({
         ref={setNodeRef}
         data-day-grid={dayIndex}
         className={[
-          'relative flex-1 border-l border-[var(--cal-border-light)]',
-          isOver ? 'bg-[var(--cal-drag-over)]' : '',
+          'relative flex-1',
+          isOver ? 'bg-cal-drag-over' : '',
         ].join(' ')}
         style={{ minHeight: hourCount * HOUR_HEIGHT }}
         onClick={handleBackgroundClick}
@@ -260,17 +258,28 @@ export function DayColumn({
         {hours.map((hour) => (
           <div
             key={hour}
-            className="absolute w-full border-t border-[var(--cal-grid-line)] pointer-events-none"
+            className="absolute w-full border-t border-cal-grid-line pointer-events-none"
             style={{ top: (hour - timeRange.startHour) * HOUR_HEIGHT }}
           />
         ))}
 
-        {/* Half-hour tick lines */}
+        {/* Half-hour tick lines — subtle dots */}
         {hours.map((hour) => (
           <div
             key={`half-${hour}`}
-            className="absolute w-full border-t border-dashed border-[var(--cal-grid-line-half)] pointer-events-none"
+            className="absolute w-full pointer-events-none"
             style={{ top: (hour - timeRange.startHour) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
+          >
+            <div className="mx-4 h-px bg-cal-grid-line-half" />
+          </div>
+        ))}
+
+        {/* Travel constraint blocks — shown for flight/transport activities */}
+        {blockedRanges.map((range, i) => (
+          <TravelConstraintBlock
+            key={`tc-${i}`}
+            range={range}
+            timeRangeStartHour={timeRange.startHour}
           />
         ))}
 

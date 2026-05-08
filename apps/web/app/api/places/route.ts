@@ -8,7 +8,13 @@ import {
 import { filterByRadius } from '@/lib/haversine'
 import { createServerClient } from '@supabase/ssr'
 
-const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL
+// FastAPI backend (EC2, separate from SST API Gateway). The SST APIGW
+// exposes `/places/nearby` (no `/api` prefix) and requires auth, whereas
+// FastAPI serves `/api/places/nearby` openly — and that's the path this
+// route hits. Defaults to staging so local dev works without env config.
+// build-marker:explore-fix-2026-05-07T1200
+const FASTAPI_BASE = 'https://api.dev.gotravyl.com'
+const API_URL = process.env.FASTAPI_URL || FASTAPI_BASE
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_KEY = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY)!
 
@@ -31,12 +37,16 @@ export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')
 
   if (!API_URL) {
-    return NextResponse.json([])
+    return NextResponse.json([], { status: 503 })
   }
 
-  // Must have either coordinates or a text query — never silently default to a location
+  // Must have either coordinates or a text query — never silently default to
+  // a location. Return a 400 instead of a bare 200 [] so the client can
+  // distinguish "you didn't pass enough params" from "we searched and found
+  // nothing." Body shape stays an array for backwards-compat with callers
+  // that already do `.map()` on the response.
   if (!lat && !lng && !q) {
-    return NextResponse.json([])
+    return NextResponse.json([], { status: 400 })
   }
 
   // Extract auth from Supabase cookies so backend Lambdas can validate the user
@@ -52,54 +62,55 @@ export async function GET(req: NextRequest) {
   try {
     let data: BackendPlace[] = []
 
-    // Natural language queries go through the NLP search endpoint (SerpAPI google_local).
-    // Geocode + nearby is the fallback for structured results.
+    // Backend NLP search endpoint (`/places/search`) was removed in a recent
+    // backend deploy — only `/api/places/nearby` and `/api/places/suggest`
+    // remain. `suggest` returns the same destination-keyed list regardless
+    // of category, so for category-driven rails we always use `nearby`.
+    // `q` is kept as a hint-only field (it doesn't change the request, but
+    // future re-introduction of NLP search would re-use it).
     if (q) {
-      const nlpRes = await fetch(
-        `${API_URL}/places/search?q=${encodeURIComponent(q)}&category=${category}&limit=${limit}&lat=${lat}&lng=${lng}`,
-        { headers: { Accept: 'application/json', ...(authHeader ? { Authorization: authHeader } : {}) } }
-      )
-      if (nlpRes.ok) {
-        const nlpData = await nlpRes.json()
-        data = (nlpData.results ?? []).map((r: any) => ({
-          id: r.id,
-          name: r.name,
-          lat: r.latitude,
-          lng: r.longitude,
-          category: r.category,
-          rating: r.rating ?? 0,
-          description: r.description,
-          photo_url: r.imageUrl,
-          address: r.location,
-          price_level: r.price != null
-            ? (r.price <= 15 ? '$' : r.price <= 35 ? '$$' : r.price <= 60 ? '$$$' : '$$$$')
-            : null,
-        }))
-      }
-      // Fall back to nearby search if NLP returned nothing or failed
-      if (!data || data.length === 0) {
-        // Extract a category hint from the NLP query text for better nearby results
-        const qLower = q.toLowerCase()
-        let nearbyCategory = FOURSQUARE_CAT_MAP[category] ?? category
-        if (/restaurant|food|dining|eat/.test(qLower)) nearbyCategory = 'restaurant'
-        else if (/nightlife|bar|club|lounge|pub/.test(qLower)) nearbyCategory = 'nightlife'
-        else if (/shop|market|mall/.test(qLower)) nearbyCategory = 'shopping'
-        else if (/beach|outdoor|park|nature|hike/.test(qLower)) nearbyCategory = 'park'
-        else if (/museum|culture|art|gallery/.test(qLower)) nearbyCategory = 'museum'
-        else if (/hotel|stay|accommodation/.test(qLower)) nearbyCategory = 'hotel'
-        else if (/cafe|coffee/.test(qLower)) nearbyCategory = 'cafe'
-        else if (/entertainment|show|theater/.test(qLower)) nearbyCategory = 'attraction'
-        data = await fetchNearby(null, lat, lng, nearbyCategory, limit)
+      const nearbyCategory = FOURSQUARE_CAT_MAP[category] ?? category
+      data = await fetchNearby(q, lat, lng, nearbyCategory, limit)
+
+      // If we have a destination string but no coords (NLP-only), fall back
+      // to the suggest endpoint which will geocode the destination internally.
+      if ((!data || data.length === 0) && (!lat || !lng)) {
+        try {
+          const suggestRes = await fetch(
+            `${API_URL}/api/places/suggest?destination=${encodeURIComponent(q)}&category=${encodeURIComponent(category)}`,
+            { headers: { Accept: 'application/json', ...(authHeader ? { Authorization: authHeader } : {}) } }
+          )
+          if (suggestRes.ok) {
+            const sd = await suggestRes.json()
+            data = (sd.suggestions ?? []).map((r: any) => ({
+              id: r.id,
+              name: r.name,
+              lat: r.latitude,
+              lng: r.longitude,
+              category: r.category,
+              rating: r.rating ?? 0,
+              description: r.description,
+              photo_url: r.imageUrl,
+              address: r.location,
+              price_level: null,
+            }))
+          }
+        } catch { /* fall through with empty data */ }
       }
     } else {
       data = await fetchNearby(q, lat, lng, category, limit)
     }
 
     // Filter by geographic radius to avoid returning places from wrong cities
-    // (e.g. Universal Studios Orlando in a New Delhi trip)
+    // (e.g. Universal Studios Orlando in a New Delhi trip). Skip when the
+    // caller didn't provide coords — `parseFloat('')` is NaN and every
+    // distance check returns NaN, which the filter would treat as out-of-
+    // range and silently drop every result for NLP-only queries.
     const searchLat = parseFloat(lat)
     const searchLng = parseFloat(lng)
-    data = filterByRadius(data, searchLat, searchLng, 50)
+    if (Number.isFinite(searchLat) && Number.isFinite(searchLng)) {
+      data = filterByRadius(data, searchLat, searchLng, 50)
+    }
 
     // Map to PlaceItem format using the canonical shared mapper — strip items with no valid image
     const requestedCat = category
@@ -152,5 +163,25 @@ async function fetchNearby(
     { headers: { Accept: 'application/json' } }
   )
   if (!res.ok) return []
-  return res.json()
+  const raw = await res.json()
+  // Unwrap the nearby Lambda's { places: Place[], total } envelope
+  const nearbyPlaces: any[] = raw.places ?? (Array.isArray(raw) ? raw : [])
+  return nearbyPlaces.map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    lat: p.latitude,
+    lng: p.longitude,
+    category: p.category,
+    rating: p.rating ?? 0,
+    description: p.description ?? '',
+    // Backend returns `photo_url` directly; older shape used `photos[]`. Try both.
+    photo_url: p.photo_url ?? p.photos?.[0] ?? null,
+    address: p.address,
+    // Carry through duration + opening hours so the modal can pre-fill the
+    // itinerary slot. The shared mapper preserves these on PlaceItem.
+    hours: p.hours ?? null,
+    duration: p.duration ?? null,
+    review_count: p.review_count ?? null,
+    website: p.website ?? null,
+  }))
 }

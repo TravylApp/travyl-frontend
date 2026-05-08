@@ -71,22 +71,22 @@ export function BookingPanel({
     <div className="fixed inset-0 z-40 pointer-events-none">
       <div
         className={[
-          'absolute right-0 top-0 h-full w-96 bg-white dark:bg-[#0f1a28] border-l border-gray-200 dark:border-[#1e3a5f]/40 shadow-xl pointer-events-auto flex flex-col transition-transform duration-300',
+          'absolute right-0 top-0 h-full w-96 bg-white dark:bg-cal-surface-elevated border-l border-gray-200 dark:border-cal-border shadow-xl pointer-events-auto flex flex-col transition-transform duration-300',
           isVisible ? 'translate-x-0' : 'translate-x-full',
         ].join(' ')}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#1e3a5f]/30 shrink-0">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-cal-border shrink-0">
           <div className="flex items-center gap-2">
-            <BookmarkSolid className="w-4 h-4 text-[#003594] dark:text-[#4a7ab5]" />
-            <h2 className="text-sm font-semibold text-gray-900 dark:text-[#f5efe8]">Book My Trip</h2>
+            <BookmarkSolid className="w-4 h-4 text-primary dark:text-cal-text-secondary" />
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-cal-text">Book My Trip</h2>
           </div>
           <button
             onClick={onClose}
             aria-label="Close booking panel"
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-[#1e3a5f]/30"
+            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-cal-accent-bg"
           >
-            <Xmark className="w-4 h-4 text-gray-500 dark:text-[#7a9cc0]" />
+            <Xmark className="w-4 h-4 text-gray-500 dark:text-cal-text-secondary" />
           </button>
         </div>
 
@@ -97,14 +97,14 @@ export function BookingPanel({
           {mode === 'loading' && (
             <div className="px-4 py-4 space-y-4">
               <div>
-                <p className="text-sm text-gray-600 dark:text-[#cdd9e5] mb-2">Matching your activities…</p>
-                <div className="h-1.5 bg-gray-100 dark:bg-[#1e3a5f]/30 rounded-full overflow-hidden">
+                <p className="text-sm text-gray-600 dark:text-cal-text mb-2">Matching your activities…</p>
+                <div className="h-1.5 bg-gray-100 dark:bg-cal-accent-bg rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-[#003594] rounded-full transition-all duration-300"
+                    className="h-full bg-primary rounded-full transition-all duration-300"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <p className="text-[11px] text-gray-400 dark:text-[#4a7ab5] mt-1">{receivedCount} of {total} checked</p>
+                <p className="text-[11px] text-gray-400 dark:text-cal-text-secondary mt-1">{receivedCount} of {total} checked</p>
               </div>
 
               {/* Live rows as they arrive */}
@@ -112,17 +112,17 @@ export function BookingPanel({
                 {activities.map((a) => {
                   const m = matches.get(a.id)
                   return (
-                    <div key={a.id} className="flex items-center gap-2 py-2 border-b border-gray-50 dark:border-[#1e3a5f]/20">
+                    <div key={a.id} className="flex items-center gap-2 py-2 border-b border-gray-50 dark:border-cal-border/70">
                       {m ? (
                         m.status === 'matched' ? (
                           <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
                         ) : (
-                          <span className="h-2 w-2 rounded-full bg-gray-300 dark:bg-[#2a4a6a] shrink-0" />
+                          <span className="h-2 w-2 rounded-full bg-gray-300 dark:bg-cal-accent-bg shrink-0" />
                         )
                       ) : (
-                        <span className="h-2 w-2 rounded-full bg-gray-200 dark:bg-[#1e3a5f]/40 animate-pulse shrink-0" />
+                        <span className="h-2 w-2 rounded-full bg-gray-200 dark:bg-cal-accent-bg animate-pulse shrink-0" />
                       )}
-                      <span className="text-xs text-gray-700 dark:text-[#cdd9e5] truncate">{a.title || 'Untitled'}</span>
+                      <span className="text-xs text-gray-700 dark:text-cal-text truncate">{a.title || 'Untitled'}</span>
                       {m?.provider && (
                         <span className={`ml-auto text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${PROVIDER_COLORS[m.provider] ?? ''}`}>
                           {PROVIDER_LABELS[m.provider] ?? m.provider}
@@ -139,24 +139,24 @@ export function BookingPanel({
           {(mode === 'summary' || mode === 'done') && (
             <div className="px-4 py-4 space-y-4">
               {/* Count summary */}
-              <p className="text-xs text-gray-500 dark:text-[#7a9cc0]">
-                <span className="font-semibold text-gray-800 dark:text-[#f5efe8]">{bookableCount}</span> of{' '}
-                <span className="font-semibold text-gray-800 dark:text-[#f5efe8]">{total}</span> activities can be booked
+              <p className="text-xs text-gray-500 dark:text-cal-text-secondary">
+                <span className="font-semibold text-gray-800 dark:text-cal-text">{bookableCount}</span> of{' '}
+                <span className="font-semibold text-gray-800 dark:text-cal-text">{total}</span> activities can be booked
               </p>
 
               {/* Ready to Book */}
               {matchedActivities.length > 0 && (
                 <div>
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-[#4a7ab5] mb-2">Ready to Book</h3>
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-cal-text-secondary mb-2">Ready to Book</h3>
                   <div className="space-y-1">
                     {matchedActivities.map((a) => {
                       const m = matches.get(a.id)!
                       const isOpened = m.status === 'opened'
                       const isUncertain = m.confidence !== undefined && m.confidence >= 0.6 && m.confidence < 0.75
                       return (
-                        <div key={a.id} className="flex items-start gap-2 py-2 border-b border-gray-50 dark:border-[#1e3a5f]/20">
+                        <div key={a.id} className="flex items-start gap-2 py-2 border-b border-gray-50 dark:border-cal-border/70">
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-gray-800 dark:text-[#f5efe8] truncate">{a.title || 'Untitled'}</p>
+                            <p className="text-xs font-medium text-gray-800 dark:text-cal-text truncate">{a.title || 'Untitled'}</p>
                             <div className="flex items-center gap-1.5 mt-0.5">
                               {m.provider && (
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${PROVIDER_COLORS[m.provider] ?? ''}`}>
@@ -164,7 +164,7 @@ export function BookingPanel({
                                 </span>
                               )}
                               {m.matchedName && m.matchedName !== a.title && (
-                                <span className="text-[10px] text-gray-400 dark:text-[#4a7ab5] truncate">→ {m.matchedName}</span>
+                                <span className="text-[10px] text-gray-400 dark:text-cal-text-secondary truncate">→ {m.matchedName}</span>
                               )}
                             </div>
                             {isUncertain && (
@@ -178,7 +178,7 @@ export function BookingPanel({
                           ) : (
                             <button
                               onClick={() => onBookOne(a.id)}
-                              className="text-[11px] font-medium text-[#003594] dark:text-[#4a7ab5] hover:underline shrink-0 mt-0.5"
+                              className="text-[11px] font-medium text-primary dark:text-cal-text-secondary hover:underline shrink-0 mt-0.5"
                             >
                               Book
                             </button>
@@ -193,13 +193,13 @@ export function BookingPanel({
               {/* Not Available */}
               {unmatchedActivities.length > 0 && (
                 <div>
-                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-[#4a7ab5] mb-2">Not Available</h3>
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-cal-text-secondary mb-2">Not Available</h3>
                   <div className="space-y-1">
                     {unmatchedActivities.map((a) => (
                       <div key={a.id} className="flex items-center gap-2 py-1.5">
-                        <span className="h-2 w-2 rounded-full bg-gray-200 dark:bg-[#2a4a6a] shrink-0" />
-                        <span className="text-xs text-gray-400 dark:text-[#4a7ab5] truncate">{a.title || 'Untitled'}</span>
-                        <span className="ml-auto text-[10px] text-gray-400 dark:text-[#4a7ab5] shrink-0">No booking found</span>
+                        <span className="h-2 w-2 rounded-full bg-gray-200 dark:bg-cal-accent-bg shrink-0" />
+                        <span className="text-xs text-gray-400 dark:text-cal-text-secondary truncate">{a.title || 'Untitled'}</span>
+                        <span className="ml-auto text-[10px] text-gray-400 dark:text-cal-text-secondary shrink-0">No booking found</span>
                       </div>
                     ))}
                   </div>
@@ -221,7 +221,7 @@ export function BookingPanel({
                           href={m.affiliateUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block text-xs text-[#003594] dark:text-[#4a7ab5] hover:underline truncate"
+                          className="block text-xs text-primary dark:text-cal-text-secondary hover:underline truncate"
                         >
                           {a.title || 'Untitled'}
                         </a>
@@ -236,10 +236,10 @@ export function BookingPanel({
 
         {/* Footer */}
         {(mode === 'summary') && bookableCount > 0 && (
-          <div className="px-4 py-3 border-t border-gray-100 dark:border-[#1e3a5f]/30 shrink-0">
+          <div className="px-4 py-3 border-t border-gray-100 dark:border-cal-border shrink-0">
             <button
               onClick={onBookAll}
-              className="w-full rounded-lg bg-[#003594] text-white text-sm font-medium py-2 hover:bg-[#002a7a] transition-colors"
+              className="w-full rounded-lg bg-primary text-white text-sm font-medium py-2 hover:bg-primary transition-colors"
             >
               Book All ({bookableCount})
             </button>
@@ -247,11 +247,11 @@ export function BookingPanel({
         )}
 
         {mode === 'done' && (
-          <div className="px-4 py-3 border-t border-gray-100 dark:border-[#1e3a5f]/30 shrink-0">
+          <div className="px-4 py-3 border-t border-gray-100 dark:border-cal-border shrink-0">
             <p className="text-xs text-center text-green-600 dark:text-green-400 mb-2 font-medium">Booking links opened</p>
             <button
               onClick={onClose}
-              className="w-full rounded-lg border border-gray-200 dark:border-[#1e3a5f]/30 text-gray-600 dark:text-[#cdd9e5] text-sm py-2 hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20 transition-colors"
+              className="w-full rounded-lg border border-gray-200 dark:border-cal-border text-gray-600 dark:text-cal-text text-sm py-2 hover:bg-gray-50 dark:hover:bg-cal-accent-bg/60 transition-colors"
             >
               Close
             </button>

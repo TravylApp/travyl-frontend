@@ -23,6 +23,7 @@ export {
   fetchItineraryDays,
   fetchFlights,
   fetchHotels,
+  fetchCars,
   fetchActivities,
   forkTrip,
   fetchPublicTrips,
@@ -48,6 +49,9 @@ export {
   joinTripViaLink,
   findPendingInviteByEmail,
   savePlanToSupabase,
+  fetchDocumentUploadUrl,
+  uploadToS3Presigned,
+  fetchDocumentParse,
 } from './api';
 export {
   fetchBudgetCategories,
@@ -66,6 +70,7 @@ export {
   fetchPackingSuggestions,
   updateSuggestionStatus,
   dismissAllSuggestions,
+  seedDefaultPackingItems,
 } from './packingService';
 
 export {
@@ -82,3 +87,11 @@ export {
   mapApiPlace,
 } from './placesDiscovery';
 export type { DiscoverPageResult } from './placesDiscovery';
+
+export { fetchTransit, addTransit, updateTransit, deleteTransit } from './transitApi';
+
+export {
+  fetchAuditEntries,
+  groupAuditEntries,
+  buildRestorePlan,
+} from './historyService';

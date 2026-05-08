@@ -31,6 +31,7 @@ export const metadata: Metadata = {
   description: "AI-powered travel assistant",
   icons: {
     icon: "/icon.svg",
+    apple: "/icon.svg",
   },
   other: {
     "developed-by": "JPB Developments — https://www.jpbdevelopments.com",
@@ -46,8 +47,8 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="author" content="JPB Developments — https://www.jpbdevelopments.com" />
-        <link rel="preconnect" href="https://images.unsplash.com" />
-        <link rel="dns-prefetch" href="https://images.unsplash.com" />
+        <link rel="preconnect" href="https://images.pexels.com" />
+        <link rel="dns-prefetch" href="https://images.pexels.com" />
         <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://flagcdn.com" />
         <link href="https://api.fontshare.com/v2/css?f[]=satoshi@300,400,500,600,700,800,900&display=swap" rel="stylesheet" />
@@ -59,7 +60,7 @@ export default function RootLayout({
       </head>
       <body
         className={`${geistMono.variable} ${sora.variable} ${lustria.variable} antialiased`}
-        style={{ fontFamily: "'Satoshi', sans-serif" }}
+        style={{ fontFamily: "'Satoshi', system-ui, sans-serif" }}
       >
         <Providers>
           {children}

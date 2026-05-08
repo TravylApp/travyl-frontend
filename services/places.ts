@@ -5,6 +5,11 @@ import { validateQueryParams } from './lib/validation'
 
 const FOURSQUARE_URL = 'https://api.foursquare.com/v3/places/search'
 
+interface FsqPhoto {
+  prefix: string
+  suffix: string
+}
+
 interface Place {
   id: string
   name: string
@@ -64,6 +69,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       radius: String(rad),
       limit: String(lim),
       sort: 'DISTANCE',
+      fields: 'fsq_id,name,categories,distance,geocodes,location,rating,photos',
     })
 
     if (category) {
@@ -85,18 +91,22 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const data = await res.json()
 
-    const places: Place[] = (data.results || []).map((p: any) => ({
-      id: p.fsq_id,
-      name: p.name,
-      category: p.categories?.[0]?.name || 'Unknown',
-      distance: p.distance,
-      latitude: p.geocodes?.main?.latitude,
-      longitude: p.geocodes?.main?.longitude,
-      address: p.location?.address || '',
-      city: p.location?.locality || '',
-      rating: p.rating ? p.rating / 2 : undefined, // Foursquare uses 0-10, convert to 0-5
-      photos: [], // Would need separate API call for photos
-    }))
+    const places: Place[] = (data.results || []).map((p: any) => {
+      const photoItems: FsqPhoto[] = p.photos ?? []
+      const photoUrls = photoItems.slice(0, 3).map((photo) => `${photo.prefix}original${photo.suffix}`)
+      return {
+        id: p.fsq_id,
+        name: p.name,
+        category: p.categories?.[0]?.name || 'Unknown',
+        distance: p.distance,
+        latitude: p.geocodes?.main?.latitude,
+        longitude: p.geocodes?.main?.longitude,
+        address: p.location?.address || '',
+        city: p.location?.locality || '',
+        rating: p.rating ? p.rating / 2 : undefined, // Foursquare uses 0-10, convert to 0-5
+        photos: photoUrls,
+      }
+    })
 
     const response: PlacesResponse = { places, total: places.length }
     return { statusCode: 200, body: JSON.stringify(response) }

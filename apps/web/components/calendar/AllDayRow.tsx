@@ -74,15 +74,15 @@ function EventPill({ event }: EventPillProps) {
       </button>
 
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-56 bg-[var(--cal-surface-elevated)] border border-[var(--cal-border)] rounded-lg shadow-lg p-3 text-left">
-          <p className="text-[13px] font-semibold text-[var(--cal-text)] leading-snug mb-1">
+        <div className="absolute left-0 top-full mt-1 z-50 w-56 bg-cal-surface-elevated border border-cal-border rounded-lg shadow-lg p-3 text-left">
+          <p className="text-[13px] font-semibold text-cal-text leading-snug mb-1">
             {event.name}
           </p>
-          <p className="text-[11px] text-[var(--cal-text-secondary)]">
+          <p className="text-[11px] text-cal-text-secondary">
             {formatPillTime(event.startTime)}
             {event.endTime ? ` – ${formatPillTime(event.endTime)}` : ''}
           </p>
-          <p className="text-[11px] text-[var(--cal-text-tertiary)] mt-0.5 truncate">
+          <p className="text-[11px] text-cal-text-tertiary mt-0.5 truncate">
             {event.venueName}
           </p>
           {event.ticketUrl && (
@@ -90,7 +90,7 @@ function EventPill({ event }: EventPillProps) {
               href={event.ticketUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-block mt-2 text-[11px] font-medium text-[#003594] hover:underline"
+              className="inline-block mt-2 text-[11px] font-medium text-primary hover:underline"
             >
               Get tickets →
             </a>
@@ -129,23 +129,23 @@ function OverflowPill({ events }: OverflowPillProps) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(v => !v)}
-        className="w-full text-left text-[10px] px-1 py-0.5 rounded truncate leading-tight text-[var(--cal-text-secondary)] bg-[var(--cal-border-light)] hover:bg-[var(--cal-border)] transition-colors"
+        className="w-full text-left text-[10px] px-1 py-0.5 rounded truncate leading-tight text-cal-text-secondary bg-cal-border-light hover:bg-cal-border transition-colors"
       >
         +{events.length} more
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1 z-50 w-56 bg-[var(--cal-surface-elevated)] border border-[var(--cal-border)] rounded-lg shadow-lg py-1">
+        <div className="absolute left-0 top-full mt-1 z-50 w-56 bg-cal-surface-elevated border border-cal-border rounded-lg shadow-lg py-1">
           {events.map(event => {
             const color = CATEGORY_COLORS[event.category]
             return (
-              <div key={event.id} className="flex items-start gap-2 px-3 py-2 hover:bg-[var(--cal-border-light)] transition-colors">
+              <div key={event.id} className="flex items-start gap-2 px-3 py-2 hover:bg-cal-border-light transition-colors">
                 <div
                   className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0"
                   style={{ backgroundColor: color }}
                 />
                 <div className="min-w-0">
-                  <p className="text-[12px] font-medium text-[var(--cal-text)] truncate">{event.name}</p>
-                  <p className="text-[10px] text-[var(--cal-text-secondary)]">
+                  <p className="text-[12px] font-medium text-cal-text truncate">{event.name}</p>
+                  <p className="text-[10px] text-cal-text-secondary">
                     {formatPillTime(event.startTime)} · {event.venueName}
                   </p>
                   {event.ticketUrl && (
@@ -153,7 +153,7 @@ function OverflowPill({ events }: OverflowPillProps) {
                       href={event.ticketUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[10px] text-[#003594] hover:underline"
+                      className="text-[10px] text-primary hover:underline"
                     >
                       Tickets →
                     </a>
@@ -189,12 +189,12 @@ export function AllDayRow({
   if (flights.length === 0 && hotels.length === 0 && !hasEvents) return null
 
   return (
-    <div className="flex border-b border-[var(--cal-border)] min-h-[2rem]">
+    <div className="flex min-h-[2rem]">
       {/* Gutter spacer matching TimeGutter width */}
       <div className="flex-shrink-0 w-14" />
 
       {/* Per-day cells */}
-      <div className="flex flex-1 min-w-0">
+      <div className="flex flex-1 min-w-0 divide-x divide-cal-border-light">
         {days.map(({ dayIndex, isoDate }) => {
           const dayFlights = flights.filter(f => f.dayIndex === dayIndex)
           const dayHotels = hotels.filter(
@@ -207,7 +207,7 @@ export function AllDayRow({
           return (
             <div
               key={dayIndex}
-              className="flex-1 min-w-0 border-l border-[var(--cal-border-light)] px-1 py-0.5 flex flex-col gap-0.5"
+              className="flex-1 min-w-0 px-1 py-0.5 flex flex-col gap-0.5"
             >
               {/* Hotel banners */}
               {dayHotels.map(hotel => {
@@ -242,7 +242,7 @@ export function AllDayRow({
                   className={[
                     'text-[10px] font-medium px-1 py-0.5 rounded truncate',
                     flight.direction === 'arrival'
-                      ? 'bg-[var(--cal-accent-bg)] text-[var(--cal-accent)]'
+                      ? 'bg-cal-accent-bg text-cal-accent'
                       : 'bg-red-50 text-red-700',
                   ].join(' ')}
                 >

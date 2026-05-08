@@ -17,20 +17,35 @@ import type { DbPackingItem, PackingAuditEntry, PackingSuggestion } from '../typ
  * @throws PostgrestError if the query fails
  */
 export async function fetchPackingItems(tripId: string): Promise<DbPackingItem[]> {
+  // The PostgREST embed of profiles via `packing_items_user_id_fkey` /
+  // `profiles!user_id` was returning 400 (FK hint) and then 500 (column
+  // disambiguator) on prod. Bypass the relation resolution entirely:
+  // fetch items, then batch-fetch the referenced profiles in one query.
   const { data, error } = await supabase
     .from('packing_items')
-    .select('*, user:profiles!packing_items_user_id_fkey(display_name, avatar_url), owner:profiles!packing_items_owner_id_fkey(display_name)')
+    .select('*')
     .eq('trip_id', tripId)
     .order('category')
     .order('sort_order', { ascending: true })
   if (error) throw error
-  return (data ?? []).map((row: any) => ({
+  const rows = (data ?? []) as any[]
+  const ids = Array.from(new Set([
+    ...rows.map((r) => r.user_id),
+    ...rows.map((r) => r.owner_id),
+  ].filter(Boolean)))
+  let byId = new Map<string, any>()
+  if (ids.length > 0) {
+    const { data: profs } = await supabase
+      .from('profiles')
+      .select('id, display_name, avatar_url')
+      .in('id', ids)
+    byId = new Map((profs ?? []).map((p: any) => [p.id, p]))
+  }
+  return rows.map((row: any) => ({
     ...row,
-    user_display_name: row.user?.display_name ?? null,
-    user_avatar_url: row.user?.avatar_url ?? null,
-    owner_display_name: row.owner?.display_name ?? null,
-    user: undefined,
-    owner: undefined,
+    user_display_name: byId.get(row.user_id)?.display_name ?? null,
+    user_avatar_url: byId.get(row.user_id)?.avatar_url ?? null,
+    owner_display_name: row.owner_id ? (byId.get(row.owner_id)?.display_name ?? null) : null,
   }))
 }
 
@@ -43,19 +58,33 @@ export async function fetchPackingItems(tripId: string): Promise<DbPackingItem[]
  * @throws PostgrestError if the query fails
  */
 export async function fetchPackingAuditLog(tripId: string, limit = 50): Promise<PackingAuditEntry[]> {
+  // Same approach as fetchPackingItems — drop the embedded profile join,
+  // batch-fetch profiles separately so this is resilient to PostgREST FK
+  // resolution quirks.
   const { data, error } = await supabase
     .from('packing_audit_log')
-    .select('*, user:profiles!packing_audit_log_user_id_fkey(display_name,email), target:profiles!packing_audit_log_target_user_id_fkey(display_name,email)')
+    .select('*')
     .eq('trip_id', tripId)
     .order('created_at', { ascending: false })
     .limit(limit)
   if (error) throw error
-  return (data ?? []).map((row: any) => ({
+  const rows = (data ?? []) as any[]
+  const ids = Array.from(new Set([
+    ...rows.map((r) => r.user_id),
+    ...rows.map((r) => r.target_user_id),
+  ].filter(Boolean)))
+  let byId = new Map<string, any>()
+  if (ids.length > 0) {
+    const { data: profs } = await supabase
+      .from('profiles')
+      .select('id, display_name, email')
+      .in('id', ids)
+    byId = new Map((profs ?? []).map((p: any) => [p.id, p]))
+  }
+  return rows.map((row: any) => ({
     ...row,
-    user_display_name: row.user?.display_name ?? row.user?.email ?? null,
-    target_display_name: row.target?.display_name ?? row.target?.email ?? null,
-    user: undefined,
-    target: undefined,
+    user_display_name: byId.get(row.user_id)?.display_name ?? byId.get(row.user_id)?.email ?? null,
+    target_display_name: row.target_user_id ? (byId.get(row.target_user_id)?.display_name ?? byId.get(row.target_user_id)?.email ?? null) : null,
   }))
 }
 
@@ -73,19 +102,92 @@ export async function fetchPackingAuditLog(tripId: string, limit = 50): Promise<
  */
 export async function insertPackingItem(
   tripId: string, userId: string, name: string, category: string, sortOrder: number,
-  ownerId?: string | null, groupTag?: string | null,
+  ownerId?: string | null, groupTag?: string | null, quantity: number = 1,
 ): Promise<DbPackingItem> {
   const { data, error } = await supabase
     .from('packing_items')
     .insert({
       trip_id: tripId, user_id: userId, name, category, sort_order: sortOrder,
-      quantity: 1, packed_count: 0,
+      quantity, packed_count: 0,
       ...(ownerId !== undefined && { owner_id: ownerId }),
       ...(groupTag !== undefined && { group_tag: groupTag }),
     })
     .select().single()
   if (error) throw error
   return data
+}
+
+/**
+ * Bulk-insert default packing items for a freshly-created trip. Builds
+ * essentials, clothing (quantity-aware to trip duration), toiletries, and
+ * electronics; conditional items based on weather (swimsuit if warm, jacket
+ * if cold, umbrella if rain). Idempotent: callers should gate via the
+ * `trip.trip_context.packing_seeded` flag so this runs at most once per trip.
+ *
+ * @param tripId - UUID of the trip
+ * @param userId - UUID of the inserting user (used as user_id attribution)
+ * @param opts - Trip-derived signals: `days`, `isWarm`, `isCold`, `hasRain`
+ * @returns The inserted rows
+ */
+export async function seedDefaultPackingItems(
+  tripId: string,
+  userId: string,
+  opts: { days: number; isWarm: boolean; isCold: boolean; hasRain: boolean },
+): Promise<DbPackingItem[]> {
+  const days = Math.max(1, opts.days || 5)
+  const clothesQty = Math.min(days + 1, 7)
+  const bottomsQty = Math.min(Math.ceil(days / 2), 4)
+  type Seed = { name: string; category: string; quantity?: number }
+  const seeds: Seed[] = [
+    // Essentials
+    { name: 'Passport / ID', category: 'essentials' },
+    { name: 'Phone & charger', category: 'essentials' },
+    { name: 'Wallet & cards', category: 'essentials' },
+    { name: 'Travel insurance docs', category: 'documents' },
+    { name: 'Boarding pass / tickets', category: 'documents' },
+    // Clothing
+    { name: 'T-shirts / tops', category: 'clothing', quantity: clothesQty },
+    { name: 'Underwear', category: 'clothing', quantity: clothesQty },
+    { name: 'Socks (pairs)', category: 'clothing', quantity: clothesQty },
+    { name: 'Pants / shorts', category: 'clothing', quantity: bottomsQty },
+    { name: 'Sleepwear', category: 'clothing' },
+    ...(opts.isWarm ? [
+      { name: 'Swimsuit', category: 'clothing' },
+      { name: 'Sunglasses', category: 'accessories' },
+    ] : []),
+    ...(opts.isCold ? [
+      { name: 'Warm jacket', category: 'clothing' },
+      { name: 'Scarf & gloves', category: 'accessories' },
+    ] : []),
+    ...(opts.hasRain ? [{ name: 'Rain jacket / umbrella', category: 'clothing' }] : []),
+    // Toiletries
+    { name: 'Toothbrush & toothpaste', category: 'toiletries' },
+    { name: 'Shampoo & conditioner', category: 'toiletries' },
+    { name: 'Deodorant', category: 'toiletries' },
+    { name: 'Sunscreen', category: 'toiletries' },
+    { name: 'Medications', category: 'toiletries' },
+    // Electronics
+    { name: 'Power adapter', category: 'electronics' },
+    { name: 'Headphones', category: 'electronics' },
+    { name: 'Camera', category: 'electronics' },
+  ]
+  const sortByCategory: Record<string, number> = {}
+  const rows = seeds.map((s) => {
+    const idx = sortByCategory[s.category] ?? 0
+    sortByCategory[s.category] = idx + 1
+    return {
+      trip_id: tripId,
+      user_id: userId,
+      name: s.name,
+      category: s.category,
+      sort_order: idx,
+      quantity: s.quantity ?? 1,
+      packed_count: 0,
+    }
+  })
+  const { data, error } = await supabase.from('packing_items').insert(rows).select()
+  if (error) throw error
+  return data ?? []
 }
 
 /**

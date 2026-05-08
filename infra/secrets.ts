@@ -17,6 +17,7 @@ export const pexels = new sst.Secret('Pexels')
 
 // ─── Travel & Flights ───────────────────────────────────────
 export const duffelApiToken = new sst.Secret('DuffelApiToken')
+export const pricelineRapidapiKey = new sst.Secret('PricelineRapidapiKey')
 
 // ─── Weather & Maps ─────────────────────────────────────────
 export const visualCrossingApiKey = new sst.Secret('VisualCrossingApiKey')
@@ -34,3 +35,10 @@ export const openchargeApiKey = new sst.Secret('OpenchargeApiKey')
 
 // ─── Booking / Affiliate ────────────────────────────────────
 export const openTableAffiliateKey = new sst.Secret('OpenTableAffiliateKey')
+
+// ─── Transit / OTP ───────────────────────────────────────────
+export const otpServerUrl = new sst.Secret('OtpServerUrl')
+export const otpApiKey = new sst.Secret('OtpApiKey')
+
+// ─── TTS ─────────────────────────────────────────────────────
+export const elevenLabsApiKey = new sst.Secret('ElevenLabsApiKey')

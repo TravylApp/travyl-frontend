@@ -11,6 +11,7 @@ import {
   tripadvisorApiKey,
   geonamesUsername,
   duffelApiToken,
+  pricelineRapidapiKey,
   visualCrossingApiKey,
   graphhopperApiKey,
   timezonedbApiKey,
@@ -18,17 +19,72 @@ import {
   predicthqApiKey,
   openExchangeRatesAppId,
   openchargeApiKey,
+  elevenLabsApiKey,
 } from './secrets'
 
 export const site = new sst.aws.Nextjs('TravylWeb', {
   path: 'apps/web',
+  // /api/trips/plan and /api/trips/extract proxy to FastAPI for AI trip
+  // generation, which routinely takes 30-60s. SST's default Lambda timeout
+  // of 20s would 504 these requests. Cap at 60s — that's CloudFront's max
+  // origin response timeout without a service-quota increase. SST mirrors
+  // server.timeout into the CloudFront origin readTimeout in its KV
+  // metadata; setting it higher than 60s makes the viewer-request function
+  // return "invalid value for origin rewrite" at runtime and breaks the
+  // entire site. If we ever need >60s here, request a CloudFront quota
+  // bump first, then raise both this timeout and the KV readTimeout.
+  server: {
+    timeout: '60 seconds',
+  },
+  domain: {
+    name: 'dev.gotravyl.com',
+    dns: false,
+    cert: 'arn:aws:acm:us-east-1:525610233002:certificate/4b2a73a3-2a0f-4fc1-91e5-6e6cc958310c',
+  },
   environment: {
+    // React's CJS shim picks dev vs prod bundle from NODE_ENV at runtime.
+    // Without this, Lambda 502s with "Cannot find module './cjs/react.development.js'".
+    NODE_ENV: 'production',
+
+    // Public (browser-safe)
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl.value,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: supabaseAnonKey.value,
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: supabaseAnonKey.value,
     NEXT_PUBLIC_RECOMMENDATION_API_URL: api.url,
+
+    // Server-only — Supabase
     SUPABASE_SECRET_KEY: supabaseSecretKey.value,
+
+    // Server-only — Search & Location
+    SERPAPI_KEY: serpApiKey.value,
+    FOURSQUARE_CLIENT_ID: foursquareClientId.value,
+    FOURSQUARE_CLIENT_SECRET: foursquareClientSecret.value,
+    FOURSQUARE_API_KEY: foursquareApiKey.value,
+    TRIPADVISOR_API_KEY: tripadvisorApiKey.value,
+    GEONAMES_USERNAME: geonamesUsername.value,
+
+    // Server-only — Images
     PEXELS_API_KEY: pexels.value,
+
+    // Server-only — Travel
+    DUFFEL_API_TOKEN: duffelApiToken.value,
+    PRICELINE_RAPIDAPI_KEY: pricelineRapidapiKey.value,
+
+    // Server-only — Weather & Maps
+    VISUAL_CROSSING_API_KEY: visualCrossingApiKey.value,
+    GRAPHHOPPER_API_KEY: graphhopperApiKey.value,
+    TIMEZONEDB_API_KEY: timezonedbApiKey.value,
+
+    // Server-only — Events
+    EVENTBRITE_API_KEY: eventbriteApiKey.value,
+    PREDICTHQ_API_KEY: predicthqApiKey.value,
+
+    // Server-only — Misc
+    OPEN_EXCHANGE_RATES_APP_ID: openExchangeRatesAppId.value,
+    OPENCHARGE_API_KEY: openchargeApiKey.value,
+
+    // Server-only — TTS
+    ELEVENLABS_API_KEY: elevenLabsApiKey.value,
   },
 })
 
@@ -60,6 +116,7 @@ export const web = new sst.x.DevCommand('TravylWebDev', {
 
     // Server-only — Travel
     DUFFEL_API_TOKEN: duffelApiToken.value,
+    PRICELINE_RAPIDAPI_KEY: pricelineRapidapiKey.value,
 
     // Server-only — Weather & Maps
     VISUAL_CROSSING_API_KEY: visualCrossingApiKey.value,
@@ -73,5 +130,8 @@ export const web = new sst.x.DevCommand('TravylWebDev', {
     // Server-only — Misc
     OPEN_EXCHANGE_RATES_APP_ID: openExchangeRatesAppId.value,
     OPENCHARGE_API_KEY: openchargeApiKey.value,
+
+    // Server-only — TTS
+    ELEVENLABS_API_KEY: elevenLabsApiKey.value,
   },
 })

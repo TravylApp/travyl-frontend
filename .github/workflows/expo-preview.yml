@@ -2,7 +2,8 @@ name: Expo Preview
 on:
   push:
     branches:
-      - RB24-7
+      - develop
+  workflow_dispatch:
 
 jobs:
   update:
@@ -15,13 +16,17 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          node-version: 18
+          # eas-cli 18+ requires Node 20+. Was pinned to 18 here, which
+          # made every push to develop fail with "engine node ... Expected
+          # version >=20.0.0" while installing eas-cli@18.11.
+          node-version: 20
           cache: 'npm'
 
       - name: Setup Expo
         uses: expo/expo-github-action@v8
         with:
           expo-version: latest
+          eas-version: latest
           eas-cache: true
           token: ${{ secrets.EXPO_TOKEN }}
 
@@ -29,5 +34,5 @@ jobs:
         run: npm install
 
       - name: Publish Update
-        run: npx eas update --branch preview --message "Auto-update from GitHub RB24-7"
+        run: npx eas update --branch preview --message "Auto-update from develop @ ${{ github.sha }}"
         working-directory: apps/mobile

@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
     const supabase = getSupabase()
     let body: any; try { body = await req.json() } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
-    const { title, destination, start_date, end_date, status, travelers, budget, currency, trip_context, hotels, flights, itinerary } = body
+    const { title, destination, start_date, end_date, status, travelers, budget, currency, trip_context, itinerary } = body
 
     // Derive user_id from verified session — never trust body.user_id
     let user_id: string | null = null
@@ -88,59 +88,24 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Save hotels to hotels table (best effort)
-  if (hotels?.length) {
-    const hotelRows = hotels.map((h: any) => ({
-      trip_id: tripId,
-      data: {
-        name: h.name,
-        address: h.address || null,
-        latitude: h.lat || null,
-        longitude: h.lng || null,
-        price_per_night: h.price_per_night,
-        total_price: h.total_price || null,
-        currency: h.currency || 'USD',
-        rating: h.rating || null,
-        star_rating: h.stars || null,
-        image_url: h.photo_url || null,
-        check_in: start_date,
-        check_out: end_date,
-        booking_ref: null,
-        offer_id: null,
-        amenities: h.amenities || [],
-        booking_url: h.booking_url || h.link || null,
-      },
-    }))
-    const { error: hotelErr } = await supabase.from('hotels').insert(hotelRows)
-  }
+  // Hotels are no longer auto-seeded into the hotels table from the AI
+  // planner's output — that surfaced as fake "bookings" on the hotels tab.
+  // Suggestions still live in `trip_context.hotels` for inspiration; real
+  // bookings only land in the table when the user clicks "Add to trip"
+  // from search or fills the manual form.
 
-  // Save flights to flights table (best effort)
-  if (flights?.length) {
-    const flightRows = flights.map((f: any) => ({
-      trip_id: tripId,
-      data: {
-        airline: f.airline,
-        flight_number: null,
-        origin_iata: f.origin_iata || '',
-        origin_name: f.origin_name || null,
-        dest_iata: f.dest_iata || '',
-        dest_name: city,
-        departure_at: f.departure_time,
-        arrival_at: f.arrival_time,
-        price: f.price,
-        currency: f.currency || 'USD',
-        cabin_class: null,
-        booking_ref: null,
-        offer_id: null,
-      },
-    }))
-    const { error: flightErr } = await supabase.from('flights').insert(flightRows)
-  }
+  // Flights are no longer auto-seeded from the AI planner's output —
+  // suggestions still live in `trip_context.flights` for inspiration, but
+  // only user-confirmed selections (search "Add to trip" or manual form)
+  // land in the flights table.
 
   // Itinerary is stored in trip_context — no separate tables needed
 
   return NextResponse.json(data)
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'Internal error' }, { status: 500 })
+    // Don't leak raw error messages (DB constraint names, Postgres internals,
+    // network errors) to anonymous callers. Log server-side and return generic.
+    console.error('[trips/create] internal error:', e)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }

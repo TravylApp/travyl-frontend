@@ -56,13 +56,22 @@ export function useYjsSync(
   }, [tripId, tripStartDate, userId])
 
   // ── Debounced flush ──────────────────────────────────────
-  const flush = useCallback(async () => {
+  const flush = useCallback(async (retryCount = 0) => {
     if (readOnly) return
     const ids = Array.from(dirtyRef.current)
     if (ids.length === 0) return
     dirtyRef.current.clear()
 
     const rows: ReturnType<typeof toActivityRow>[] = []
+    const tripStartDate = tripStartDateRef.current
+
+    if (!tripStartDate || isNaN(new Date(tripStartDate + 'T00:00:00Z').getTime())) {
+      console.warn('[useYjsSync] Skipping flush: tripStartDate is not yet available or invalid:', tripStartDate)
+      // Keep ids marked as dirty for the next flush attempt once tripStartDate is ready
+      ids.forEach(id => dirtyRef.current.add(id))
+      return
+    }
+
     for (const id of ids) {
       const yMap = activitiesMap.get(id)
       if (!yMap) continue
@@ -84,8 +93,26 @@ export function useYjsSync(
       .upsert(rows as any)
 
     if (upsertError) {
-      console.error('[useYjsSync] flush upsert error:', upsertError.message)
-      setError(upsertError.message)
+      const errorMessage = upsertError.message
+      const isRLSError = errorMessage.includes('row-level security policy')
+
+      if (isRLSError && retryCount < 3) {
+        // RLS errors might be due to session/caching timing issues - retry with exponential backoff
+        console.warn(`[useYjsSync] RLS error on flush, retrying (${retryCount + 1}/3)...`)
+        // Check collaborator status
+        supabase.from('trip_collaborators').select('*').eq('trip_id', tripId).eq('user_id', userId).maybeSingle().then(({ data }) => {
+          console.log('[useYjsSync] Current user collaborator status:', data)
+        })
+        // Mark ids as dirty again for retry
+        ids.forEach(id => dirtyRef.current.add(id))
+        setTimeout(() => flush(retryCount + 1), 1000 * (retryCount + 1)) // 1s, 2s, 3s delays
+        return
+      }
+
+      console.error('[useYjsSync] flush upsert error after retries:', errorMessage)
+      setError(errorMessage)
+      // Mark ids as dirty again for manual retry
+      ids.forEach(id => dirtyRef.current.add(id))
     } else {
       // Write audit rows for each flushed activity
       const isMoveFields = ['day', 'endDay', 'startHour']
@@ -108,16 +135,25 @@ export function useYjsSync(
             edit_type: isMove ? 'move' : 'edit',
             original_data: before,
             new_data: isMove
-              ? { day: after.day, endDay: after.endDay, startHour: after.startHour }
+              ? {
+                  title: after.title,
+                  day: after.day,
+                  endDay: after.endDay,
+                  startHour: after.startHour,
+                }
               : after,
             user_id: userIdRef.current,
           }
         })
-        .filter(Boolean)
+        .filter(<T>(x: T): x is NonNullable<T> => x != null)
 
       if (auditRows.length > 0) {
         supabase.from('itinerary_edits').insert(auditRows).then(({ error }) => {
-          if (error) console.warn('[useYjsSync] audit insert error:', error.message)
+          if (error) {
+            console.error('[useYjsSync] CRITICAL: audit insert error:', error.message, error.details)
+          } else {
+            console.log('[useYjsSync] Successfully logged audit rows:', auditRows.length)
+          }
         })
       }
     }
@@ -173,13 +209,17 @@ export function useYjsSync(
           if (event.target instanceof Y.Map && event instanceof Y.YMapEvent) {
             activitiesMap.forEach((yMap, key) => {
               if (yMap === event.target) {
-                if (!beforeSnapshotRef.current.has(key)) {
-                  const before: Record<string, unknown> = {}
-                  event.changes.keys.forEach(({ oldValue }, field) => {
-                    before[field] = oldValue
-                  })
-                  beforeSnapshotRef.current.set(key, before as Partial<CalendarActivity>)
+                let before = beforeSnapshotRef.current.get(key)
+                if (!before) {
+                  before = {}
+                  beforeSnapshotRef.current.set(key, before)
                 }
+                event.changes.keys.forEach(({ oldValue }, field) => {
+                  // Only capture the VERY FIRST oldValue for each field in this window
+                  if (!(field in before!)) {
+                    (before as any)[field] = oldValue
+                  }
+                })
               }
             })
           }
@@ -202,13 +242,25 @@ export function useYjsSync(
     }
   }, [activitiesMap, scheduleFlush, flush])
 
+  // Stable ref to activitiesMap so the postgres_changes subscription
+  // doesn't re-run (and hit "cannot add callbacks after subscribe") when
+  // the Yjs map reference changes. Only re-subscribe when tripId changes.
+  const activitiesMapRef = useRef(activitiesMap)
+  useEffect(() => {
+    activitiesMapRef.current = activitiesMap
+  }, [activitiesMap])
+
   // ── Supabase Realtime Postgres Changes ──────────────────
   // Receive activity changes persisted by OTHER clients.
   // Uses application-level activity.id (UUID) to update our local Yjs map,
   // bypassing the Y.Map internal-ID incompatibility that breaks Yjs delta sync.
   useEffect(() => {
+    // Unique-per-mount suffix prevents `supabase.channel()` from returning a
+    // stale, already-subscribed channel under React 19 double-invoke / HMR,
+    // which would reject any further `.on()` calls.
+    const topic = `activity-pg:${tripId}-${Math.random().toString(36).slice(2, 8)}`
     const channel = supabase
-      .channel(`activity-pg:${tripId}`)
+      .channel(topic)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'activity', filter: `trip_id=eq.${tripId}` },
@@ -219,17 +271,18 @@ export function useYjsSync(
           // Skip activities with pending local edits to avoid overwriting unsaved changes
           if (dirtyRef.current.has(id)) return
 
-          activitiesMap.doc?.transact(() => {
+          const map = activitiesMapRef.current
+          map.doc?.transact(() => {
             if (payload.eventType === 'DELETE') {
-              activitiesMap.delete(id)
+              map.delete(id)
               return
             }
             const row = payload.new as ActivityRow
             const cal = toCalendarActivity(row, tripStartDateRef.current)
-            let yMap = activitiesMap.get(cal.id)
+            let yMap = map.get(cal.id)
             if (!yMap) {
               yMap = new Y.Map<unknown>()
-              activitiesMap.set(cal.id, yMap)
+              map.set(cal.id, yMap)
             }
             for (const key of CALENDAR_ACTIVITY_KEYS) {
               const val = (cal as any)[key]
@@ -241,9 +294,9 @@ export function useYjsSync(
       .subscribe()
 
     return () => {
-      channel.unsubscribe()
+      supabase.removeChannel(channel)
     }
-  }, [tripId, activitiesMap])
+  }, [tripId])
 
   // ── Tab refocus reconciliation ───────────────────────────
   useEffect(() => {

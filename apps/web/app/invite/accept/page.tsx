@@ -5,11 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2, CheckCircle, XCircle } from 'lucide-react'
 import Link from 'next/link'
 import { supabase, acceptInviteByToken } from '@travyl/shared'
+import { useQueryClient } from '@tanstack/react-query'
 
 type Status = 'loading' | 'success' | 'invalid' | 'already-accepted' | 'error'
 
 function AcceptInviteInner() {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
   const [status, setStatus] = useState<Status>('loading')
@@ -30,11 +32,20 @@ function AcceptInviteInner() {
           return
         }
 
+        console.log('[InviteAccept] Accepting invite with token:', token)
         const { tripId } = await acceptInviteByToken(token!)
+        console.log('[InviteAccept] Successfully accepted invite for trip:', tripId)
+        // Invalidate trips cache to include the newly joined trip
+        console.log('[InviteAccept] Invalidating trips cache')
+        await queryClient.invalidateQueries({ queryKey: ['trips'] })
+        // Also refetch the trips to ensure the cache is updated
+        await queryClient.refetchQueries({ queryKey: ['trips'] })
+        console.log('[InviteAccept] Cache invalidated and refetched')
         setStatus('success')
         setTimeout(() => router.replace(`/trip/${tripId}`), 1200)
       } catch (err: any) {
         const msg = err?.message ?? ''
+        console.error('[InviteAccept] Failed to accept invite:', err)
         if (msg.includes('Results contain 0 rows') || msg.includes('PGRST116') || msg.includes('not found or already accepted')) {
           setStatus('already-accepted')
         } else {
@@ -45,7 +56,7 @@ function AcceptInviteInner() {
     }
 
     accept()
-  }, [token, router])
+  }, [token, router, queryClient])
 
   return (
     <div className="min-h-screen bg-[#f8f6f3] flex items-center justify-center px-4">

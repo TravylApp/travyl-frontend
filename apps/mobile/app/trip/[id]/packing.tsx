@@ -1,12 +1,40 @@
 import { useState, useEffect, useRef, useCallback, useContext } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Animated, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Animated, Alert, Modal, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useItineraryScreen, TextStyles, FontSize, supabase } from '@travyl/shared';
 import type { PackingList } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { PageTransition, TabCtx, useTabAccent } from './_layout';
+import { PageTransition, TabCtx, useTabAccent, weatherEmoji } from './_layout';
+
+type TempUnit = 'F' | 'C';
+const TEMP_UNIT_KEY = 'weather_temp_unit';
+// Detect source unit by scanning every temperature value. The trip context
+// has no explicit `units` field today, so we infer from magnitude: any value
+// above 50 is almost certainly Fahrenheit (no inhabited place sustains 50°C
+// regularly), values consistently at or below 50 are Celsius. Using the max
+// of all samples (current high/low + every forecast high/low) makes the call
+// robust against a single outlier.
+const detectSourceUnit = (samples: Array<number | undefined | null>): TempUnit => {
+  let maxSeen = -Infinity;
+  for (const s of samples) {
+    if (typeof s === 'number' && Number.isFinite(s) && s > maxSeen) maxSeen = s;
+  }
+  return maxSeen > 50 ? 'F' : 'C';
+};
+const formatTemp = (
+  value: number | string | undefined,
+  source: TempUnit,
+  display: TempUnit,
+) => {
+  const n = typeof value === 'string' ? parseFloat(value) : value;
+  if (n == null || Number.isNaN(n)) return '—';
+  if (source === display) return `${Math.round(n)}°`;
+  const converted = display === 'F' ? n * 9 / 5 + 32 : (n - 32) * 5 / 9;
+  return `${Math.round(converted)}°`;
+};
 
 /* ------------------------------------------------------------------ */
 /*  Animated Progress Bar                                              */
@@ -85,10 +113,10 @@ function buildPackingList(trip: any): PackingList {
       { item: 'Boarding pass / tickets', packed: false },
     ],
     'Clothing': [
-      { item: `T-shirts / tops (${Math.min(days + 1, 7)})`, packed: false },
-      { item: `Underwear (${Math.min(days + 1, 7)})`, packed: false },
-      { item: `Socks (${Math.min(days + 1, 7)} pairs)`, packed: false },
-      { item: `Pants / shorts (${Math.min(Math.ceil(days / 2), 4)})`, packed: false },
+      { item: 'T-shirts / tops', packed: false, quantity: Math.min(days + 1, 7) },
+      { item: 'Underwear', packed: false, quantity: Math.min(days + 1, 7) },
+      { item: 'Socks (pairs)', packed: false, quantity: Math.min(days + 1, 7) },
+      { item: 'Pants / shorts', packed: false, quantity: Math.min(Math.ceil(days / 2), 4) },
       { item: 'Sleepwear', packed: false },
       ...(isWarm ? [{ item: 'Swimsuit', packed: false }, { item: 'Sunglasses', packed: false }] : []),
       ...(isCold ? [{ item: 'Warm jacket', packed: false }, { item: 'Scarf & gloves', packed: false }] : []),
@@ -117,16 +145,21 @@ export default function PackingScreen() {
   const id = _id || ctxId;
   const { trip } = useItineraryScreen(id);
 
-  const defaultList = buildPackingList(trip);
-  const [packingList, setPackingList] = useState<PackingList>(defaultList);
+  // Start empty so the user doesn't see a list built from default trip
+  // duration / weather. The effect below populates from trip_context once
+  // `trip` loads, or builds defaults from the real trip data.
+  const [packingList, setPackingList] = useState<PackingList>({});
   const seeded = useRef(false);
 
-  // Load saved packing list from trip_context if available
+  // Load saved packing list from trip_context if available — otherwise
+  // generate defaults from the actual trip (duration + weather).
   useEffect(() => {
     if (trip && !seeded.current) {
       const saved = (trip.trip_context as any)?.packing_data;
       if (saved && typeof saved === 'object' && Object.keys(saved).length > 0) {
         setPackingList(saved);
+      } else {
+        setPackingList(buildPackingList(trip));
       }
       seeded.current = true;
     }
@@ -156,10 +189,48 @@ export default function PackingScreen() {
     });
   }, [persistPacking]);
 
+  // Categories expand to whichever list is currently displayed; recomputed
+  // by the effect below once `packingList` populates.
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(Object.keys(defaultList)),
+    new Set(),
   );
+
+  useEffect(() => {
+    setExpandedCategories(new Set(Object.keys(packingList)));
+  }, [packingList]);
   const [newItemInputs, setNewItemInputs] = useState<Record<string, string>>({});
+
+  // Tap-to-toggle temperature unit, persisted across visits.
+  const [tempUnit, setTempUnit] = useState<TempUnit>('F');
+  useEffect(() => {
+    AsyncStorage.getItem(TEMP_UNIT_KEY).then((v) => {
+      if (v === 'C' || v === 'F') setTempUnit(v);
+    }).catch(() => {});
+  }, []);
+  const toggleTempUnit = useCallback(() => {
+    setTempUnit((prev) => {
+      const next: TempUnit = prev === 'F' ? 'C' : 'F';
+      AsyncStorage.setItem(TEMP_UNIT_KEY, next).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  // Tips popup + add-item modal
+  const [showTips, setShowTips] = useState(false);
+  const [addItemModal, setAddItemModal] = useState<{ category: string } | null>(null);
+  const [addItemText, setAddItemText] = useState('');
+  const [addItemQty, setAddItemQty] = useState(1);
+  const addItemInputRef = useRef<TextInput>(null);
+
+  const openAddItem = (category: string) => {
+    setAddItemText('');
+    setAddItemQty(1);
+    setAddItemModal({ category });
+  };
+  const closeAddItem = () => {
+    Keyboard.dismiss();
+    setAddItemModal(null);
+  };
   const [isCreatingList, setIsCreatingList] = useState(false);
   const [newListName, setNewListName] = useState('');
 
@@ -167,10 +238,11 @@ export default function PackingScreen() {
   const colors = useThemeColors();
   const destination = trip?.destination ?? '';
 
-  /* ---- derived counts ---- */
+  /* ---- derived counts (weighted by quantity) ---- */
   const allItems = Object.values(packingList).flat();
-  const totalItems = allItems.length;
-  const packedCount = allItems.filter((i) => i.packed).length;
+  const itemQty = (i: { quantity?: number }) => i.quantity ?? 1;
+  const totalItems = allItems.reduce((sum, i) => sum + itemQty(i), 0);
+  const packedCount = allItems.reduce((sum, i) => sum + (i.packed ? itemQty(i) : 0), 0);
   const progressPercent = totalItems > 0 ? (packedCount / totalItems) * 100 : 0;
 
   /* ---- mutations ---- */
@@ -203,15 +275,37 @@ export default function PackingScreen() {
     });
   };
 
-  const addItem = (category: string) => {
-    const text = newItemInputs[category]?.trim();
-    if (text) {
-      updatePacking((prev) => ({
-        ...prev,
-        [category]: [...prev[category], { item: text, packed: false }],
-      }));
-      setNewItemInputs((prev) => ({ ...prev, [category]: '' }));
-    }
+  const addItem = (category: string, itemText?: string, quantity?: number) => {
+    const text = (itemText ?? newItemInputs[category] ?? '').trim();
+    if (!text) return;
+    const qty = Math.max(1, quantity ?? 1);
+    updatePacking((prev) => ({
+      ...prev,
+      [category]: [
+        ...(prev[category] ?? []),
+        { item: text, packed: false, ...(qty > 1 ? { quantity: qty } : {}) },
+      ],
+    }));
+    setNewItemInputs((prev) => ({ ...prev, [category]: '' }));
+  };
+
+  const updateQuantity = (category: string, index: number, delta: number) => {
+    updatePacking((prev) => {
+      const updated = { ...prev };
+      const list = [...(updated[category] ?? [])];
+      const cur = list[index];
+      if (!cur) return prev;
+      const nextQty = Math.max(1, (cur.quantity ?? 1) + delta);
+      list[index] = { ...cur, quantity: nextQty === 1 ? undefined : nextQty };
+      updated[category] = list;
+      return updated;
+    });
+  };
+
+  const submitAddItem = () => {
+    if (!addItemModal) return;
+    addItem(addItemModal.category, addItemText, addItemQty);
+    closeAddItem();
   };
 
   const deleteCategory = (category: string) => {
@@ -257,115 +351,147 @@ export default function PackingScreen() {
     <PageTransition>
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.surface }}
-      contentContainerStyle={{ padding: 16, paddingBottom: 48 }}
+      contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 48 }}
+      stickyHeaderIndices={[0]}
     >
-      {/* ========== Header cards (horizontal scroll) ========== */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 14, gap: 10, paddingVertical: 10 }}
-        style={{ marginHorizontal: -16, marginBottom: 18 }}
-      >
-        {/* Packing Progress */}
+      {/* ========== Sticky Packing Progress ========== */}
+      <View style={{ backgroundColor: colors.surface, paddingBottom: 12 }}>
         <LinearGradient
           colors={[ACCENT, ACCENT]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{ borderRadius: 14, padding: 16, width: 200 }}
+          style={{ borderRadius: 14, padding: 16 }}
         >
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 6,
-            }}
-          >
-            <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: 'rgba(255,255,255,0.85)' }}>
-              Packing Progress
-            </Text>
-            <FontAwesome name="suitcase" size={16} color="rgba(255,255,255,0.8)" />
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <FontAwesome name="suitcase" size={14} color="rgba(255,255,255,0.85)" />
+              <Text style={{ ...TextStyles.bodyLg, fontWeight: '500', color: 'rgba(255,255,255,0.9)' }}>
+                Packing Progress
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <Text style={{ ...TextStyles.bodyLg, fontWeight: '700', color: '#fff' }}>
+                {packedCount} / {totalItems}
+              </Text>
+              <Pressable onPress={() => setShowTips(true)} hitSlop={10} style={{ width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.18)' }}>
+                <FontAwesome name="lightbulb-o" size={11} color="#fff" />
+              </Pressable>
+            </View>
           </View>
-          <Text style={{ ...TextStyles.headline, color: '#fff', marginBottom: 8 }}>
-            {packedCount} / {totalItems}
-          </Text>
           <ProgressBar
             percent={progressPercent}
-            height={7}
+            height={6}
             trackColor="rgba(255,255,255,0.2)"
             fillColor="#fff"
           />
-          <Text style={{ ...TextStyles.body, color: 'rgba(255,255,255,0.85)', marginTop: 6 }}>
+          <Text style={{ ...TextStyles.caption, color: 'rgba(255,255,255,0.85)', marginTop: 6 }}>
             {Math.round(progressPercent)}% packed
           </Text>
         </LinearGradient>
+      </View>
 
-        {/* Weather Info */}
+      {/* ========== Header cards (non-sticky) ========== */}
+      <View style={{ gap: 12, marginBottom: 18 }}>
+        {/* Weather — covers every day of the trip; tap to switch °F / °C */}
         {trip?.trip_context?.weather?.current && (() => {
           const currentWeather = trip.trip_context.weather!.current!;
-          const condition = currentWeather.condition ?? '';
-          const weatherIcon = condition.toLowerCase().includes('sun') ? 'sun-o'
-            : condition.toLowerCase().includes('rain') ? 'umbrella'
-            : condition.toLowerCase().includes('cloud') ? 'cloud' : 'sun-o';
+          const condition = (currentWeather as any).condition ?? (currentWeather as any).conditions ?? '';
+          const iconKey = (currentWeather as any).icon || condition;
+          const forecast: any[] = trip.trip_context.weather?.forecast ?? [];
+          const currentTemp = (currentWeather as any).temp ?? currentWeather.high;
+          const sourceUnit = detectSourceUnit([
+            currentTemp,
+            ...forecast.map((d: any) => d?.high),
+          ]);
+          // Build a slot per trip day from start_date → end_date so the user
+          // sees the whole stay even when the API returns fewer points.
+          const startMs = trip.start_date ? new Date(trip.start_date).getTime() : NaN;
+          const endMs = trip.end_date ? new Date(trip.end_date).getTime() : NaN;
+          let dayCells: Array<{ date: string; data: any | null }> = [];
+          if (Number.isFinite(startMs) && Number.isFinite(endMs) && endMs >= startMs) {
+            const byDate: Record<string, any> = {};
+            for (const d of forecast) {
+              if (d?.date) byDate[d.date] = d;
+            }
+            const dayMs = 86400000;
+            const totalDays = Math.min(14, Math.round((endMs - startMs) / dayMs) + 1);
+            for (let i = 0; i < totalDays; i++) {
+              const iso = new Date(startMs + i * dayMs).toISOString().slice(0, 10);
+              dayCells.push({ date: iso, data: byDate[iso] ?? null });
+            }
+          } else {
+            dayCells = forecast.slice(0, 7).map((d: any) => ({ date: d?.date ?? '', data: d }));
+          }
           return (
-            <View
+            <Pressable
+              onPress={toggleTempUnit}
+              hitSlop={6}
               style={{
                 borderRadius: 14,
                 padding: 16,
-                width: 160,
                 backgroundColor: ACCENT + '10',
                 borderWidth: 1,
                 borderColor: ACCENT + '20',
               }}
             >
-              <FontAwesome name={weatherIcon} size={20} color={ACCENT} style={{ marginBottom: 6 }} />
-              <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.textSecondary, marginBottom: 4 }}>
-                Weather
-              </Text>
-              <Text style={{ ...TextStyles.title, color: colors.text, marginBottom: 2 }}>
-                {currentWeather.high}°
-              </Text>
-              <Text style={{ ...TextStyles.body, color: colors.textSecondary, marginBottom: 4 }}>
-                Low: {currentWeather.low}°
-              </Text>
-              <Text style={{ ...TextStyles.caption, color: colors.text, marginBottom: 4 }}>
-                {condition}
-              </Text>
-              <Text style={{ ...TextStyles.sm, color: colors.textTertiary }}>
-                {destination}
-              </Text>
-            </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: dayCells.length > 0 ? 12 : 0 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <Text style={{ fontSize: 28 }}>{weatherEmoji(iconKey)}</Text>
+                  <View>
+                    <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+                      <Text style={{ ...TextStyles.headline, color: colors.text }}>
+                        {formatTemp(currentTemp, sourceUnit, tempUnit)}
+                      </Text>
+                      <Text style={{ ...TextStyles.caption, color: colors.textSecondary, fontWeight: '600' }}>
+                        {tempUnit}
+                      </Text>
+                    </View>
+                    <Text style={{ ...TextStyles.caption, color: colors.textSecondary }} numberOfLines={1}>
+                      {[condition, destination].filter(Boolean).join(' · ')}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>
+                  Tap to switch
+                </Text>
+              </View>
+              {dayCells.length > 0 && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 14, paddingTop: 12 }}
+                  style={{ borderTopWidth: 1, borderTopColor: ACCENT + '20' }}
+                >
+                  {dayCells.map((cell, idx) => {
+                    const d = cell.data;
+                    const dayName = d?.day
+                      || (cell.date ? new Date(cell.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short' }) : '');
+                    return (
+                      <View key={cell.date || idx} style={{ alignItems: 'center', minWidth: 44 }}>
+                        <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginBottom: 2 }}>{dayName}</Text>
+                        <Text style={{ fontSize: 18, marginBottom: 2, opacity: d ? 1 : 0.35 }}>
+                          {d ? weatherEmoji(d.icon || d.conditions || '') : '·'}
+                        </Text>
+                        <Text style={{ ...TextStyles.captionEm, fontWeight: '700', color: d ? colors.text : colors.textTertiary }}>
+                          {d ? formatTemp(d.high, sourceUnit, tempUnit) : '—'}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              )}
+            </Pressable>
           );
         })()}
 
-        {/* Packing Tips */}
-        <View
-          style={{
-            borderRadius: 14,
-            padding: 16,
-            width: 200,
-            backgroundColor: colors.warningBg,
-            borderWidth: 1,
-            borderColor: colors.warning,
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-            <FontAwesome name="lightbulb-o" size={14} color="#d97706" />
-            <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>
-              Packing Tips
-            </Text>
-          </View>
-          {['Roll clothes to save space', 'Pack versatile layers', 'Keep essentials in carry-on'].map((tip, i) => (
-            <Text key={i} style={{ ...TextStyles.caption, color: colors.warning, marginTop: 4 }}>- {tip}</Text>
-          ))}
-        </View>
-      </ScrollView>
+      </View>
 
       {/* ========== Packing Categories ========== */}
       <View style={{ gap: 12 }}>
         {Object.entries(packingList).map(([category, items]) => {
-          const catPacked = items.filter((i) => i.packed).length;
-          const catPercent = items.length > 0 ? (catPacked / items.length) * 100 : 0;
+          const catTotal = items.reduce((sum, i) => sum + itemQty(i), 0);
+          const catPacked = items.reduce((sum, i) => sum + (i.packed ? itemQty(i) : 0), 0);
+          const catPercent = catTotal > 0 ? (catPacked / catTotal) * 100 : 0;
           const isExpanded = expandedCategories.has(category);
 
           return (
@@ -416,7 +542,7 @@ export default function PackingScreen() {
                     }}
                   >
                     <Text style={{ ...TextStyles.captionEm, color: ACCENT }}>
-                      {catPacked}/{items.length}
+                      {catPacked}/{catTotal}
                     </Text>
                   </View>
                   <Pressable onPress={() => deleteCategory(category)} hitSlop={10}>
@@ -479,6 +605,27 @@ export default function PackingScreen() {
                         {item.item}
                       </Text>
 
+                      {/* Quantity stepper (defaults to 1, hidden until incremented) */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Pressable
+                          onPress={() => updateQuantity(category, index, -1)}
+                          hitSlop={8}
+                          style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <FontAwesome name="minus" size={9} color={colors.textSecondary} />
+                        </Pressable>
+                        <Text style={{ ...TextStyles.body, fontWeight: '600', color: colors.text, minWidth: 18, textAlign: 'center' }}>
+                          {item.quantity ?? 1}
+                        </Text>
+                        <Pressable
+                          onPress={() => updateQuantity(category, index, 1)}
+                          hitSlop={8}
+                          style={{ width: 24, height: 24, borderRadius: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}
+                        >
+                          <FontAwesome name="plus" size={9} color={colors.textSecondary} />
+                        </Pressable>
+                      </View>
+
                       {/* Delete item */}
                       <Pressable
                         onPress={() => removeItem(category, index)}
@@ -490,41 +637,28 @@ export default function PackingScreen() {
                     </Pressable>
                   ))}
 
-                  {/* Add Item input */}
-                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
-                    <TextInput
-                      value={newItemInputs[category] || ''}
-                      onChangeText={(text) =>
-                        setNewItemInputs((prev) => ({ ...prev, [category]: text }))
-                      }
-                      onSubmitEditing={() => addItem(category)}
-                      placeholder="New item..."
-                      placeholderTextColor={colors.textTertiary}
-                      style={{
-                        flex: 1,
-                        paddingHorizontal: 12,
-                        paddingVertical: 10,
-                        fontSize: FontSize.bodyLg,
-                        borderWidth: 1,
-                        borderColor: ACCENT + '15',
-                        borderRadius: 10,
-                        color: colors.text,
-                        backgroundColor: colors.surface,
-                      }}
-                    />
-                    <Pressable
-                      onPress={() => addItem(category)}
-                      style={{
-                        backgroundColor: ACCENT,
-                        paddingHorizontal: 16,
-                        borderRadius: 10,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Add</Text>
-                    </Pressable>
-                  </View>
+                  {/* Add Item — opens a modal so the keyboard + input are always visible */}
+                  <Pressable
+                    onPress={() => openAddItem(category)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      marginTop: 10,
+                      paddingVertical: 11,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderStyle: 'dashed',
+                      borderColor: ACCENT + '40',
+                      backgroundColor: ACCENT + '08',
+                    }}
+                  >
+                    <FontAwesome name="plus" size={11} color={ACCENT} />
+                    <Text style={{ ...TextStyles.bodyEm, color: ACCENT, fontWeight: '600' }}>
+                      Add Item
+                    </Text>
+                  </Pressable>
                 </View>
               )}
             </View>
@@ -628,11 +762,130 @@ export default function PackingScreen() {
             <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT }}>
               Create New List
             </Text>
-            <Text style={{ ...TextStyles.body, color: ACCENT }}>Add a custom packing list</Text>
           </Pressable>
         )}
       </View>
     </ScrollView>
+
+    {/* ── Packing Tips popup ───────────────────────────────── */}
+    <Modal visible={showTips} transparent animationType="fade" onRequestClose={() => setShowTips(false)}>
+      <Pressable
+        onPress={() => setShowTips(false)}
+        style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }}
+      >
+        <Pressable
+          onPress={(e) => e.stopPropagation()}
+          style={{ backgroundColor: colors.cardBackground, borderRadius: 16, padding: 20 }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <FontAwesome name="lightbulb-o" size={16} color={ACCENT} />
+              <Text style={{ ...TextStyles.title, color: colors.text }}>Packing Tips</Text>
+            </View>
+            <Pressable onPress={() => setShowTips(false)} hitSlop={12}>
+              <FontAwesome name="times" size={16} color={colors.textSecondary} />
+            </Pressable>
+          </View>
+          {[
+            'Roll clothes instead of folding to save 30% space.',
+            'Pack versatile layers — a light jacket works in most climates.',
+            'Keep a full set of essentials (meds, charger, IDs) in your carry-on.',
+            'Use packing cubes to separate clean and dirty laundry.',
+            'Photograph your luggage in case it gets lost.',
+          ].map((tip, i) => (
+            <View key={i} style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+              <Text style={{ ...TextStyles.body, color: ACCENT, fontWeight: '700' }}>{i + 1}.</Text>
+              <Text style={{ ...TextStyles.body, color: colors.text, flex: 1, lineHeight: 20 }}>{tip}</Text>
+            </View>
+          ))}
+        </Pressable>
+      </Pressable>
+    </Modal>
+
+    {/* ── Add Item modal ───────────────────────────────────── */}
+    <Modal visible={addItemModal !== null} transparent animationType="fade" onRequestClose={closeAddItem}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <Pressable
+          onPress={closeAddItem}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{ backgroundColor: colors.cardBackground, borderRadius: 16, padding: 20 }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <Text style={{ ...TextStyles.title, color: colors.text }}>
+                Add to {addItemModal?.category}
+              </Text>
+              <Pressable onPress={closeAddItem} hitSlop={12}>
+                <FontAwesome name="times" size={16} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+            <TextInput
+              ref={addItemInputRef}
+              value={addItemText}
+              onChangeText={setAddItemText}
+              placeholder="What do you need?"
+              placeholderTextColor={colors.textTertiary}
+              autoFocus
+              returnKeyType="done"
+              blurOnSubmit
+              onSubmitEditing={submitAddItem}
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                fontSize: FontSize.bodyXl,
+                borderWidth: 1,
+                borderColor: ACCENT + '30',
+                borderRadius: 10,
+                color: colors.text,
+                backgroundColor: colors.surface,
+                marginBottom: 14,
+              }}
+            />
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>Quantity</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Pressable
+                  onPress={() => setAddItemQty((q) => Math.max(1, q - 1))}
+                  hitSlop={8}
+                  style={{ width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <FontAwesome name="minus" size={11} color={colors.textSecondary} />
+                </Pressable>
+                <Text style={{ ...TextStyles.title, color: colors.text, minWidth: 28, textAlign: 'center' }}>
+                  {addItemQty}
+                </Text>
+                <Pressable
+                  onPress={() => setAddItemQty((q) => q + 1)}
+                  hitSlop={8}
+                  style={{ width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <FontAwesome name="plus" size={11} color={colors.textSecondary} />
+                </Pressable>
+              </View>
+            </View>
+            <Pressable
+              onPress={submitAddItem}
+              disabled={!addItemText.trim()}
+              style={{
+                backgroundColor: addItemText.trim() ? ACCENT : colors.border,
+                paddingVertical: 14,
+                borderRadius: 12,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>
+                Add {addItemQty > 1 ? `× ${addItemQty}` : ''}
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </KeyboardAvoidingView>
+    </Modal>
     </PageTransition>
   );
 }

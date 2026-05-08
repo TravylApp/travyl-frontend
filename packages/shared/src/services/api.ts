@@ -8,7 +8,7 @@
 
 import { supabase } from './supabase';
 import { mapToDbType, getWebApiBase } from '../utils';
-import type { Trip, Profile, SavedItem, MosaicTile, InspirationCard, ExplorePlaceRow, HeroConfig, Activity, ItineraryDayWithActivities, Flight, Hotel, TripCollaborator, TripNote, Visibility, LinkPermission, CollaboratorRole } from '../types';
+import type { Trip, Profile, SavedItem, MosaicTile, InspirationCard, ExplorePlaceRow, HeroConfig, Activity, ItineraryDayWithActivities, Flight, Hotel, Car, TripCollaborator, TripNote, Visibility, LinkPermission, CollaboratorRole, DocumentParseResult } from '../types';
 
 /**
  * Fetches all trips owned by a user, sorted by creation date (newest first).
@@ -28,21 +28,17 @@ export async function fetchTrips(userId: string): Promise<Trip[]> {
 
 /**
  * Fetches trips where the user is an accepted collaborator (not the owner).
- * Strips the join column `trip_collaborators` before returning.
+ * Uses a security definer function to avoid RLS issues with joins.
  * @param userId - Supabase auth user UUID
  * @returns Array of Trip objects the user collaborates on
  * @throws PostgrestError if the query fails
  */
 export async function fetchCollaboratorTrips(userId: string): Promise<Trip[]> {
+  // Use the security definer function to avoid RLS issues
   const { data, error } = await supabase
-    .from('trips')
-    .select('*, trip_collaborators!inner(*)')
-    .eq('trip_collaborators.user_id', userId)
-    .eq('trip_collaborators.invite_status', 'accepted')
-    .order('created_at', { ascending: false });
+    .rpc('get_collaborator_trips', { p_user_id: userId });
   if (error) throw error;
-  // Strip the join column before returning
-  return (data ?? []).map(({ trip_collaborators: _tc, ...trip }) => trip as Trip);
+  return data ?? [];
 }
 
 /**
@@ -100,7 +96,7 @@ export async function fetchProfile(userId: string): Promise<Profile | null> {
  * @returns The updated Profile object
  * @throws PostgrestError if the update fails
  */
-export async function updateProfile(userId: string, updates: Partial<Pick<Profile, 'display_name' | 'avatar_url' | 'city' | 'country' | 'preferences'>>): Promise<Profile> {
+export async function updateProfile(userId: string, updates: Partial<Pick<Profile, 'display_name' | 'avatar_url' | 'city' | 'country' | 'home_airport' | 'preferences' | 'onboarding_completed'>>): Promise<Profile> {
   const { data, error } = await supabase
     .from('profiles')
     .update(updates)
@@ -250,6 +246,18 @@ export async function fetchHotels(tripId: string): Promise<Hotel[]> {
     .order('created_at', { ascending: true });
   if (error) return []; // Table doesn't exist yet — fall back to trip_context
   return data ?? [];
+}
+
+export async function fetchCars(tripId: string): Promise<Car[]> {
+  // Cars are stored in trip_context.cars JSONB, not a dedicated table
+  const { data, error } = await supabase
+    .from('trips')
+    .select('trip_context')
+    .eq('id', tripId)
+    .single();
+  if (error || !data?.trip_context) return [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((data.trip_context as any).cars as Car[] | undefined) ?? [];
 }
 
 /**
@@ -421,13 +429,30 @@ export async function forkTrip(tripId: string): Promise<Trip> {
  * Fetch all public trips (for explore page)
  */
 export async function fetchPublicTrips(): Promise<Trip[]> {
-  const { data, error } = await supabase
+  // The previous `profiles!user_id(...)` PostgREST embed 400s on prod
+  // because the relation between `trips.user_id` and `public.profiles`
+  // isn't reliably resolvable (trips.user_id FKs to auth.users; the
+  // public.profiles row is keyed by the same id but PostgREST can't
+  // always follow that). Fetch trips first, then batch-fetch the
+  // referenced profiles in a single follow-up query and merge.
+  const { data: trips, error } = await supabase
     .from('trips')
-    .select('*, profiles!trips_user_id_fkey(display_name, avatar_url)')
+    .select('*')
     .eq('visibility', 'public')
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return data ?? [];
+  const rows = (trips ?? []) as Trip[];
+  const userIds = Array.from(new Set(rows.map((t) => t.user_id).filter(Boolean)));
+  if (userIds.length === 0) return rows;
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, display_name, avatar_url')
+    .in('id', userIds);
+  const byId = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+  return rows.map((t) => ({
+    ...t,
+    profiles: byId.get(t.user_id) ?? null,
+  })) as Trip[];
 }
 
 /**
@@ -569,7 +594,7 @@ export async function updateTripDetails(
  * @throws PostgrestError if the delete fails
  */
 export async function deleteTrip(tripId: string): Promise<void> {
-  const { error } = await supabase.from('trips').delete().eq('id', tripId)
+  const { error } = await supabase.rpc('delete_trip_cascade', { p_trip_id: tripId })
   if (error) throw error
 }
 
@@ -707,7 +732,7 @@ export async function updateTripThemeSettings(
 export async function fetchCollaborators(tripId: string): Promise<TripCollaborator[]> {
   const { data, error } = await supabase
     .from('trip_collaborators')
-    .select('*, profile:profiles!trip_collaborators_user_id_fkey(display_name, avatar_url)')
+    .select('*, profile:profiles(display_name, avatar_url)')
     .eq('trip_id', tripId)
     .order('created_at', { ascending: true })
   if (error) throw error
@@ -761,8 +786,35 @@ export async function acceptInviteByToken(inviteToken: string): Promise<{ tripId
  * @throws PostgrestError if the insert fails
  */
 export async function joinTripViaLink(tripId: string, userId: string, role: CollaboratorRole): Promise<void> {
-  const { error } = await supabase.from('trip_collaborators').insert({ trip_id: tripId, user_id: userId, role_type: role, invite_status: 'accepted', invited_by: userId, accepted_at: new Date().toISOString() })
-  if (error) throw error
+  console.log('[joinTripViaLink] Adding collaborator:', { tripId, userId, role })
+  try {
+    // Use SECURITY DEFINER function to bypass RLS and avoid infinite recursion
+    const { error, data, status, statusText } = await supabase
+      .rpc('join_trip_via_link', {
+        p_trip_id: tripId,
+        p_user_id: userId,
+        p_role_type: role
+      })
+
+    if (error) {
+      const errorInfo = {
+        message: error.message || 'No error message',
+        details: error.details || 'No details',
+        hint: error.hint || 'No hint',
+        code: error.code || 'No code',
+        status,
+        statusText,
+        name: error.name,
+        timestamp: new Date().toISOString()
+      }
+      console.error('[joinTripViaLink] Failed to add collaborator:', JSON.stringify(errorInfo, null, 2))
+      throw new Error(error.message || 'Failed to join trip')
+    }
+    console.log('[joinTripViaLink] Successfully added collaborator:', data)
+  } catch (err) {
+    console.error('[joinTripViaLink] Exception caught:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2))
+    throw err
+  }
 }
 
 /**
@@ -892,10 +944,15 @@ export async function savePlanToSupabase(
   if (!ext.dates.start || ext.dates.start < tomorrowStr) {
     ext.dates.start = tomorrowStr
   }
-  if (!ext.dates.end || ext.dates.end <= ext.dates.start) {
-    const end = new Date(ext.dates.start)
-    end.setDate(end.getDate() + duration - 1)
-    ext.dates.end = end.toISOString().split('T')[0]
+  // Always recompute end_date from the capped duration so the day-strip count
+  // matches `trip_context.itinerary.length`. Previously, the AI could return
+  // a month-long range (e.g. May 1 → May 31) and only the itinerary was capped,
+  // leaving the trip header showing 31 days against a 14-day itinerary.
+  const startMs = new Date(ext.dates.start + 'T00:00:00').getTime()
+  const computedEnd = new Date(startMs + (duration - 1) * 86400000)
+    .toISOString().split('T')[0]
+  if (!ext.dates.end || ext.dates.end <= ext.dates.start || ext.dates.end > computedEnd) {
+    ext.dates.end = computedEnd
   }
 
   // Cap itinerary to requested duration — API sometimes returns more days than asked
@@ -1061,4 +1118,64 @@ export async function savePlanToSupabase(
 
   onProgress?.('Done!', 100)
   return tripId
+}
+
+/**
+ * Gets a presigned S3 URL for uploading a document image.
+ */
+export async function fetchDocumentUploadUrl(
+  token: string,
+  contentType: string,
+  fileSize: number,
+): Promise<{ uploadUrl: string; objectKey: string }> {
+  const apiUrl = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
+  const res = await fetch(`${apiUrl}/documents/upload-url`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contentType, fileSize }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string }
+    throw new Error(err.error ?? `Upload URL error: ${res.status}`)
+  }
+  return res.json() as Promise<{ uploadUrl: string; objectKey: string }>
+}
+
+/**
+ * Uploads a file blob to S3 via a presigned URL.
+ */
+export async function uploadToS3Presigned(url: string, file: Blob): Promise<void> {
+  const res = await fetch(url, {
+    method: 'PUT',
+    body: file,
+    headers: { 'Content-Type': file.type },
+  })
+  if (!res.ok) {
+    throw new Error(`Upload failed: ${res.status}`)
+  }
+}
+
+/**
+ * Parses a document image from S3 via Claude Vision.
+ */
+export async function fetchDocumentParse(
+  token: string,
+  objectKey: string,
+  tripId?: string,
+  hint?: string,
+): Promise<DocumentParseResult> {
+  const apiUrl = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
+  const body: Record<string, unknown> = { objectKey }
+  if (tripId) body.tripId = tripId
+  if (hint) body.hint = hint
+  const res = await fetch(`${apiUrl}/documents/parse`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error((err as { error?: string }).error ?? `Parse error: ${res.status}`)
+  }
+  return res.json() as Promise<DocumentParseResult>
 }

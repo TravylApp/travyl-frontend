@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import type { SpotlightResult } from '@travyl/shared'
 import { SpotlightResultGroup } from './SpotlightResultGroup'
 
-const CATEGORY_ORDER = ['trip', 'restaurant', 'activity', 'destination', 'navigation', 'command', 'setting']
+const CATEGORY_ORDER = ['action', 'trip', 'restaurant', 'activity', 'hotel', 'flight', 'destination', 'navigation', 'command', 'setting']
 
 interface Props {
   results: Record<string, SpotlightResult[]>

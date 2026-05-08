@@ -1,55 +1,47 @@
-import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@travyl/shared'
+import { useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { fetchAuditEntries, supabase } from '@travyl/shared'
+import type { EnrichedAuditEntry } from '@travyl/shared'
 
-export interface AuditEntry {
-  id: string
-  activity_id: string
-  edit_type: 'create' | 'delete' | 'move' | 'edit' | 'revert'
-  original_data: Record<string, unknown> | null
-  new_data: Record<string, unknown> | null
-  user_id: string | null
-  created_at: string
-  displayName: string   // merged from profiles
-  activityName: string  // best-effort from new_data or original_data
-}
-
-async function fetchHistory(tripId: string): Promise<AuditEntry[]> {
-  const { data: edits, error } = await supabase
-    .from('itinerary_edits')
-    .select('*')
-    .eq('trip_id', tripId)
-    .order('created_at', { ascending: false })
-    .limit(100)
-
-  if (error || !edits) return []
-
-  const userIds = [...new Set(edits.map((e) => e.user_id).filter(Boolean))]
-  const { data: profiles } = await supabase
-    .from('profiles')
-    .select('id, display_name')
-    .in('id', userIds)
-
-  const nameMap: Record<string, string> = {}
-  for (const p of profiles ?? []) {
-    nameMap[p.id] = p.display_name ?? 'Unknown'
-  }
-
-  return edits.map((e) => ({
-    ...e,
-    displayName: e.user_id ? (nameMap[e.user_id] ?? 'Unknown') : 'Unknown',
-    activityName:
-      (e.new_data as any)?.title ??
-      (e.original_data as any)?.title ??
-      (e.new_data as any)?.activity_name ??
-      (e.original_data as any)?.activity_name ??
-      'Activity',
-  }))
-}
+export type AuditEntry = EnrichedAuditEntry
+export type { EnrichedAuditEntry }
 
 export function useActivityHistory(tripId: string, enabled: boolean) {
+  const queryClient = useQueryClient()
+
+  useEffect(() => {
+    if (!enabled || !tripId) return
+
+    const channel = supabase
+      .channel(`itinerary-edits:${tripId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'itinerary_edits',
+          filter: `trip_id=eq.${tripId}`,
+        },
+        (payload) => {
+          console.log('[useActivityHistory] Real-time audit entry received:', payload.new)
+          queryClient.invalidateQueries({ queryKey: ['activity-history', tripId] })
+        },
+      )
+      .subscribe((status, err) => {
+        console.log(`[useActivityHistory] Subscription status for trip ${tripId}:`, status)
+        if (err) {
+          console.error('[useActivityHistory] Subscription error:', err.message)
+        }
+      })
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [tripId, enabled, queryClient])
+
   return useQuery({
     queryKey: ['activity-history', tripId],
-    queryFn: () => fetchHistory(tripId),
+    queryFn: () => fetchAuditEntries(tripId),
     enabled,
     staleTime: 0,
   })

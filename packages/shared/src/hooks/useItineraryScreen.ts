@@ -13,21 +13,29 @@
 
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTrip } from './useTrip';
 import { useItineraryDays } from './useItineraryDays';
 import { useFlights } from './useFlights';
 import { useHotels } from './useHotels';
+import { useCars } from './useCars';
+import { useTransit } from './useTransit';
+import { buildTransitViewModel } from '../viewmodels/transitViewModel';
+import type { TransitViewModel } from '../viewmodels/transitViewModel';
 import { useExchangeRates } from './useExchangeRates';
+import { useTripActivities, type TripActivityRow } from './useTripActivities';
 import {
   buildItineraryDayViewModel,
   buildFlightViewModel,
   buildHotelViewModel,
+  buildCarViewModel,
 } from '../viewmodels/itineraryViewModel';
 import type { ItineraryDayViewModel } from '../viewmodels/itineraryViewModel';
 import { buildBudgetSummary } from '../viewmodels/budgetViewModel';
 import { upscaleGoogleImage } from '../utils';
-import { useSettingsStore } from '../stores/settingsStore';
+import { useDisplayPrefs } from './useDisplayPrefs';
+import { supabase } from '../services/supabase';
 
 /**
  * Synthesizes a basic day-by-day itinerary from `trip_context.explore_items`
@@ -199,6 +207,114 @@ function buildDaysFromContext(tripContext: any, trip?: any): ItineraryDayViewMod
   });
 }
 
+/** Merge user-added activity rows (from `activity` table) into the day view models.
+ *  Rows are matched to days by `starting_date`; if a day has no date, we fall back
+ *  to its index relative to trip.start_date. */
+function mergeUserActivities(
+  days: ItineraryDayViewModel[],
+  trip: any,
+  rows: TripActivityRow[],
+): ItineraryDayViewModel[] {
+  if (!rows.length || !days.length) return days;
+
+  const startDate = trip?.start_date ? new Date(trip.start_date + 'T00:00:00') : null;
+  const dayDateByIndex = days.map((_, i) =>
+    startDate ? new Date(startDate.getTime() + i * 86400000).toISOString().slice(0, 10) : null,
+  );
+
+  type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'latenight';
+  const getToD = (t: string | null): TimeOfDay => {
+    if (!t) return 'morning';
+    const h = parseInt(t.split(':')[0], 10);
+    if (isNaN(h)) return 'morning';
+    if (h < 12) return 'morning';
+    if (h < 17) return 'afternoon';
+    if (h < 21) return 'evening';
+    return 'latenight';
+  };
+  const fmt12 = (t: string | null) => {
+    if (!t) return null;
+    const [h, m] = t.split(':').map(Number);
+    const p = h >= 12 ? 'PM' : 'AM';
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${p}`;
+  };
+
+  const rowsByDay: TripActivityRow[][] = days.map(() => []);
+  for (const r of rows) {
+    let dayIdx = dayDateByIndex.findIndex((d) => d === r.starting_date);
+    if (dayIdx < 0) dayIdx = 0;
+    rowsByDay[dayIdx].push(r);
+  }
+
+  return days.map((day, i) => {
+    const adds = rowsByDay[i];
+    if (!adds.length) return day;
+
+    const timeGroups = day.timeGroups.map((g) => ({ timeOfDay: g.timeOfDay, activities: [...g.activities] }));
+    const groupMap = new Map<TimeOfDay, any[]>();
+    // Dedupe across BOTH trip_context.itinerary slots and the activity
+    // table — when the same POI is saved into both sources (common for
+    // SerpAPI place ids that appear in the AI itinerary AND get
+    // mirrored into the activity row), the merge would otherwise
+    // produce duplicate React keys and make deletes "stick" because
+    // the second copy survives any single-source removal.
+    const existingIds = new Set<string>();
+    const existingNameTime = new Set<string>();
+    for (const g of timeGroups) {
+      groupMap.set(g.timeOfDay as TimeOfDay, g.activities);
+      for (const a of g.activities) {
+        if (a?.id) existingIds.add(String(a.id));
+        const norm = (s: any) => (typeof s === 'string' ? s.trim().toLowerCase() : '');
+        const key = `${norm(a?.name)}|${norm(a?.startTime)}`;
+        if (key !== '|') existingNameTime.add(key);
+      }
+    }
+
+    for (const r of adds) {
+      // Skip rows that are already represented in trip_context.itinerary.
+      // Match by id first (fast), then by (name + start_time) so
+      // SerpAPI ids that happen to differ across sources still dedupe.
+      if (existingIds.has(String(r.id))) continue;
+      const dupKey = `${(r.activity_name || '').trim().toLowerCase()}|${(fmt12(r.starting_time) || '').trim().toLowerCase()}`;
+      if (existingNameTime.has(dupKey)) continue;
+      const tod = getToD(r.starting_time);
+      const list = groupMap.get(tod) ?? [];
+      const data = r.activity_data ?? {};
+      list.push({
+        id: r.id,
+        name: r.activity_name,
+        category: data.category || r.activity_type || 'other',
+        locationName: data.location_name ?? r.activity_name,
+        startTime: fmt12(r.starting_time),
+        endTime: fmt12(r.ending_time),
+        timeDisplay: r.starting_time && r.ending_time ? `${fmt12(r.starting_time)} – ${fmt12(r.ending_time)}` : fmt12(r.starting_time),
+        costDisplay: null,
+        cost: null,
+        costCurrency: null,
+        bookingUrl: null,
+        notes: r.notes ?? null,
+        image: upscaleGoogleImage(data.image_url) ?? null,
+        source: 'user-added' as any,
+        timeOfDay: tod,
+        latitude: r.latitude ?? null,
+        longitude: r.longitude ?? null,
+        userAdded: true,
+      });
+      groupMap.set(tod, list);
+    }
+
+    const order: TimeOfDay[] = ['morning', 'afternoon', 'evening', 'latenight'];
+    const merged = order.filter((tod) => groupMap.has(tod) && groupMap.get(tod)!.length > 0)
+      .map((tod) => ({ timeOfDay: tod, activities: groupMap.get(tod)! }));
+
+    return {
+      ...day,
+      timeGroups: merged,
+      activityCount: merged.reduce((sum, g) => sum + g.activities.length, 0),
+    };
+  });
+}
+
 /**
  * Provides all data and state needed by the itinerary screen.
  *
@@ -227,11 +343,73 @@ function buildDaysFromContext(tripContext: any, trip?: any): ItineraryDayViewMod
  */
 export function useItineraryScreen(tripId: string | undefined) {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
+  const queryClient = useQueryClient();
+  const channelRef = useRef<string | null>(null);
   const tripQuery = useTrip(tripId);
   const daysQuery = useItineraryDays(tripId);
+  const activitiesQuery = useTripActivities(tripId);
   const flightsQuery = useFlights(tripId);
   const hotelsQuery = useHotels(tripId);
-  const homeCurrency = useSettingsStore((s) => s.currency);
+  const carsQuery = useCars(tripId);
+  const transitQuery = useTransit(tripId);
+  const homeCurrency = useDisplayPrefs().currency;
+
+  // Realtime sync — listen for postgres_changes on the trip row + every
+  // related table and invalidate the matching react-query cache so any
+  // collaborator (web or mobile) sees edits propagate within ~1 second.
+  // No Yjs, no extra deps — purely Supabase Realtime + react-query.
+  // Anonymous users can't reach this code path (app gates on session
+  // before mounting trip screens) so we don't worry about that case.
+  useEffect(() => {
+    if (!tripId) return;
+    // Use a ref-stabilized unique ID so multiple instances of this hook
+    // don't clash (the component calls useItineraryScreen twice in the
+    // layout tree). The ref persists across StrictMode double-mount too.
+    if (!channelRef.current) {
+      channelRef.current = `${tripId}-${Math.random().toString(36).slice(2, 8)}`;
+    }
+    const channel = supabase
+      .channel(`trip:${channelRef.current}`)
+      // Trip row itself (title, dates, trip_context, settings, theme).
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['trip', tripId] }),
+      )
+      // User-added activities (the rows that mergeUserActivities pulls in).
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'activity', filter: `trip_id=eq.${tripId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['trip-activities', tripId] }),
+      )
+      // Itinerary day rows (when the DB-backed itinerary is in use).
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'itinerary_days', filter: `trip_id=eq.${tripId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['itinerary-days', tripId] }),
+      )
+      // Flight rows.
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'flights', filter: `trip_id=eq.${tripId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['flights', tripId] }),
+      )
+      // Hotel rows.
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'hotels', filter: `trip_id=eq.${tripId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['hotels', tripId] }),
+      )
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'transit', filter: `trip_id=eq.${tripId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['transit', tripId] }),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [tripId, queryClient]);
   const { rates } = useExchangeRates(homeCurrency);
 
   // Build days from DB, or fall back to trip_context.itinerary
@@ -246,7 +424,12 @@ export function useItineraryScreen(tripId: string | undefined) {
     () => dbDays.length > 0 || !tripCtx ? [] : buildDaysFromContext(tripCtx, tripData),
     [dbDays.length, tripCtx, tripData],
   );
-  const days = dbDays.length > 0 ? dbDays : contextDays;
+  const baseDays = dbDays.length > 0 ? dbDays : contextDays;
+  // Merge user-added activities (from `activity` table, written by useAddToTrip)
+  const days = useMemo(
+    () => mergeUserActivities(baseDays, tripData, activitiesQuery.data ?? []),
+    [baseDays, tripData, activitiesQuery.data],
+  );
 
   const flights = useMemo(
     () => (flightsQuery.data ?? []).map(buildFlightViewModel),
@@ -256,6 +439,16 @@ export function useItineraryScreen(tripId: string | undefined) {
   const hotels = useMemo(
     () => (hotelsQuery.data ?? []).map(buildHotelViewModel),
     [hotelsQuery.data],
+  );
+
+  const cars = useMemo(
+    () => (carsQuery.data ?? []).map(buildCarViewModel),
+    [carsQuery.data],
+  );
+
+  const transit = useMemo(
+    () => (transitQuery.data ?? []).map(buildTransitViewModel),
+    [transitQuery.data],
   );
 
   // Build budget from DB data, or fall back to trip_context hotel prices
@@ -295,14 +488,17 @@ export function useItineraryScreen(tripId: string | undefined) {
 
   const trip = tripQuery.data ?? null;
   const hasContextItinerary = Array.isArray((trip?.trip_context as any)?.itinerary) && (trip?.trip_context as any).itinerary.length > 0;
-  const isEmpty = !isLoading && days.length === 0 && !hasContextItinerary && flights.length === 0 && hotels.length === 0;
+  const isEmpty = !isLoading && days.length === 0 && !hasContextItinerary && flights.length === 0 && hotels.length === 0 && cars.length === 0 && transit.length === 0;
 
   const refetch = useCallback(() => {
     tripQuery.refetch();
     daysQuery.refetch();
+    activitiesQuery.refetch();
     flightsQuery.refetch();
     hotelsQuery.refetch();
-  }, [tripQuery, daysQuery, flightsQuery, hotelsQuery]);
+    carsQuery.refetch();
+    transitQuery.refetch();
+  }, [tripQuery, daysQuery, activitiesQuery, flightsQuery, hotelsQuery, carsQuery, transitQuery]);
 
   return {
     trip,
@@ -312,6 +508,9 @@ export function useItineraryScreen(tripId: string | undefined) {
     selectedDay: days[selectedDayIndex] ?? null,
     flights,
     hotels,
+    cars,
+    transit,
+    transitLoading: transitQuery.isLoading,
     budget,
     isLoading,
     refetch,

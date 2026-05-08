@@ -114,6 +114,10 @@ export default function BudgetScreen() {
 
   // Currency conversion
   const [displayCurrency, setDisplayCurrency] = useState('USD');
+  // Quick converter widget state
+  const [convFrom, setConvFrom] = useState('USD');
+  const [convTo, setConvTo] = useState('EUR');
+  const [convAmount, setConvAmount] = useState('100');
   const { data: rates } = useQuery({
     queryKey: ['exchange-rates'],
     queryFn: async () => {
@@ -130,26 +134,90 @@ export default function BudgetScreen() {
   }, [displayCurrency, rates]);
   const fx = useCallback((usd: number) => fmtCurrency(cx(usd), displayCurrency), [cx, displayCurrency]);
 
-  // Build budget items from trip_context (cost_of_living + hotels + trip.budget)
+  // Build budget items from trip_context (cost_of_living + hotels + flights + trip.budget)
   const initialBudget = useMemo((): BudgetItem[] => {
     const ctx = trip?.trip_context as any;
     const cost = ctx?.cost_of_living;
     const hotel = (ctx?.hotels?.[0] || ctx?.all_hotels?.[0]) as any;
+    const flights: any[] = ctx?.flights ?? [];
     const days = trip?.start_date && trip?.end_date
       ? Math.max(1, Math.ceil((new Date(trip.end_date).getTime() - new Date(trip.start_date).getTime()) / 86400000))
       : 5;
 
     const items: BudgetItem[] = [];
 
-    // Accommodation
+    // Flights — sums every flight in trip_context.flights[]. Each flight
+    // has a `price` (set by savePlanToSupabase / SerpAPI). The expense
+    // description packs in route + airline + date + duration so the user
+    // sees the full booking, not just a price line.
+    const flightExpenses = flights
+      .map((f, i) => {
+        const price = typeof f?.price === 'number' ? f.price : parseFloat(String(f?.price ?? '').replace(/[^0-9.]/g, ''));
+        if (!price || !isFinite(price) || price <= 0) return null;
+        const route = [f?.origin_iata || f?.origin, f?.dest_iata || f?.destination].filter(Boolean).join('→');
+        const airline = f?.airline || f?.carrier || '';
+        const date = f?.depart_date || f?.date || '';
+        const duration = f?.duration ? ` · ${f.duration}` : '';
+        const stops = typeof f?.stops === 'number' ? (f.stops === 0 ? ' · nonstop' : ` · ${f.stops} stop${f.stops === 1 ? '' : 's'}`) : '';
+        const desc = [airline, route, date].filter(Boolean).join(' · ') + duration + stops || `Flight ${i + 1}`;
+        return { id: `flight-${i}`, description: desc, amount: price };
+      })
+      .filter((e): e is { id: string; description: string; amount: number } => e !== null);
+    const flightTotal = flightExpenses.reduce((s, e) => s + e.amount, 0);
+    if (flightTotal > 0 || flights.length > 0) {
+      items.push({
+        id: 'flights',
+        category: 'Flights',
+        budgeted: flightTotal,
+        actual: 0,
+        fixed: true,
+        expenses: flightExpenses,
+      });
+    }
+
+    // Accommodation. If hotel.price is missing, fall back to a
+    // cost-of-living estimate so the category isn't always $0 for
+    // older trips. mid_range_hotel is the typical SerpAPI field.
     const hotelPrice = hotel?.price ?? hotel?.price_per_night ?? 0;
+    const colHotel = cost?.mid_range_hotel
+      ? parseFloat(String(cost.mid_range_hotel).replace(/[^0-9.]/g, ''))
+      : (cost?.budget_hotel ? parseFloat(String(cost.budget_hotel).replace(/[^0-9.]/g, '')) : 0);
+    const effectiveNightly = hotelPrice > 0 ? hotelPrice : (colHotel > 0 ? colHotel : 0);
+    // Build a richer description that names the hotel + room type +
+    // check-in/out dates so the user sees their selection at a glance.
+    const hotelRoom = hotel?.roomTypes?.[0]?.type || hotel?.room_type || '';
+    const checkInLabel = trip?.start_date
+      ? new Date(trip.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : '';
+    const checkOutLabel = trip?.end_date
+      ? new Date(trip.end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : '';
+    const hotelDateRange = checkInLabel && checkOutLabel ? `${checkInLabel}–${checkOutLabel}` : '';
+    const hotelDescParts: string[] = [];
+    if (hotelPrice > 0) {
+      hotelDescParts.push(hotel?.name || 'Hotel');
+      if (hotelRoom) hotelDescParts.push(hotelRoom);
+      if (hotelDateRange) hotelDescParts.push(hotelDateRange);
+      hotelDescParts.push(`${days} night${days === 1 ? '' : 's'} × $${hotelPrice}`);
+    } else {
+      hotelDescParts.push(hotel?.name ? `${hotel.name} (estimated)` : 'Estimated lodging');
+      if (hotelDateRange) hotelDescParts.push(hotelDateRange);
+      hotelDescParts.push(`${days} night${days === 1 ? '' : 's'} × $${effectiveNightly}/nt`);
+      hotelDescParts.push('typical mid-range rate');
+    }
     items.push({
       id: 'accommodation',
       category: 'Accommodation',
-      budgeted: hotelPrice * days,
+      budgeted: effectiveNightly * days,
       actual: 0,
       fixed: true,
-      expenses: hotelPrice ? [{ id: 'hotel-1', description: `${hotel?.name || 'Hotel'} (${days} nights × $${hotelPrice})`, amount: hotelPrice * days }] : [],
+      expenses: effectiveNightly > 0
+        ? [{
+            id: 'hotel-1',
+            description: hotelDescParts.join(' · '),
+            amount: effectiveNightly * days,
+          }]
+        : [],
     });
 
     // Food & Dining
@@ -175,12 +243,40 @@ export default function BudgetScreen() {
   const [budgetData, setBudgetData] = useState<BudgetItem[]>(initialBudget);
   const seeded = useRef(false);
 
-  // Load saved budget from trip_context if available
+  // Load saved budget from trip_context if available. Merge with the
+  // freshly-computed initial budget so newly-added categories (e.g.
+  // Flights, which didn't exist in older snapshots) get picked up
+  // automatically. Saved categories keep their user-edited values;
+  // missing ones are appended; "fixed" categories (Flights,
+  // Accommodation) get refreshed from initialBudget every load so a
+  // re-saved hotel price or new flight is reflected immediately
+  // instead of being frozen at whatever was last persisted.
   useEffect(() => {
     if (trip && !seeded.current) {
       const saved = (trip.trip_context as any)?.budget_data;
       if (saved && Array.isArray(saved) && saved.length > 0) {
-        setBudgetData(saved);
+        const initialById = new Map(initialBudget.map((b) => [b.id, b]));
+        const savedById = new Map<string, BudgetItem>(saved.map((b: BudgetItem) => [b.id, b]));
+        const merged: BudgetItem[] = [];
+        // Refresh fixed categories from initial; preserve user edits on others.
+        for (const item of initialBudget) {
+          const savedItem = savedById.get(item.id);
+          if (item.fixed) {
+            merged.push(item);
+          } else if (savedItem) {
+            merged.push(savedItem);
+          } else {
+            merged.push(item);
+          }
+        }
+        // Append saved categories the user added that aren't in the
+        // freshly-built initial set (custom categories, etc.).
+        for (const savedItem of saved) {
+          if (!initialById.has((savedItem as BudgetItem).id)) {
+            merged.push(savedItem as BudgetItem);
+          }
+        }
+        setBudgetData(merged);
       } else {
         setBudgetData(initialBudget);
       }
@@ -272,13 +368,13 @@ export default function BudgetScreen() {
       alerts.push({
         type: 'danger',
         icon: 'exclamation-circle',
-        message: `${item.category} is over budget by $${Math.abs(item.budgeted - item.actual).toLocaleString()}`,
+        message: `${item.category} is over budget by ${fx(Math.abs(item.budgeted - item.actual))}`,
       });
     } else if (itemPct >= 90) {
       alerts.push({
         type: 'warning',
         icon: 'warning',
-        message: `${item.category} is at ${itemPct.toFixed(0)}% — only $${(item.budgeted - item.actual).toLocaleString()} left`,
+        message: `${item.category} is at ${itemPct.toFixed(0)}% — only ${fx(item.budgeted - item.actual)} left`,
       });
     }
   });
@@ -286,13 +382,13 @@ export default function BudgetScreen() {
     alerts.unshift({
       type: 'warning',
       icon: 'warning',
-      message: `Overall budget is at ${pctUsed.toFixed(0)}% — $${remaining.toLocaleString()} remaining`,
+      message: `Overall budget is at ${pctUsed.toFixed(0)}% — ${fx(remaining)} remaining`,
     });
   } else if (pctUsed >= 100) {
     alerts.unshift({
       type: 'danger',
       icon: 'exclamation-circle',
-      message: `Over budget by $${Math.abs(remaining).toLocaleString()}!`,
+      message: `Over budget by ${fx(Math.abs(remaining))}!`,
     });
   }
 
@@ -499,6 +595,47 @@ export default function BudgetScreen() {
         })()}
       </ScrollView>
 
+      {/* ===== Currency Converter ===== */}
+      {(() => {
+        const amt = parseFloat(convAmount) || 0;
+        const fromRate = rates?.[convFrom] ?? 1;
+        const toRate = rates?.[convTo] ?? 1;
+        const result = (amt / fromRate) * toRate;
+        const allCodes: string[] = rates ? Object.keys(rates) : POPULAR_CURRENCIES;
+        const ordered = [...POPULAR_CURRENCIES.filter(c => allCodes.includes(c)), ...allCodes.filter(c => !POPULAR_CURRENCIES.includes(c)).sort()];
+        const cycleNext = (current: string) => ordered[(ordered.indexOf(current) + 1) % ordered.length] || current;
+        return (
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 8,
+            backgroundColor: colors.surface, borderRadius: 10,
+            paddingHorizontal: 10, paddingVertical: 8, marginBottom: 12,
+            borderWidth: 1, borderColor: colors.border,
+          }}>
+            <FontAwesome name="exchange" size={12} color={ACCENT} />
+            <TextInput
+              value={convAmount}
+              onChangeText={setConvAmount}
+              keyboardType="decimal-pad"
+              placeholder="100"
+              placeholderTextColor={colors.textTertiary}
+              style={{ ...TextStyles.bodyEm, color: colors.text, width: 60, paddingVertical: 0 }}
+            />
+            <Pressable onPress={() => setConvFrom(cycleNext(convFrom))} style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.cardBackground }}>
+              <Text style={{ ...TextStyles.captionEm, color: colors.textSecondary }}>{convFrom}</Text>
+            </Pressable>
+            <Pressable onPress={() => { const f = convFrom; setConvFrom(convTo); setConvTo(f); }} hitSlop={8}>
+              <FontAwesome name="arrows-h" size={12} color={colors.textSecondary} />
+            </Pressable>
+            <Text style={{ ...TextStyles.bodyEm, color: colors.text, flex: 1, textAlign: 'right' }} numberOfLines={1}>
+              {fmtCurrency(result, convTo)}
+            </Text>
+            <Pressable onPress={() => setConvTo(cycleNext(convTo))} style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.cardBackground }}>
+              <Text style={{ ...TextStyles.captionEm, color: colors.textSecondary }}>{convTo}</Text>
+            </Pressable>
+          </View>
+        );
+      })()}
+
       {/* ===== Summary Cards (3 columns) ===== */}
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
 
@@ -526,7 +663,7 @@ export default function BudgetScreen() {
           </View>
           {!isEditingTotal ? (
             <Text style={{ ...TextStyles.subhead, color: colors.text, marginTop: 2 }}>
-              ${totalBudgeted.toLocaleString()}
+              {fx(totalBudgeted)}
             </Text>
           ) : (
             <TextInput
@@ -547,7 +684,7 @@ export default function BudgetScreen() {
         <View style={{ flex: 1, backgroundColor: overallHealth.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: overallHealth.border }}>
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 2 }}>Total Spent</Text>
           <Text style={{ ...TextStyles.subhead, color: colors.text, marginTop: 2 }}>
-            ${totalActual.toLocaleString()}
+            {fx(totalActual)}
           </Text>
         </View>
 
@@ -555,7 +692,7 @@ export default function BudgetScreen() {
         <View style={{ flex: 1, backgroundColor: overallHealth.bg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: remaining >= 0 ? colors.success + '30' : colors.error + '30' }}>
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary, textTransform: 'uppercase', marginBottom: 2 }}>Remaining</Text>
           <Text style={{ ...TextStyles.subhead, color: remaining >= 0 ? colors.success : colors.error, marginTop: 2 }}>
-            ${Math.abs(remaining).toLocaleString()}
+            {fx(Math.abs(remaining))}
           </Text>
         </View>
       </View>
@@ -584,7 +721,7 @@ export default function BudgetScreen() {
           <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>Daily Budget</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>Avg:</Text>
-            <Text style={{ ...TextStyles.captionEm, color: colors.text }}>${avgDailySpend}</Text>
+            <Text style={{ ...TextStyles.captionEm, color: colors.text }}>{fx(avgDailySpend)}</Text>
           </View>
         </View>
 
@@ -622,11 +759,11 @@ export default function BudgetScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
           <View style={{ width: 12, height: 2, backgroundColor: colors.warning, borderRadius: 1, marginRight: 6 }} />
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>
-            Daily budget: ${avgDailySpend}/day
+            Daily budget: {fx(avgDailySpend)}/day
           </Text>
           <View style={{ flex: 1 }} />
           <Text style={{ ...TextStyles.sm, color: colors.textSecondary }}>
-            Budget: ${totalBudgeted.toLocaleString()}
+            Budget: {fx(totalBudgeted)}
           </Text>
         </View>
       </View>
@@ -676,7 +813,7 @@ export default function BudgetScreen() {
                   <View>
                     <Text style={{ ...TextStyles.bodyXlEm, color: colors.text }}>{item.category}</Text>
                     {!isExpanded && (
-                      <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>${item.actual.toLocaleString()}</Text>
+                      <Text style={{ ...TextStyles.body, color: colors.textSecondary }}>{fx(item.actual)}</Text>
                     )}
                   </View>
                 </View>
@@ -717,7 +854,7 @@ export default function BudgetScreen() {
                         <View style={{ flex: 1 }}>
                           <Text style={{ ...TextStyles.caption, color: colors.textSecondary, marginBottom: 4 }}>Budgeted</Text>
                           <Text style={{ ...TextStyles.subhead, color: colors.text }}>
-                            ${item.budgeted.toLocaleString()}
+                            {fx(item.budgeted)}
                           </Text>
                         </View>
                         <View style={{ flex: 1 }}>
@@ -735,7 +872,7 @@ export default function BudgetScreen() {
                             </View>
                           </View>
                           <Text style={{ ...TextStyles.subhead, color: colors.text }}>
-                            ${item.actual.toLocaleString()}
+                            {fx(item.actual)}
                           </Text>
                         </View>
                       </View>
@@ -757,11 +894,11 @@ export default function BudgetScreen() {
                         <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>{itemPct.toFixed(0)}% used</Text>
                         {itemDiff > 0 ? (
                           <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.success }}>
-                            ${itemDiff.toLocaleString()} under
+                            {fx(itemDiff)} under
                           </Text>
                         ) : itemDiff < 0 ? (
                           <Text style={{ ...TextStyles.caption, fontWeight: '500', color: colors.error }}>
-                            ${Math.abs(itemDiff).toLocaleString()} over
+                            {fx(Math.abs(itemDiff))} over
                           </Text>
                         ) : (
                           <Text style={{ ...TextStyles.caption, color: colors.textSecondary }}>On track</Text>
@@ -816,7 +953,7 @@ export default function BudgetScreen() {
                                     </Text>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                                       <Text style={{ ...TextStyles.bodyLgEm, color: colors.text }}>
-                                        ${expense.amount.toLocaleString()}
+                                        {fx(expense.amount)}
                                       </Text>
                                       <Pressable
                                         onPress={() => handleDeleteExpense(item.id, expense.id)}

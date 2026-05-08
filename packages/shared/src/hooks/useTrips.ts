@@ -16,15 +16,24 @@ import type { Trip } from '../types';
  * and collaborated trips, deduplicating by trip ID.
  */
 async function fetchTripsForUser(userId: string): Promise<Trip[]> {
-  // Fetch owned trips — this must succeed
+  // Owned trips must succeed; collaborator trips are best-effort.
   const owned = await fetchTrips(userId);
 
-  // Collaborator trips — best effort, don't block owned trips if this fails
   let collaborated: Trip[] = [];
   try {
     collaborated = await fetchCollaboratorTrips(userId);
-  } catch {
-    // RLS or join error on trip_collaborators — non-fatal
+    // eslint-disable-next-line no-console
+    (globalThis as any).console?.log?.(
+      `[useTrips] owned=${owned.length} collaborated=${collaborated.length}`,
+    );
+  } catch (e: any) {
+    // Surface the error so we can diagnose missing-shared-trip cases
+    // (RLS, missing RPC, etc.) instead of silently empty.
+    // eslint-disable-next-line no-console
+    (globalThis as any).console?.warn?.(
+      '[useTrips] fetchCollaboratorTrips failed —',
+      e?.message ?? e,
+    );
   }
 
   const seen = new Set<string>();
@@ -44,6 +53,7 @@ async function fetchTripsForUser(userId: string): Promise<Trip[]> {
  */
 export function useTrips() {
   const user = useAuthStore((s) => s.user);
+
   return useQuery({
     queryKey: ['trips', user?.id],
     queryFn: () => fetchTripsForUser(user!.id),

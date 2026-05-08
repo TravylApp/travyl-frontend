@@ -2,14 +2,16 @@
 
 import { use, useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Save, Trash2, AlertTriangle, Share2,
-  Check, X, Globe, GitFork, Copy,
-  Home, Calendar, Plane, Building2, UtensilsCrossed, Compass,
-  Luggage, PieChart, Heart, Car, Settings2, LogOut, Minus, Plus, Users,
+  Trash2, Share2, Globe, GitFork, Copy, Lock, Link as LinkIcon,
+  Home, Calendar, CalendarDays, Plane, Building2, Compass,
+  Luggage, PieChart, Car, LogOut, Minus, Plus, Users,
+  Loader2, Check,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { toast } from 'sonner';
 import { ThemePicker } from '@/components/trip/ThemePicker';
 import { useTripTheme } from '@/components/trip/TripThemeContext';
+import { Module } from '@/components/trip/Module';
 import {
   useItineraryScreen, useAuthStore, isTripOwner,
   updateTripDetails, updateTripVisibility, updateTripThemeSettings,
@@ -18,63 +20,31 @@ import {
 import type { Trip, TravelerMetadata } from '@travyl/shared';
 import { useRouter } from 'next/navigation';
 
-// ─── Tab definitions ─────────────────────────────────────────
-const CONFIGURABLE_TABS: { segment: string; label: string; icon: LucideIcon; alwaysOn?: boolean }[] = [
-  { segment: 'index',       label: 'Overview',    icon: Home,              alwaysOn: true },
-  { segment: 'itinerary',   label: 'Itinerary',   icon: Calendar },
-  { segment: 'hotels',      label: 'Hotels',      icon: Building2 },
-  { segment: 'flights',     label: 'Flights',     icon: Plane },
-  { segment: 'restaurants', label: 'Restaurants',  icon: UtensilsCrossed },
-  { segment: 'activities',  label: 'Explore',     icon: Compass },
-  { segment: 'packing',     label: 'Packing',     icon: Luggage },
-  { segment: 'budget',      label: 'Budget',      icon: PieChart },
-  { segment: 'cars',        label: 'Car Rental',  icon: Car },
-  { segment: 'favorites',   label: 'Favorites',   icon: Heart },
-  { segment: 'settings',    label: 'Settings',    icon: Settings2,         alwaysOn: true },
+// Aligned with TripRail.ALL_TABS so toggling here actually hides the tab in the rail.
+const CONFIGURABLE_TABS: { segment: string; label: string; icon: LucideIcon }[] = [
+  { segment: 'overview',   label: 'Overview',   icon: Home },
+  { segment: 'itinerary',  label: 'Itinerary',  icon: Calendar },
+  { segment: 'calendar',   label: 'Calendar',   icon: CalendarDays },
+  { segment: 'hotels',     label: 'Hotels',     icon: Building2 },
+  { segment: 'flights',    label: 'Flights',    icon: Plane },
+  { segment: 'cars',       label: 'Cars',       icon: Car },
+  { segment: 'activities', label: 'Explore',    icon: Compass },
+  { segment: 'packing',    label: 'Packing',    icon: Luggage },
+  { segment: 'budget',     label: 'Budget',     icon: PieChart },
 ];
 
-const CURRENCY_OPTIONS = [
-  { value: 'USD', label: 'USD ($)' },
-  { value: 'EUR', label: 'EUR (\u20ac)' },
-  { value: 'GBP', label: 'GBP (\u00a3)' },
-  { value: 'JPY', label: 'JPY (\u00a5)' },
-  { value: 'CAD', label: 'CAD ($)' },
-  { value: 'AUD', label: 'AUD ($)' },
-  { value: 'MXN', label: 'MXN ($)' },
-];
+const DEFAULT_TRAVELERS: TravelerMetadata = { adults: 1, children: 0, infants: 0, child_ages: [] };
 
-const STATUS_OPTIONS = [
-  { value: 'planning',  label: 'Planning' },
-  { value: 'booked',    label: 'Booked' },
-  { value: 'active',    label: 'Active' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'abandoned', label: 'Abandoned' },
-];
-
-const FALLBACK_BRAND = '#1e3a5f';
-
-// ─── Reusable small components ────────────────────────────────
-
-function SectionHeading({ children }: { children: React.ReactNode }) {
-  return <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">{children}</h2>;
-}
+// ─── Field primitives ────────────────────────────────────────
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{children}</label>;
+  return <label className="block text-[13px] font-medium text-gray-700 dark:text-gray-300 mb-2">{children}</label>;
 }
 
 function Input({
-  value,
-  onChange,
-  type = 'text',
-  placeholder,
-  disabled,
+  value, onChange, type = 'text', placeholder, disabled,
 }: {
-  value: string;
-  onChange: (v: string) => void;
-  type?: string;
-  placeholder?: string;
-  disabled?: boolean;
+  value: string; onChange: (v: string) => void; type?: string; placeholder?: string; disabled?: boolean;
 }) {
   return (
     <input
@@ -83,343 +53,50 @@ function Input({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       disabled={disabled}
-      className="w-full rounded-lg border border-gray-300 dark:border-white/[0.12] bg-white dark:bg-white/[0.05] px-3 py-2 text-sm text-gray-900 dark:text-white dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition disabled:bg-gray-50 disabled:text-gray-400 dark:disabled:bg-white/[0.02] dark:disabled:text-gray-500"
-      style={{ '--tw-ring-color': FALLBACK_BRAND } as React.CSSProperties}
+      className="w-full h-11 rounded-xl border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.04] px-4 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base,#1e3a5f)]/20 focus:border-[var(--trip-base,#1e3a5f)]/50 transition disabled:bg-gray-50 disabled:text-gray-400 dark:disabled:bg-white/[0.02] dark:disabled:text-gray-500"
     />
   );
 }
 
 function Select({
-  value,
-  onChange,
-  options,
-  disabled,
+  value, onChange, options, disabled,
 }: {
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-  disabled?: boolean;
+  value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; disabled?: boolean;
 }) {
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
-      className="w-full rounded-lg border border-gray-300 dark:border-white/[0.12] px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-white/[0.05] focus:outline-none focus:ring-2 focus:border-transparent transition disabled:bg-gray-50 disabled:text-gray-400 dark:disabled:bg-white/[0.02] dark:disabled:text-gray-500"
-      style={{ '--tw-ring-color': FALLBACK_BRAND } as React.CSSProperties}
+      className="w-full h-11 rounded-xl border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.04] px-4 text-[14px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--trip-base,#1e3a5f)]/20 focus:border-[var(--trip-base,#1e3a5f)]/50 transition disabled:bg-gray-50 disabled:text-gray-400 dark:disabled:bg-white/[0.02] dark:disabled:text-gray-500"
     >
       {options.map((o) => (
-        <option key={o.value} value={o.value} className="dark:bg-gray-900 dark:text-white">
-          {o.label}
-        </option>
+        <option key={o.value} value={o.value} className="dark:bg-gray-900 dark:text-white">{o.label}</option>
       ))}
     </select>
   );
 }
 
-function Toggle({
-  enabled,
-  onToggle,
-  color,
-}: {
-  enabled: boolean;
-  onToggle: () => void;
-  color?: string;
-}) {
+function Toggle({ enabled, onToggle, color }: { enabled: boolean; onToggle: () => void; color?: string }) {
   return (
     <button
       type="button"
       onClick={onToggle}
-      className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${!enabled ? 'bg-gray-300 dark:bg-white/[0.15]' : ''}`}
-      style={enabled ? { backgroundColor: color ?? FALLBACK_BRAND } : undefined}
+      className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${!enabled ? 'bg-gray-300 dark:bg-white/[0.15]' : ''}`}
+      style={enabled ? { backgroundColor: color ?? 'var(--trip-base, #1e3a5f)' } : undefined}
     >
       <span
         className="pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out"
-        style={{ transform: enabled ? 'translateX(20px)' : 'translateX(0)' }}
+        style={{ transform: enabled ? 'translate(20px, 2px)' : 'translate(2px, 2px)' }}
       />
     </button>
   );
 }
 
-// ─── Trip Details Section ────────────────────────────────────
-
-function TripDetailsSection({
-  details,
-  onChange,
-  disabled,
-}: {
-  details: {
-    title: string;
-    destination: string;
-    start_date: string;
-    end_date: string;
-    budget: string;
-    currency: string;
-    travelers: string;
-    status: string;
-  };
-  onChange: (patch: Partial<typeof details>) => void;
-  disabled: boolean;
-}) {
-  return (
-    <div>
-      <SectionHeading>Trip Details</SectionHeading>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="sm:col-span-2">
-          <FieldLabel>Trip Name</FieldLabel>
-          <Input value={details.title} onChange={(v) => onChange({ title: v })} disabled={disabled} />
-        </div>
-        <div className="sm:col-span-2">
-          <FieldLabel>Destination</FieldLabel>
-          <Input value={details.destination} onChange={(v) => onChange({ destination: v })} disabled={disabled} />
-        </div>
-        <div>
-          <FieldLabel>Start Date</FieldLabel>
-          <Input value={details.start_date} onChange={(v) => onChange({ start_date: v })} type="date" disabled={disabled} />
-        </div>
-        <div>
-          <FieldLabel>End Date</FieldLabel>
-          <Input value={details.end_date} onChange={(v) => onChange({ end_date: v })} type="date" disabled={disabled} />
-        </div>
-        <div>
-          <FieldLabel>Budget</FieldLabel>
-          <Input value={details.budget} onChange={(v) => onChange({ budget: v })} type="number" placeholder="0" disabled={disabled} />
-        </div>
-        <div>
-          <FieldLabel>Currency</FieldLabel>
-          <Select value={details.currency} onChange={(v) => onChange({ currency: v })} options={CURRENCY_OPTIONS} disabled={disabled} />
-        </div>
-        <div>
-          <FieldLabel>Travelers</FieldLabel>
-          <Input value={details.travelers} onChange={(v) => onChange({ travelers: v })} type="number" placeholder="1" disabled={disabled} />
-        </div>
-        <div>
-          <FieldLabel>Status</FieldLabel>
-          <Select value={details.status} onChange={(v) => onChange({ status: v })} options={STATUS_OPTIONS} disabled={disabled} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Trip Sharing Section ────────────────────────────────────
-
-function TripSharingSection({
-  tripId,
-  isPublic,
-  isShared,
-  shareToken,
-  forkCount,
-  onTogglePublic,
-  onToggleShared,
-}: {
-  tripId: string;
-  isPublic: boolean;
-  isShared: boolean;
-  shareToken: string | null;
-  forkCount: number;
-  onTogglePublic: () => void;
-  onToggleShared: () => void;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  const shareUrl = shareToken
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/trip/${tripId}/share/${shareToken}`
-    : '';
-
-  const copyShareLink = () => {
-    if (shareUrl) {
-      navigator.clipboard.writeText(shareUrl).catch(() => {});
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  return (
-    <div>
-      <SectionHeading>Trip Sharing</SectionHeading>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-50 dark:bg-blue-500/10">
-              <Globe size={16} className="text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">Make Public</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Allow anyone to discover and fork this trip</p>
-            </div>
-          </div>
-          <Toggle enabled={isPublic} onToggle={onTogglePublic} />
-        </div>
-
-        <div className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-purple-50 dark:bg-purple-500/10">
-              <Share2 size={16} className="text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">Share Link</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Generate a link to share with specific people</p>
-            </div>
-          </div>
-          <Toggle enabled={isShared} onToggle={onToggleShared} />
-        </div>
-
-        {isShared && shareToken && (
-          <div className="rounded-xl border border-gray-200 dark:border-white/[0.08] p-4 bg-gray-50 dark:bg-white/[0.03]">
-            <div className="flex items-center gap-2 mb-2">
-              <Copy size={14} className="text-gray-500 dark:text-gray-400" />
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Share URL</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 rounded-lg bg-white dark:bg-white/[0.05] border border-gray-200 dark:border-white/[0.08] px-3 py-2 text-xs text-gray-600 dark:text-gray-300 font-mono truncate">
-                {shareUrl}
-              </div>
-              <button
-                onClick={copyShareLink}
-                className="shrink-0 text-xs font-medium px-3 py-2 rounded-lg text-white transition"
-                style={{ backgroundColor: copied ? '#10b981' : FALLBACK_BRAND }}
-              >
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {forkCount > 0 && (
-          <div className="flex items-center gap-3 rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-green-50 dark:bg-green-500/10">
-              <GitFork size={16} className="text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">{forkCount} Fork{forkCount === 1 ? '' : 's'}</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">This trip has been forked by other users</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Danger Zone Section ─────────────────────────────────────
-
-function DangerZoneSection({
-  isOwner,
-  tripTitle,
-  onDeleteTrip,
-  onLeaveTrip,
-}: {
-  isOwner: boolean;
-  tripTitle: string;
-  onDeleteTrip: () => void;
-  onLeaveTrip: () => void;
-}) {
-  const [confirmText, setConfirmText] = useState('');
-  const [showConfirm, setShowConfirm] = useState(false);
-
-  const canDelete = confirmText.toLowerCase() === tripTitle.toLowerCase();
-
-  return (
-    <div>
-      <SectionHeading>Danger Zone</SectionHeading>
-      <div className="rounded-xl border-2 border-red-200 dark:border-red-500/30 bg-red-50/50 dark:bg-red-500/5 p-5 space-y-4">
-        {isOwner ? (
-          <>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <AlertTriangle size={16} className="text-red-600 dark:text-red-400" />
-                <p className="text-sm font-bold text-red-700 dark:text-red-400">Delete Trip</p>
-              </div>
-              <p className="text-xs text-red-600 dark:text-red-400/80">
-                Permanently delete this trip and all associated data. This action cannot be undone.
-              </p>
-            </div>
-
-            {!showConfirm ? (
-              <button
-                onClick={() => setShowConfirm(true)}
-                className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 transition"
-              >
-                <Trash2 size={14} />
-                Delete Trip
-              </button>
-            ) : (
-              <div className="space-y-3">
-                <div>
-                  <p className="text-xs text-red-700 dark:text-red-400 mb-1.5">
-                    Type <strong>{tripTitle}</strong> to confirm:
-                  </p>
-                  <input
-                    value={confirmText}
-                    onChange={(e) => setConfirmText(e.target.value)}
-                    placeholder={tripTitle}
-                    className="w-full rounded-lg border border-red-300 dark:border-red-500/30 bg-white dark:bg-white/[0.05] px-3 py-2 text-sm text-gray-900 dark:text-white dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={onDeleteTrip}
-                    disabled={!canDelete}
-                    className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 transition disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <Trash2 size={14} />
-                    Confirm Delete
-                  </button>
-                  <button
-                    onClick={() => { setShowConfirm(false); setConfirmText(''); }}
-                    className="text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 dark:border-white/[0.12] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <LogOut size={16} className="text-red-600 dark:text-red-400" />
-                <p className="text-sm font-bold text-red-700 dark:text-red-400">Leave Trip</p>
-              </div>
-              <p className="text-xs text-red-600 dark:text-red-400/80">
-                Remove yourself from this trip. You will lose access to all trip data.
-              </p>
-            </div>
-            <button
-              onClick={onLeaveTrip}
-              className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 transition"
-            >
-              <LogOut size={14} />
-              Leave Trip
-            </button>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Travelers Section ────────────────────────────────────────
-
-const DEFAULT_TRAVELERS: TravelerMetadata = {
-  adults: 1,
-  children: 0,
-  infants: 0,
-  child_ages: [],
-};
-
 function Stepper({
-  value,
-  min,
-  onChange,
-  disabled,
+  value, min, onChange, disabled,
 }: {
-  value: number;
-  min: number;
-  onChange: (v: number) => void;
-  disabled?: boolean;
+  value: number; min: number; onChange: (v: number) => void; disabled?: boolean;
 }) {
   return (
     <div className="flex items-center gap-2">
@@ -427,16 +104,16 @@ function Stepper({
         type="button"
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={disabled || value <= min}
-        className="w-8 h-8 rounded-lg border border-gray-300 dark:border-white/[0.12] flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-9 h-9 rounded-xl border border-gray-200 dark:border-white/[0.10] flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <Minus size={14} />
       </button>
-      <span className="w-6 text-center text-sm font-semibold text-gray-900 dark:text-white tabular-nums">{value}</span>
+      <span className="w-7 text-center text-[15px] font-semibold text-gray-900 dark:text-white tabular-nums">{value}</span>
       <button
         type="button"
         onClick={() => onChange(value + 1)}
         disabled={disabled}
-        className="w-8 h-8 rounded-lg border border-gray-300 dark:border-white/[0.12] flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition disabled:opacity-40 disabled:cursor-not-allowed"
+        className="w-9 h-9 rounded-xl border border-gray-200 dark:border-white/[0.10] flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <Plus size={14} />
       </button>
@@ -444,34 +121,47 @@ function Stepper({
   );
 }
 
-function TravelersSection({
-  tripId,
-  initialValue,
-  disabled,
+function PrimaryButton({
+  onClick, disabled, busy, children, icon,
 }: {
-  tripId: string;
-  initialValue: TravelerMetadata;
-  disabled: boolean;
+  onClick: () => void; disabled?: boolean; busy?: boolean; children: React.ReactNode; icon?: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="flex items-center gap-2 px-5 h-11 rounded-xl text-[14px] font-semibold transition-all disabled:bg-gray-200 dark:disabled:bg-white/[0.06] disabled:text-gray-400 disabled:cursor-not-allowed text-white shadow-sm hover:shadow-md"
+      style={!disabled ? { backgroundColor: 'var(--trip-base, #1e3a5f)' } : undefined}
+    >
+      {busy ? <Loader2 size={15} className="animate-spin" /> : icon}
+      {children}
+    </button>
+  );
+}
+
+// ─── Travelers (auto-save preserved) ────────────────────────
+
+function TravelersControls({
+  tripId, initialValue, disabled,
+}: {
+  tripId: string; initialValue: TravelerMetadata; disabled: boolean;
 }) {
   const [travelers, setTravelers] = useState<TravelerMetadata>(initialValue);
   const [saving, setSaving] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync when initialValue changes (e.g. trip loaded)
-  useEffect(() => {
-    setTravelers(initialValue);
-  }, [initialValue]);
+  useEffect(() => { setTravelers(initialValue); }, [initialValue]);
 
   const save = useCallback(async (next: TravelerMetadata) => {
     setSaving(true);
     try {
-      // Fetch the current trip_context to merge travelers in without clobbering other fields
       const { data: current } = await supabase
         .from('trips')
         .select('trip_context')
         .eq('id', tripId)
         .single();
-
       const existingContext = (current?.trip_context as Record<string, unknown>) ?? {};
       const { error: updateError } = await supabase
         .from('trips')
@@ -481,7 +171,11 @@ function TravelersSection({
         })
         .eq('id', tripId);
       if (updateError) throw updateError;
-    } catch (err) {
+      setSavedFlash(true);
+      if (flashRef.current) clearTimeout(flashRef.current);
+      flashRef.current = setTimeout(() => setSavedFlash(false), 1500);
+    } catch {
+      toast.error('Failed to update travelers');
     } finally {
       setSaving(false);
     }
@@ -490,134 +184,78 @@ function TravelersSection({
   const handleChange = (patch: Partial<TravelerMetadata>) => {
     setTravelers((prev) => {
       const next = { ...prev, ...patch };
-
-      // Keep child_ages array in sync with children count
-      if (patch.children !== undefined) {
-        const count = patch.children;
-        const ages = prev.child_ages.slice(0, count);
-        while (ages.length < count) ages.push(0);
-        next.child_ages = ages;
-      }
-
-      // Debounce auto-save
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => save(next), 500);
-
       return next;
     });
   };
 
-  const handleChildAge = (index: number, age: number) => {
-    setTravelers((prev) => {
-      const ages = [...prev.child_ages];
-      ages[index] = age;
-      const next = { ...prev, child_ages: ages };
-
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => save(next), 500);
-
-      return next;
-    });
-  };
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
+  useEffect(() => () => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (flashRef.current) clearTimeout(flashRef.current);
   }, []);
 
+  const total = travelers.adults + travelers.children + travelers.infants;
+  const status = saving
+    ? (<><Loader2 size={12} className="animate-spin" /> Saving</>)
+    : savedFlash
+      ? (<><Check size={12} className="text-emerald-600" /> Saved</>)
+      : (<>{total} {total === 1 ? 'traveler' : 'travelers'}</>);
+
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-4">
-        <SectionHeading>Travelers</SectionHeading>
-        {saving && <span className="text-xs text-gray-400 dark:text-gray-500 mb-3.5">Saving…</span>}
+    <div className="space-y-3">
+      <div className="flex items-center justify-end text-[12px] text-gray-500 dark:text-gray-400 gap-1.5 -mt-1 mb-1">
+        {status}
       </div>
-
-      <div className="space-y-3">
-        {/* Adults */}
-        <div className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-50 dark:bg-blue-500/10">
-              <Users size={16} className="text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">Adults</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Age 18+</p>
-            </div>
-          </div>
-          <Stepper value={travelers.adults} min={1} onChange={(v) => handleChange({ adults: v })} disabled={disabled} />
-        </div>
-
-        {/* Children */}
-        <div className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-purple-50 dark:bg-purple-500/10">
-              <Users size={16} className="text-purple-600 dark:text-purple-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">Children</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Ages 2-17</p>
-            </div>
-          </div>
-          <Stepper value={travelers.children} min={0} onChange={(v) => handleChange({ children: v })} disabled={disabled} />
-        </div>
-
-        {/* Child ages — shown only when children > 0 */}
-        {travelers.children > 0 && (
-          <div className="rounded-xl border border-gray-200 dark:border-white/[0.08] p-4 bg-gray-50 dark:bg-white/[0.03] space-y-3">
-            <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Child ages (optional)</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {Array.from({ length: travelers.children }).map((_, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <label className="text-xs text-gray-500 dark:text-gray-400 shrink-0">Child {i + 1}</label>
-                  <input
-                    type="number"
-                    min={2}
-                    max={17}
-                    placeholder="Age"
-                    value={travelers.child_ages[i] !== undefined && travelers.child_ages[i] > 0 ? travelers.child_ages[i] : ''}
-                    onChange={(e) => handleChildAge(i, e.target.value ? Number(e.target.value) : 0)}
-                    disabled={disabled}
-                    className="w-full rounded-lg border border-gray-300 dark:border-white/[0.12] bg-white dark:bg-white/[0.05] px-2 py-1.5 text-sm text-gray-900 dark:text-white dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:border-transparent transition disabled:bg-gray-100 disabled:text-gray-400 dark:disabled:bg-white/[0.02] dark:disabled:text-gray-500"
-                    style={{ '--tw-ring-color': FALLBACK_BRAND } as React.CSSProperties}
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Infants */}
-        <div className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-pink-50 dark:bg-pink-500/10">
-              <Users size={16} className="text-pink-500 dark:text-pink-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-gray-900 dark:text-white">Infants</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Under 2</p>
-            </div>
-          </div>
-          <Stepper value={travelers.infants} min={0} onChange={(v) => handleChange({ infants: v })} disabled={disabled} />
-        </div>
-      </div>
-
-      <p className="mt-3 text-xs text-gray-400 dark:text-gray-500">
-        Total: {travelers.adults + travelers.children + travelers.infants} traveler{travelers.adults + travelers.children + travelers.infants === 1 ? '' : 's'}
-      </p>
+      <TravelerRow
+        label="Adults" sublabel="Age 18+"
+        value={travelers.adults} min={1} disabled={disabled}
+        onChange={(v) => handleChange({ adults: v })}
+      />
+      <TravelerRow
+        label="Children" sublabel="Ages 2 to 17"
+        value={travelers.children} min={0} disabled={disabled}
+        onChange={(v) => handleChange({ children: v })}
+      />
+      <TravelerRow
+        label="Infants" sublabel="Under 2"
+        value={travelers.infants} min={0} disabled={disabled}
+        onChange={(v) => handleChange({ infants: v })}
+      />
     </div>
   );
 }
 
-// ─── Main page component ──────────────────────────────────────
+function TravelerRow({
+  label, sublabel, value, min, disabled, onChange,
+}: {
+  label: string; sublabel: string;
+  value: number; min: number; disabled: boolean; onChange: (v: number) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4 transition-colors hover:border-gray-300 dark:hover:border-white/[0.16]">
+      <div className="flex items-center gap-4 min-w-0">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 dark:bg-white/[0.06] shrink-0">
+          <Users size={18} className="text-gray-500 dark:text-gray-400" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold text-gray-900 dark:text-white">{label}</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400">{sublabel}</p>
+        </div>
+      </div>
+      <Stepper value={value} min={min} onChange={onChange} disabled={disabled} />
+    </div>
+  );
+}
 
-export default function SettingsPage({ params }: { params: Promise<{ id: string }> }) {
+// ─── Main page ──────────────────────────────────────────────
+
+export default function TripSettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const { trip, isLoading: tripLoading, refetch } = useItineraryScreen(id);
   const user = useAuthStore((s) => s.user);
-  // Trip owner = authenticated user match OR anonymous user who created the trip
+
   const isOwner = trip ? (
     isTripOwner(trip, user?.id ?? null) ||
     (!user && typeof window !== 'undefined' && (() => {
@@ -625,10 +263,6 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
     })())
   ) : false;
 
-  const [dirty, setDirty] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  // ── Appearance — driven by shared TripThemeContext ───
   const {
     theme, themeId, customColor,
     setTripTheme,
@@ -637,65 +271,74 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
     hiddenTabs, setTabHidden,
   } = useTripTheme();
 
-  // ── Trip details state ──
-  const [details, setDetails] = useState({
-    title: '',
-    destination: '',
-    start_date: '',
-    end_date: '',
+  const blankDetails = {
+    title: '', destination: '', start_date: '', end_date: '',
     budget: '',
-    currency: 'USD',
-    travelers: '1',
-    status: 'planning',
-  });
+  };
+  const [details, setDetails] = useState(blankDetails);
+  const [originalDetails, setOriginalDetails] = useState(blankDetails);
+  const detailsDirty = JSON.stringify(details) !== JSON.stringify(originalDetails);
+  const [savingDetails, setSavingDetails] = useState(false);
 
-  // ── Trip sharing state ──
-  const [isPublic, setIsPublic] = useState(false);
-  const [isShared, setIsShared] = useState(false);
+  const [appearanceDirty, setAppearanceDirty] = useState(false);
+  const [savingAppearance, setSavingAppearance] = useState(false);
+  const markAppearance = useCallback(() => setAppearanceDirty(true), []);
 
-  // Sync state from loaded trip
+  const [visibility, setVisibility] = useState<'private' | 'link' | 'public'>('private');
+  const [linkPermission, setLinkPermission] = useState<'viewer' | 'editor'>('viewer');
+  const [shareToken, setShareToken] = useState<string | null>(null);
+
   useEffect(() => {
     if (trip) {
-      setDetails({
+      const next = {
         title: trip.title ?? '',
         destination: trip.destination ?? '',
         start_date: trip.start_date ?? '',
         end_date: trip.end_date ?? '',
         budget: trip.budget != null ? String(trip.budget) : '',
-        currency: trip.currency ?? 'USD',
-        travelers: trip.travelers != null ? String(trip.travelers) : '1',
-        status: trip.status ?? 'planning',
-      });
-      setIsPublic(trip.visibility === 'public');
-      setIsShared(trip.visibility !== 'private');
+      };
+      setDetails(next);
+      setOriginalDetails(next);
+      const v = (trip.visibility ?? 'private') as 'private' | 'link' | 'public';
+      setVisibility(v);
+      setLinkPermission(trip.link_permission ?? 'viewer');
+      setShareToken(trip.share_link_token ?? null);
     }
   }, [trip]);
 
-  const markDirty = useCallback(() => setDirty(true), []);
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (detailsDirty || appearanceDirty) { e.preventDefault(); e.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [detailsDirty, appearanceDirty]);
 
-  const updateDetails = (patch: Partial<typeof details>) => {
-    setDetails((prev) => ({ ...prev, ...patch }));
-    markDirty();
-  };
-
-  // ── Save all changes ──
-  const handleSave = async () => {
+  const handleSaveDetails = async () => {
     if (!trip) return;
-    setSaving(true);
+    setSavingDetails(true);
     try {
-      // Save trip details
       await updateTripDetails(trip.id, {
         title: details.title,
         destination: details.destination,
         start_date: details.start_date,
         end_date: details.end_date,
         budget: details.budget ? Number(details.budget) : null,
-        currency: details.currency,
-        travelers: details.travelers ? Number(details.travelers) : 1,
-        status: details.status as Trip['status'],
       });
+      setOriginalDetails(details);
+      refetch();
+      toast.success('Trip details saved');
+    } catch {
+      toast.error('Failed to save trip details');
+    } finally {
+      setSavingDetails(false);
+    }
+  };
 
-      // Save theme settings
+  const handleSaveAppearance = async () => {
+    if (!trip) return;
+    setSavingAppearance(true);
+    try {
       await updateTripThemeSettings(trip.id, {
         theme: themeId,
         custom_theme_color: customColor,
@@ -703,72 +346,64 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
         itinerary_color_overrides: itineraryColorOverrides,
         hidden_tabs: hiddenTabs,
       });
-
-      setDirty(false);
+      setAppearanceDirty(false);
       refetch();
-    } catch (err) {
-      alert('Failed to save settings. Please try again.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDiscard = () => {
-    if (trip) {
-      setDetails({
-        title: trip.title ?? '',
-        destination: trip.destination ?? '',
-        start_date: trip.start_date ?? '',
-        end_date: trip.end_date ?? '',
-        budget: trip.budget != null ? String(trip.budget) : '',
-        currency: trip.currency ?? 'USD',
-        travelers: trip.travelers != null ? String(trip.travelers) : '1',
-        status: trip.status ?? 'planning',
-      });
-    }
-    setDirty(false);
-  };
-
-  // ── Sharing handlers ──
-  const handleTogglePublic = async () => {
-    if (!trip || !isOwner) return;
-    try {
-      const newVisibility = isPublic ? 'private' : 'public';
-      await updateTripVisibility(trip.id, newVisibility as 'private' | 'public');
-      setIsPublic(!isPublic);
-      if (newVisibility === 'public') setIsShared(true);
-      refetch();
+      toast.success('Appearance saved');
     } catch {
-      alert('Failed to update trip visibility');
+      toast.error('Failed to save appearance');
+    } finally {
+      setSavingAppearance(false);
     }
   };
 
-  const handleToggleShared = async () => {
-    if (!trip || !isOwner) return;
+  const handleChangeVisibility = async (next: 'private' | 'link' | 'public') => {
+    if (!trip || !isOwner || next === visibility) return;
+    const previous = visibility;
+    setVisibility(next); // optimistic
     try {
-      if (!isShared) {
-        await ensureShareLinkToken(trip.id);
-        await updateTripVisibility(trip.id, 'link');
-        setIsShared(true);
+      if (next === 'link' || next === 'public') {
+        // Make sure a token exists before persisting visibility, so the URL is renderable immediately.
+        const token = await ensureShareLinkToken(trip.id);
+        if (token) setShareToken(token);
+      }
+      if (next === 'public') {
+        await updateTripVisibility(trip.id, 'public');
+      } else if (next === 'link') {
+        await updateTripVisibility(trip.id, 'link', linkPermission);
       } else {
         await updateTripVisibility(trip.id, 'private');
-        setIsShared(false);
-        setIsPublic(false);
       }
       refetch();
+      toast.success(
+        next === 'public' ? 'Trip is now public'
+          : next === 'link' ? 'Share link enabled'
+          : 'Trip is now private'
+      );
     } catch {
-      alert('Failed to update sharing settings');
+      setVisibility(previous);
+      toast.error('Failed to update sharing');
     }
   };
 
-  // ── Danger zone handlers ──
+  const handleChangeLinkPermission = async (permission: 'viewer' | 'editor') => {
+    if (!trip || !isOwner) return;
+    try {
+      await updateTripVisibility(trip.id, 'link', permission);
+      setLinkPermission(permission);
+      refetch();
+      toast.success(`Link recipients can now ${permission === 'editor' ? 'edit' : 'view'}`);
+    } catch {
+      toast.error('Failed to update link permission');
+    }
+  };
+
   const handleDeleteTrip = async () => {
     if (!trip) return;
     try {
       await deleteTrip(trip.id);
       router.push('/trips');
     } catch {
-      alert('Failed to delete trip');
+      toast.error('Failed to delete trip');
     }
   };
 
@@ -778,23 +413,24 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
       await leaveTrip(trip.id, user.id);
       router.push('/trips');
     } catch {
-      alert('Failed to leave trip');
+      toast.error('Failed to leave trip');
     }
   };
 
   if (tripLoading && !trip) {
     return (
-      <div className="max-w-2xl mx-auto py-16 text-center text-gray-400 dark:text-gray-500 text-sm">
-        Loading settings...
+      <div className="max-w-7xl mx-auto py-24 text-center">
+        <Loader2 size={20} className="animate-spin mx-auto text-gray-400" />
+        <p className="mt-3 text-sm text-gray-400 dark:text-gray-500">Loading settings</p>
       </div>
     );
   }
 
   if (!trip) {
     return (
-      <div className="max-w-2xl mx-auto py-16 text-center">
+      <div className="max-w-2xl mx-auto py-24 text-center">
         <p className="text-gray-500 dark:text-gray-400 mb-4">Trip not found or you don&apos;t have access.</p>
-        <button onClick={() => router.push('/trips')} className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+        <button onClick={() => router.push('/trips')} className="text-sm font-medium text-[var(--trip-base,#1e3a5f)] hover:underline">
           Back to trips
         </button>
       </div>
@@ -802,122 +438,396 @@ export default function SettingsPage({ params }: { params: Promise<{ id: string 
   }
 
   return (
-    <div className="max-w-2xl mx-auto pb-24 divide-y divide-gray-200 dark:divide-white/[0.08]">
-      {/* Theme & Colors */}
-      <section className="py-8 first:pt-0">
-        <SectionHeading>Theme & Colors</SectionHeading>
-        <ThemePicker
-          currentTheme={themeId}
-          customColor={customColor}
-          onSelectTheme={(tid, color) => { setTripTheme(tid, color); markDirty(); }}
-          tabColors={theme.tabColors}
-          tabColorOverrides={tabColorOverrides}
-          onTabColorChange={(name, color) => { setTabColor(name, color); markDirty(); }}
-          onResetTabColors={() => { resetTabColors(); markDirty(); }}
-          itineraryColors={theme.itineraryColors}
-          itineraryColorOverrides={itineraryColorOverrides}
-          onItineraryColorChange={(section, color) => { setItineraryColor(section, color); markDirty(); }}
-          onResetItineraryColors={() => { resetItineraryColors(); markDirty(); }}
-        />
-      </section>
-
-      {/* Manage Tabs */}
-      <section className="py-8">
-        <SectionHeading>Manage Tabs</SectionHeading>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Choose which tabs appear in your trip navigation.</p>
-        <div className="space-y-1">
-          {CONFIGURABLE_TABS.map(({ segment, label, icon: Icon, alwaysOn }) => {
-            const isEnabled = !hiddenTabs[segment];
-            const tabColor = tabColorOverrides[segment] ?? theme.tabColors[segment] ?? theme.base;
-            return (
-              <div key={segment} className="flex items-center justify-between rounded-xl p-3.5 hover:bg-gray-50 dark:hover:bg-white/[0.03] transition">
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${!isEnabled ? 'bg-gray-300 dark:bg-white/[0.12]' : ''}`}
-                    style={isEnabled ? { backgroundColor: tabColor } : undefined}>
-                    <Icon size={14} style={isEnabled ? { color: theme.textOnBase } : undefined} className={!isEnabled ? 'text-gray-400 dark:text-gray-500' : ''} />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{label}</p>
-                    {alwaysOn && <p className="text-[11px] text-gray-400 dark:text-gray-500">Always visible</p>}
-                  </div>
-                </div>
-                {alwaysOn ? (
-                  <div className="text-xs font-medium text-gray-400 dark:text-gray-500 px-2 py-1 rounded-full bg-gray-100 dark:bg-white/[0.06]">Required</div>
-                ) : (
-                  <Toggle enabled={isEnabled} onToggle={() => { setTabHidden(segment, isEnabled); markDirty(); }} color={theme.base} />
-                )}
+    <div className="w-full px-4 sm:px-6 lg:px-10 py-8 lg:py-12">
+      <div className="w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+          {/* Details */}
+          <Module
+            className="lg:col-span-7"
+            title="Details"
+            description="Name, destination, dates, and budget."
+            action={isOwner && detailsDirty ? (
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => setDetails(originalDetails)}
+                  disabled={savingDetails}
+                  className="text-[13px] font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50 px-3 h-9"
+                >
+                  Discard
+                </button>
+                <PrimaryButton onClick={handleSaveDetails} disabled={savingDetails} busy={savingDetails}>
+                  {savingDetails ? 'Saving' : 'Save'}
+                </PrimaryButton>
               </div>
-            );
-          })}
+            ) : null}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-x-5 gap-y-4">
+              <div className="md:col-span-6">
+                <FieldLabel>Trip name</FieldLabel>
+                <Input value={details.title} onChange={(v) => setDetails({ ...details, title: v })} disabled={!isOwner} />
+              </div>
+              <div className="md:col-span-6">
+                <FieldLabel>Destination</FieldLabel>
+                <Input value={details.destination} onChange={(v) => setDetails({ ...details, destination: v })} disabled={!isOwner} />
+              </div>
+              <div className="md:col-span-3">
+                <FieldLabel>Start date</FieldLabel>
+                <Input type="date" value={details.start_date} onChange={(v) => setDetails({ ...details, start_date: v })} disabled={!isOwner} />
+              </div>
+              <div className="md:col-span-3">
+                <FieldLabel>End date</FieldLabel>
+                <Input type="date" value={details.end_date} onChange={(v) => setDetails({ ...details, end_date: v })} disabled={!isOwner} />
+              </div>
+              <div className="md:col-span-6">
+                <FieldLabel>Budget</FieldLabel>
+                <Input type="number" placeholder="0" value={details.budget} onChange={(v) => setDetails({ ...details, budget: v })} disabled={!isOwner} />
+              </div>
+            </div>
+          </Module>
+
+          {/* Travelers */}
+          <Module
+            className="lg:col-span-5"
+            title="Travelers"
+            description="Saved automatically as you adjust the count."
+          >
+            <TravelersControls
+              tripId={trip.id}
+              initialValue={trip.trip_context?.travelers ?? DEFAULT_TRAVELERS}
+              disabled={!isOwner}
+            />
+          </Module>
+
+          {/* Sharing - owner only */}
+          {isOwner && (
+            <Module
+              className="lg:col-span-12"
+              title="Sharing"
+              description="Control who can find or join this trip. Saves instantly."
+            >
+              <SharingControls
+                tripId={trip.id}
+                visibility={visibility}
+                shareToken={shareToken}
+                linkPermission={linkPermission}
+                forkCount={trip.fork_count ?? 0}
+                onChangeVisibility={handleChangeVisibility}
+                onChangeLinkPermission={handleChangeLinkPermission}
+              />
+            </Module>
+          )}
+
+          {/* Appearance */}
+          <Module
+            className="lg:col-span-12"
+            title="Appearance"
+            description="Theme, accent colors, and which tabs show in this trip's nav."
+            action={isOwner && appearanceDirty ? (
+              <div className="shrink-0">
+                <PrimaryButton onClick={handleSaveAppearance} disabled={savingAppearance} busy={savingAppearance}>
+                  {savingAppearance ? 'Saving' : 'Save'}
+                </PrimaryButton>
+              </div>
+            ) : null}
+          >
+            <div className="space-y-10">
+              <ThemePicker
+                currentTheme={themeId}
+                customColor={customColor}
+                onSelectTheme={(tid, color) => { setTripTheme(tid, color); markAppearance(); }}
+                tabColors={theme.tabColors}
+                tabColorOverrides={tabColorOverrides}
+                onTabColorChange={setTabColor}
+                onResetTabColors={resetTabColors}
+                itineraryColors={theme.itineraryColors}
+                itineraryColorOverrides={itineraryColorOverrides}
+                onItineraryColorChange={setItineraryColor}
+                onResetItineraryColors={resetItineraryColors}
+              />
+
+              <div>
+                <h3 className="text-[22px] font-serif font-normal text-gray-900 dark:text-white tracking-tight leading-tight mb-1.5">Visible tabs</h3>
+                <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-5">
+                  Choose which tabs appear in this trip&apos;s navigation.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                  {CONFIGURABLE_TABS.map(({ segment, label, icon: Icon }) => {
+                    const isEnabled = !hiddenTabs[segment];
+                    return (
+                      <div key={segment} className="flex items-center justify-between rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.02] p-3.5 hover:border-gray-300 dark:hover:border-white/[0.16] transition">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-gray-100 dark:bg-white/[0.06]">
+                            <Icon size={16} className={isEnabled ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'} />
+                          </div>
+                          <p className="text-[14px] font-medium text-gray-900 dark:text-white truncate">{label}</p>
+                        </div>
+                        <Toggle
+                          enabled={isEnabled}
+                          onToggle={() => { setTabHidden(segment, isEnabled); markAppearance(); }}
+                          color={theme.base}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </Module>
+
+          {/* Manage trip */}
+          <Module
+            className="lg:col-span-12"
+            title="Manage trip"
+            description="Delete this trip if you own it, or leave if you were invited."
+          >
+            <ManageControls
+              isOwner={isOwner}
+              onDeleteTrip={handleDeleteTrip}
+              onLeaveTrip={handleLeaveTrip}
+            />
+          </Module>
         </div>
-      </section>
+      </div>
+    </div>
+  );
+}
 
-      {/* Trip Details */}
-      <section className="py-8">
-        <TripDetailsSection details={details} onChange={updateDetails} disabled={!isOwner} />
-      </section>
+// ─── Sharing ─────────────────────────────────────────────────
 
-      {/* Travelers */}
-      {trip && (
-        <section className="py-8">
-          <TravelersSection
-            tripId={trip.id}
-            initialValue={trip.trip_context?.travelers ?? DEFAULT_TRAVELERS}
-            disabled={!isOwner}
-          />
-        </section>
-      )}
+const VISIBILITY_OPTIONS: {
+  id: 'private' | 'link' | 'public';
+  label: string;
+  description: string;
+  icon: typeof Lock;
+}[] = [
+  { id: 'private', label: 'Private', description: 'Only you and invited collaborators',  icon: Lock },
+  { id: 'link',    label: 'Link',    description: 'Anyone with the link can open it',    icon: LinkIcon },
+  { id: 'public',  label: 'Public',  description: 'Discoverable and forkable by anyone', icon: Globe },
+];
 
-      {/* Trip Sharing — owner only */}
-      {isOwner && (
-        <section className="py-8">
-          <TripSharingSection
-            tripId={id}
-            isPublic={isPublic}
-            isShared={isShared}
-            shareToken={trip?.share_link_token ?? null}
-            forkCount={trip?.fork_count ?? 0}
-            onTogglePublic={handleTogglePublic}
-            onToggleShared={handleToggleShared}
-          />
-        </section>
-      )}
+function SharingControls({
+  tripId, visibility, shareToken, linkPermission, forkCount,
+  onChangeVisibility, onChangeLinkPermission,
+}: {
+  tripId: string;
+  visibility: 'private' | 'link' | 'public';
+  shareToken: string | null;
+  linkPermission: 'viewer' | 'editor';
+  forkCount: number;
+  onChangeVisibility: (next: 'private' | 'link' | 'public') => void;
+  onChangeLinkPermission: (permission: 'viewer' | 'editor') => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const shareUrl = shareToken
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/trip/${tripId}/share/${shareToken}`
+    : '';
+  const linkVisible = visibility !== 'private' && !!shareUrl;
 
-      {/* Danger Zone */}
-      <section className="py-8">
-        <DangerZoneSection
-          isOwner={isOwner}
-          tripTitle={trip?.title ?? ''}
-          onDeleteTrip={handleDeleteTrip}
-          onLeaveTrip={handleLeaveTrip}
-        />
-      </section>
+  const copyShareLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Could not copy link. Copy it manually.');
+    }
+  };
 
-      {/* Floating save bar */}
-      {dirty && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-gray-900 px-5 py-3 shadow-xl">
-          <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-            <AlertTriangle size={14} className="text-amber-500" />
-            Unsaved changes
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {VISIBILITY_OPTIONS.map(({ id, label, description, icon: Icon }) => {
+          const active = visibility === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onChangeVisibility(id)}
+              className={`text-left rounded-2xl border p-4 transition-colors ${
+                active
+                  ? 'border-[var(--trip-base,#1e3a5f)]/40 bg-[var(--trip-base,#1e3a5f)]/[0.06] dark:bg-white/[0.04]'
+                  : 'border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] hover:border-gray-300 dark:hover:border-white/[0.16]'
+              }`}
+            >
+              <div className="flex items-center gap-3 mb-1.5">
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${active ? 'bg-[var(--trip-base,#1e3a5f)] text-white' : 'bg-gray-100 dark:bg-white/[0.06] text-gray-500 dark:text-gray-400'}`}>
+                  <Icon size={16} />
+                </div>
+                <p className="text-[15px] font-semibold text-gray-900 dark:text-white">{label}</p>
+                {active && <Check size={16} className="ml-auto text-[var(--trip-base,#1e3a5f)] dark:text-white" />}
+              </div>
+              <p className="text-[12px] text-gray-500 dark:text-gray-400">{description}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      {linkVisible && (
+        <div className="rounded-2xl border border-gray-200 dark:border-white/[0.08] p-5 bg-gray-50/60 dark:bg-white/[0.02] space-y-3">
+          <div className="flex items-center gap-2">
+            <LinkIcon size={14} className="text-gray-500 dark:text-gray-400" />
+            <p className="text-[13px] font-semibold text-gray-700 dark:text-gray-300">Share link</p>
           </div>
-          <button
-            onClick={handleDiscard}
-            className="flex items-center gap-1.5 text-sm font-medium px-4 py-2 rounded-lg border border-gray-300 dark:border-white/[0.12] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition"
-          >
-            <X size={14} />
-            Discard
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg text-white transition hover:opacity-90 disabled:opacity-60"
-            style={{ backgroundColor: theme.base, color: theme.textOnBase }}
-          >
-            <Save size={14} />
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex-1 rounded-lg bg-white dark:bg-white/[0.05] border border-gray-200 dark:border-white/[0.08] px-3 h-10 flex items-center text-[12px] text-gray-600 dark:text-gray-300 font-mono truncate">
+              {shareUrl}
+            </div>
+            <select
+              value={linkPermission}
+              onChange={(e) => onChangeLinkPermission(e.target.value as 'viewer' | 'editor')}
+              className="shrink-0 text-[13px] font-medium px-3 h-10 rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.05] text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base,#1e3a5f)]/20"
+            >
+              <option value="viewer">Can view</option>
+              <option value="editor">Can edit</option>
+            </select>
+            <button
+              onClick={copyShareLink}
+              className="shrink-0 flex items-center gap-1.5 text-[13px] font-semibold px-4 h-10 rounded-lg text-white transition-all"
+              style={{ backgroundColor: copied ? '#10b981' : 'var(--trip-base, #1e3a5f)' }}
+            >
+              <Copy size={14} />
+              {copied ? 'Copied' : 'Copy'}
+            </button>
+          </div>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400">
+            Recipients can {linkPermission === 'editor' ? 'edit and join the trip' : 'view only'}.
+          </p>
         </div>
       )}
+
+      {forkCount > 0 && (
+        <div className="flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-4">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center bg-gray-100 dark:bg-white/[0.06] shrink-0">
+            <GitFork size={16} className="text-gray-500 dark:text-gray-400" />
+          </div>
+          <div>
+            <p className="text-[14px] font-semibold text-gray-900 dark:text-white">{forkCount} fork{forkCount === 1 ? '' : 's'}</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400">This trip has been forked by other users.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SharingRow({
+  title, subtitle, icon, toggle,
+}: {
+  title: string; subtitle: string; icon: React.ReactNode; toggle?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-5 transition-colors hover:border-gray-300 dark:hover:border-white/[0.16]">
+      <div className="flex items-center gap-4 min-w-0">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gray-100 dark:bg-white/[0.06]">
+          {icon}
+        </div>
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold text-gray-900 dark:text-white truncate">{title}</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{subtitle}</p>
+        </div>
+      </div>
+      {toggle}
+    </div>
+  );
+}
+
+// ─── Manage trip ─────────────────────────────────────────────
+
+function ManageControls({
+  isOwner, onDeleteTrip, onLeaveTrip,
+}: {
+  isOwner: boolean; onDeleteTrip: () => void; onLeaveTrip: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+
+  if (!isOwner) {
+    return (
+      <div className="rounded-2xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-5 transition-colors hover:border-gray-300 dark:hover:border-white/[0.16] flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 dark:bg-white/[0.06] shrink-0">
+            <LogOut size={18} className="text-gray-500 dark:text-gray-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[15px] font-semibold text-gray-900 dark:text-white">Leave trip</p>
+            <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">
+              {confirming
+                ? 'Are you sure? You’ll lose access to this trip immediately.'
+                : 'Remove yourself from this trip. You’ll lose access to all of its data.'}
+            </p>
+          </div>
+        </div>
+        <div className="shrink-0 flex items-center gap-2">
+          {confirming ? (
+            <>
+              <button
+                onClick={() => setConfirming(false)}
+                className="text-sm font-medium px-3 h-10 rounded-xl text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={onLeaveTrip}
+                autoFocus
+                className="text-sm font-semibold px-4 h-10 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
+              >
+                Yes, leave
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => setConfirming(true)}
+              className="text-sm font-semibold px-4 h-10 rounded-xl border border-gray-200 dark:border-white/[0.10] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-200 dark:hover:border-red-500/30 transition-colors"
+            >
+              Leave trip
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] p-5 transition-colors hover:border-gray-300 dark:hover:border-white/[0.16] flex items-center justify-between gap-4">
+      <div className="flex items-center gap-4 min-w-0">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-100 dark:bg-white/[0.06] shrink-0">
+          <Trash2 size={18} className="text-gray-500 dark:text-gray-400" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold text-gray-900 dark:text-white">Delete trip</p>
+          <p className="text-[12px] text-gray-500 dark:text-gray-400 mt-0.5">
+            {confirming
+              ? 'Are you sure? This permanently removes the trip and all of its data.'
+              : "Permanently remove this trip and all of its data. This can't be undone."}
+          </p>
+        </div>
+      </div>
+      <div className="shrink-0 flex items-center gap-2">
+        {confirming ? (
+          <>
+            <button
+              onClick={() => setConfirming(false)}
+              className="text-sm font-medium px-3 h-10 rounded-xl text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onDeleteTrip}
+              autoFocus
+              className="text-sm font-semibold px-4 h-10 rounded-xl bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
+            >
+              Yes, delete
+            </button>
+          </>
+        ) : (
+          <button
+            onClick={() => setConfirming(true)}
+            className="text-sm font-semibold px-4 h-10 rounded-xl border border-gray-200 dark:border-white/[0.10] text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-200 dark:hover:border-red-500/30 transition-colors"
+          >
+            Delete trip
+          </button>
+        )}
+      </div>
     </div>
   );
 }

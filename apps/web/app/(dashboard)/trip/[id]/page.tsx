@@ -9,13 +9,16 @@ function safeDate(d: string | null | undefined): string {
   if (isNaN(parsed.getTime())) return '';
   return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
-import { Plus, ChevronLeft, ChevronRight, MapPin, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList } from 'lucide-react';
-import { useItineraryScreen, useWeather, useEvents, upscaleGoogleImage, supabase } from '@travyl/shared';
+import Image from 'next/image';
+import { Plus, ChevronLeft, ChevronRight, MapPin, Languages, UtensilsCrossed, Coffee, Beer, Bus, Droplets, Volume2, LayoutGrid, LayoutList, Newspaper, Sparkles, Wallet, Compass } from 'lucide-react';
+import { useItineraryScreen, useWeather, useEvents, upscaleGoogleImage, supabase, useHomeCurrency } from '@travyl/shared';
 import { useQuery } from '@tanstack/react-query';
 import type { TripContextData, PlaceItem } from '@travyl/shared';
 import { AnimatePresence } from 'motion/react';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
-import { TripExploreSection } from './trip-layout-inner';
+import OverviewBudgetSummary from '@/components/trip/OverviewBudgetSummary';
+import { useTripPreload } from '@/lib/preload/useTripPreload';
+import ItinerarySection from '@/components/itinerary/ItinerarySection';
 
 // Hide broken images — no misleading fallback photos
 const handleImgError = (e: React.SyntheticEvent<HTMLImageElement>) => {
@@ -50,6 +53,35 @@ function useRevealOnScroll(ready: boolean) {
 
 
 // ── Reusable components ─────────────────────────────────────
+
+/** Consistent section header used across the overview — small uppercase
+ * eyebrow over a serif title, matching the "At a Glance" style. */
+function SectionHeader({
+  eyebrow,
+  title,
+  icon: Icon,
+  action,
+}: {
+  eyebrow: string;
+  title: string;
+  icon?: React.ComponentType<{ size?: number; className?: string }>;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-4 flex items-end justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-[10px] tracking-[0.3em] uppercase font-semibold mb-1 text-gray-500 dark:text-white/70">
+          {eyebrow}
+        </p>
+        <h2 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif flex items-center gap-2">
+          {Icon && <Icon size={18} className="text-[color:var(--trip-base)] shrink-0" />}
+          <span className="truncate">{title}</span>
+        </h2>
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
+    </div>
+  );
+}
 
 function AddToTripButton({ isAdded, onToggle }: { isAdded: boolean; onToggle: () => void }) {
   return (
@@ -98,28 +130,26 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
 
   return (
     <section>
-      <div className="mb-4 flex items-end justify-between">
-        <div>
-          <h2 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif">Things to Do</h2>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-white/[0.06]">
-          {!gridView && (
-            <>
-              <span className="text-[11px] tabular-nums mr-1 text-gray-500 dark:text-white/80">
-                {activeIdx + 1} / {items.length}
-              </span>
-              <button onClick={() => { const i = Math.max(0, activeIdx - 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === 0}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
-                <ChevronLeft size={14} className="text-gray-600 dark:text-white" />
-              </button>
-              <button onClick={() => { const i = Math.min(items.length - 1, activeIdx + 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === items.length - 1}
-                className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
-                <ChevronRight size={14} className="text-gray-600 dark:text-white" />
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+      <SectionHeader
+        eyebrow="Discover"
+        title="Things to Do"
+        icon={Compass}
+        action={!gridView ? (
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-white/[0.06]">
+            <span className="text-[11px] tabular-nums mr-1 text-gray-500 dark:text-white/80">
+              {activeIdx + 1} / {items.length}
+            </span>
+            <button onClick={() => { const i = Math.max(0, activeIdx - 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === 0}
+              className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
+              <ChevronLeft size={14} className="text-gray-600 dark:text-white" />
+            </button>
+            <button onClick={() => { const i = Math.min(items.length - 1, activeIdx + 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === items.length - 1}
+              className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
+              <ChevronRight size={14} className="text-gray-600 dark:text-white" />
+            </button>
+          </div>
+        ) : null}
+      />
 
       {!gridView ? (
         <>
@@ -131,23 +161,25 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
               const idx = Math.round(el.scrollLeft / (el.firstElementChild as HTMLElement)?.offsetWidth || 0);
               setActiveIdx(Math.min(idx, items.length - 1));
             }}>
-            {items.map((item) => (
-              <div key={item.id} onClick={() => onItemClick?.(item)} className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start cursor-pointer" style={{ height: 360 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={item.image || undefined} alt={item.title} className="absolute inset-0 w-full h-full object-cover" onError={handleImgError} referrerPolicy="no-referrer" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <div className="absolute top-3 left-3">
-                  <span className="text-[9px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full backdrop-blur-md bg-black/30 text-white border border-white/20">
-                    {item.category}
-                  </span>
+            {items.map((item) => {
+              const imgSrc = upscaleGoogleImage(item.image) || item.image || '';
+              return (
+                <div key={item.id} onClick={() => onItemClick?.(item)} className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start cursor-pointer" style={{ height: 360 }}>
+                  {imgSrc ? <Image src={imgSrc} alt={item.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 800px" onError={handleImgError} /> : null}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute top-3 left-3">
+                    <span className="text-[9px] uppercase tracking-wider font-semibold px-2.5 py-1 rounded-full backdrop-blur-md bg-black/30 text-white border border-white/20">
+                      {item.category}
+                    </span>
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 p-5">
+                    <h3 className="text-lg font-normal text-white leading-tight mb-1 font-serif">{item.title}</h3>
+                    <p className="text-[12px] text-white/60 mb-3 line-clamp-2">{item.description}</p>
+                    <AddToTripButton isAdded={addedItems.has(item.id)} onToggle={() => onToggleAdd(item.id)} />
+                  </div>
                 </div>
-                <div className="absolute bottom-0 left-0 right-0 p-5">
-                  <h3 className="text-lg font-normal text-white leading-tight mb-1 font-serif">{item.title}</h3>
-                  <p className="text-[12px] text-white/60 mb-3 line-clamp-2">{item.description}</p>
-                  <AddToTripButton isAdded={addedItems.has(item.id)} onToggle={() => onToggleAdd(item.id)} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           {/* Dot indicators */}
           <div className="flex items-center gap-1.5 mt-3">
@@ -165,12 +197,14 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
         /* Grid view */
         <div className={`grid gap-3 ${flush ? 'grid-cols-2 sm:grid-cols-3' : ''}`}
           style={!flush ? { columns: '2 280px', columnGap: '0.75rem' } : undefined}>
-          {items.filter(item => item.image).map((item) => (
+          {items.filter(item => item.image).map((item) => {
+            const upscaled = upscaleGoogleImage(item.image) || item.image;
+            return (
             <div key={item.id} onClick={() => onItemClick?.(item)}
               className={`relative rounded-xl overflow-hidden cursor-pointer group ${flush ? '' : 'break-inside-avoid mb-3'}`}
               style={flush ? { height: 280 } : undefined}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.image} alt={item.title} onError={handleImgError}
+              <img src={upscaled} alt={item.title} onError={handleImgError}
                 className={`w-full object-cover group-hover:scale-105 transition-transform duration-500 ${flush ? 'h-full' : ''}`}
                 style={!flush ? { minHeight: 200 } : undefined} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
@@ -183,7 +217,7 @@ function ThingsToDoSection({ items, addedItems, onToggleAdd, onItemClick }: {
                 <h3 className="text-sm font-normal text-white leading-tight font-serif">{item.title}</h3>
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
     </section>
@@ -196,29 +230,55 @@ function NewsSection({ news }: { news: NonNullable<TripContextData['news']> }) {
 
   return (
     <section>
-      <h2 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-4 font-serif">News</h2>
+      <SectionHeader eyebrow="Updates" title="News" icon={Newspaper} />
 
-      {/* Scrollable news list capped to match What's Going On card height */}
-      <div className="max-h-[360px] overflow-y-auto scrollbar-hide pr-1">
-        <div className="divide-y divide-gray-200 dark:divide-white/[0.08]">
+      {/* Scrollable news list capped to match What's Going On card height.
+       *  Sans-serif headlines for legibility at small sizes; serif is reserved
+       *  for section titles. Larger thumbnails (88×66) and roomier spacing. */}
+      <div className="max-h-[360px] overflow-y-auto scrollbar-hide pr-1 -mr-1">
+        <div className="divide-y divide-gray-100 dark:divide-white/[0.06]">
           {newsItems.map((item) => (
-            <a key={item.id} href={item.url || '#'} target="_blank" rel="noopener noreferrer"
-              className="flex gap-3 py-3.5 first:pt-0 hover:opacity-80 transition-opacity">
-              {(item as any).image && (
-                <div className="flex-shrink-0 w-[72px] h-[54px] rounded-lg overflow-hidden bg-gray-800">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={(item as any).image} alt="" className="w-full h-full object-cover" onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }} />
+            <a
+              key={item.id}
+              href={item.url || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex gap-3.5 py-3.5 first:pt-0 last:pb-0 transition-colors hover:bg-gray-50/60 dark:hover:bg-white/[0.02] rounded-lg -mx-2 px-2"
+            >
+              {(item as any).image ? (
+                <div className="relative flex-shrink-0 w-[88px] h-[66px] rounded-lg overflow-hidden bg-gray-100 dark:bg-white/[0.04]">
+                  <Image
+                    src={upscaleGoogleImage((item as any).image) || (item as any).image}
+                    alt=""
+                    fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    sizes="88px"
+                    onError={(e) => { (e.currentTarget.parentElement as HTMLElement).style.display = 'none'; }}
+                  />
+                </div>
+              ) : (
+                <div className="relative flex-shrink-0 w-[88px] h-[66px] rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 dark:from-white/[0.04] dark:to-white/[0.02] flex items-center justify-center">
+                  <Newspaper size={20} className="text-gray-400 dark:text-white/30" />
                 </div>
               )}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] uppercase tracking-wider font-bold text-[color:var(--trip-base)]">{item.category}</span>
+              <div className="flex-1 min-w-0 py-0.5">
+                <div className="flex items-center gap-1.5 mb-1 text-[9px] uppercase tracking-[0.18em] font-bold">
+                  <span className="text-[color:var(--trip-base)]">{item.category}</span>
                   {item.source && (
-                    <span className="text-[10px] uppercase tracking-wider font-bold text-[color:var(--trip-base)] opacity-50">· {item.source}</span>
+                    <>
+                      <span className="text-gray-300 dark:text-white/20">·</span>
+                      <span className="text-gray-500 dark:text-white/40 truncate">{item.source}</span>
+                    </>
                   )}
                 </div>
-                <h3 className="text-[14px] font-normal leading-snug mb-0.5 line-clamp-2 text-gray-900 dark:text-white font-serif">{item.title}</h3>
-                <p className="text-[12px] leading-relaxed line-clamp-1 text-gray-600 dark:text-gray-400 opacity-60">{item.snippet}</p>
+                <h3 className="text-[14px] font-semibold leading-snug line-clamp-2 text-gray-900 dark:text-white group-hover:text-[color:var(--trip-base)] transition-colors">
+                  {item.title}
+                </h3>
+                {item.snippet && (
+                  <p className="mt-0.5 text-[12px] leading-relaxed line-clamp-1 text-gray-500 dark:text-gray-400">
+                    {item.snippet}
+                  </p>
+                )}
               </div>
             </a>
           ))}
@@ -250,24 +310,26 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
 
   return (
     <section>
-      <div className="mb-4 flex items-end justify-between">
-        <div>
-          <h2 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif">What&apos;s Going On</h2>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-white/[0.06]">
-          <span className="text-[11px] tabular-nums mr-1 text-gray-500 dark:text-white/80">
-            {activeIdx + 1} / {events.length}
-          </span>
-          <button onClick={() => { const i = Math.max(0, activeIdx - 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === 0}
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
-            <ChevronLeft size={14} className="text-gray-600 dark:text-white" />
-          </button>
-          <button onClick={() => { const i = Math.min(events.length - 1, activeIdx + 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === events.length - 1}
-            className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
-            <ChevronRight size={14} className="text-gray-600 dark:text-white" />
-          </button>
-        </div>
-      </div>
+      <SectionHeader
+        eyebrow="Happening"
+        title="What's Going On"
+        icon={Sparkles}
+        action={(
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 dark:bg-white/[0.06]">
+            <span className="text-[11px] tabular-nums mr-1 text-gray-500 dark:text-white/80">
+              {activeIdx + 1} / {events.length}
+            </span>
+            <button onClick={() => { const i = Math.max(0, activeIdx - 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === 0}
+              className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
+              <ChevronLeft size={14} className="text-gray-600 dark:text-white" />
+            </button>
+            <button onClick={() => { const i = Math.min(events.length - 1, activeIdx + 1); setActiveIdx(i); scrollTo(i); }} disabled={activeIdx === events.length - 1}
+              className="w-7 h-7 rounded-full flex items-center justify-center transition-all disabled:opacity-20 border border-gray-200 dark:border-white/[0.12]">
+              <ChevronRight size={14} className="text-gray-600 dark:text-white" />
+            </button>
+          </div>
+        )}
+      />
 
       <div ref={scrollRef}
         className="flex gap-3 overflow-x-auto scrollbar-hide snap-x snap-mandatory"
@@ -288,8 +350,7 @@ function WhatsGoingOnSection({ addedItems, onToggleAdd, exploreItems, heroImages
               style={{ height: 300 }}>
               {bgImage ? (
                 <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={bgImage} alt={item.title} className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 30%' }} onError={handleImgError} referrerPolicy="no-referrer" />
+                  <Image src={bgImage} alt={item.title} fill className="object-cover" style={{ objectPosition: 'center 30%' }} sizes="(max-width: 768px) 100vw, 800px" onError={handleImgError} />
                   <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.7) 35%, rgba(0,0,0,0.15) 60%, transparent 100%)' }} />
                 </>
               ) : (
@@ -334,15 +395,15 @@ function NearbyCitiesSection({ cities }: { cities: NonNullable<TripContextData['
   if (!cities.length) return null;
   return (
     <section>
-      <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-4 font-serif">Also Consider Visiting</h3>
+      <SectionHeader eyebrow="Day Trips" title="Also Consider Visiting" icon={MapPin} />
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {cities.map((city) => (
-          <div key={city.id} className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm p-4 transition-all hover:scale-[1.02]">
+          <div key={city.id} className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm p-4 transition-all hover:scale-[1.02] hover:shadow-md">
             <div className="flex items-center gap-2 mb-1">
               <MapPin size={12} className="text-[color:var(--trip-base)]" />
-              <span className="text-[14px] font-normal text-gray-900 dark:text-white font-serif">{city.name}</span>
+              <span className="text-[14px] font-semibold text-gray-900 dark:text-white">{city.name}</span>
             </div>
-            <p className="text-[11px] text-gray-600 dark:text-gray-400 opacity-60">{city.country}</p>
+            <p className="text-[11px] text-gray-500 dark:text-gray-400">{city.country}</p>
             <p className="text-[11px] font-semibold mt-1 text-[color:var(--trip-base)]">{Math.round(city.distance)} km away</p>
           </div>
         ))}
@@ -352,42 +413,64 @@ function NearbyCitiesSection({ cities }: { cities: NonNullable<TripContextData['
 }
 
 // ── Cost of Living Section ────────────────────────────────────
-function CostOfLivingSection({ cost, currency }: { cost: NonNullable<TripContextData['cost_of_living']>; currency?: string }) {
-  const code = currency || cost.currency || 'USD';
-  const fmt = (v: number) => {
+function CostOfLivingSection({ cost, localCurrency }: { cost: NonNullable<TripContextData['cost_of_living']>; localCurrency?: string }) {
+  const { currency: homeCurrency, format, isLoading } = useHomeCurrency();
+  const code = localCurrency || cost.currency || 'USD';
+  const needsConversion = !!(localCurrency && localCurrency !== homeCurrency && !isLoading);
+
+  const fmtLocal = (v: number) => {
     try {
-      return new Intl.NumberFormat('en', { style: 'currency', currency: code, minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
-    } catch { return `${code} ${v.toFixed(0)}`; }
+      return new Intl.NumberFormat('en', { style: 'currency', currency: code, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+    } catch { return `${code} ${v.toFixed(2)}`; }
   };
+
+  const fmtConverted = (v: number) => {
+    if (needsConversion) return format(v, localCurrency!);
+    return fmtLocal(v);
+  };
+
   const items = [
-    { icon: UtensilsCrossed, label: 'Budget meal', value: fmt(cost.meal_cheap) },
-    { icon: UtensilsCrossed, label: 'Mid-range meal', value: fmt(cost.meal_mid) },
-    { icon: Coffee, label: 'Coffee', value: fmt(cost.coffee) },
-    { icon: Beer, label: 'Beer', value: fmt(cost.beer) },
-    { icon: Bus, label: 'Public transport', value: fmt(cost.public_transport) },
-    { icon: Droplets, label: 'Water bottle', value: fmt(cost.water_bottle) },
+    { icon: UtensilsCrossed, label: 'Budget meal', value: fmtConverted(cost.meal_cheap), raw: cost.meal_cheap },
+    { icon: UtensilsCrossed, label: 'Mid-range meal', value: fmtConverted(cost.meal_mid), raw: cost.meal_mid },
+    { icon: Coffee, label: 'Coffee', value: fmtConverted(cost.coffee), raw: cost.coffee },
+    { icon: Beer, label: 'Beer', value: fmtConverted(cost.beer), raw: cost.beer },
+    { icon: Bus, label: 'Public transport', value: fmtConverted(cost.public_transport), raw: cost.public_transport },
+    { icon: Droplets, label: 'Water bottle', value: fmtConverted(cost.water_bottle), raw: cost.water_bottle },
   ];
+
+  const headingSuffix = needsConversion
+    ? ` · in ${homeCurrency}`
+    : isLoading && localCurrency
+      ? ' · loading rates...'
+      : '';
+
   return (
-    <section>
-      <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white mb-4 font-serif">Cost of Living</h3>
-      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
-        {items.map(({ icon: Icon, label, value }) => (
+    <section className="flex flex-col h-full">
+      <SectionHeader eyebrow="Cost of Living" title={`Cost Per Diem${headingSuffix}`} icon={Wallet} />
+      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 flex-1 content-start">
+        {items.map(({ icon: Icon, label, value, raw }) => (
           <div key={label} className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm p-3 text-center">
             <Icon size={16} className="mx-auto mb-1.5 text-[color:var(--trip-base)]" />
             <p className="text-[15px] font-bold text-gray-900 dark:text-white">{value}</p>
+            {needsConversion && (
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">≈{fmtLocal(raw)}</p>
+            )}
             <p className="text-[10px] text-gray-600 dark:text-gray-400 opacity-50">{label}</p>
           </div>
         ))}
       </div>
       <div className="flex gap-2 mt-3 rounded-xl overflow-hidden border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] shadow-sm">
         {[
-          { label: 'Budget', range: fmt(cost.daily_budget_low) },
-          { label: 'Mid-range', range: fmt(cost.daily_budget_mid) },
-          { label: 'Luxury', range: fmt(cost.daily_budget_high) },
-        ].map(({ label, range }, i) => (
+          { label: 'Budget', range: fmtConverted(cost.daily_budget_low), raw: cost.daily_budget_low },
+          { label: 'Mid-range', range: fmtConverted(cost.daily_budget_mid), raw: cost.daily_budget_mid },
+          { label: 'Luxury', range: fmtConverted(cost.daily_budget_high), raw: cost.daily_budget_high },
+        ].map(({ label, range, raw }, i) => (
           <div key={label} className="flex-1 py-3 text-center" style={i < 2 ? { borderRight: '1px solid rgba(0,0,0,0.08)' } : undefined}>
             <p className="text-[10px] uppercase tracking-wider font-semibold mb-1 text-gray-900 dark:text-white opacity-40">{label}</p>
             <p className="text-[16px] font-bold text-[color:var(--trip-base)]">{range}<span className="text-[11px] font-normal opacity-60">/day</span></p>
+            {needsConversion && (
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">≈{fmtLocal(raw)}/day</p>
+            )}
           </div>
         ))}
       </div>
@@ -400,54 +483,70 @@ function PhrasesSection({ phrases, language }: { phrases: Record<string, string>
   const allEntries = Object.entries(phrases);
   const [speaking, setSpeaking] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
-  if (!allEntries.length) return null;
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const cacheRef = useRef<Map<string, string>>(new Map());
+  const activeTextRef = useRef<string | null>(null);
 
-  const entries = showAll ? allEntries : allEntries.slice(0, 6);
-
-  // Map common language names to BCP-47 codes for TTS
-  const langMap: Record<string, string> = {
-    japanese: 'ja', french: 'fr', spanish: 'es', italian: 'it', german: 'de',
-    portuguese: 'pt', chinese: 'zh', korean: 'ko', arabic: 'ar', hindi: 'hi',
-    thai: 'th', vietnamese: 'vi', turkish: 'tr', greek: 'el', dutch: 'nl',
-    swedish: 'sv', norwegian: 'no', polish: 'pl', russian: 'ru',
-  };
-  const langCode = language ? langMap[language.toLowerCase()] || language.slice(0, 2).toLowerCase() : '';
-
-  const speak = (text: string) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    setSpeaking(text);
-    window.speechSynthesis.cancel();
-
-    const doSpeak = () => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      const voices = window.speechSynthesis.getVoices();
-      const match = voices.find(v => v.lang.toLowerCase().startsWith(langCode))
-        || voices.find(v => v.lang.toLowerCase().includes(langCode));
-      if (match) utterance.voice = match;
-      utterance.rate = 0.85;
-      utterance.onend = () => setSpeaking(null);
-      utterance.onerror = () => setSpeaking(null);
-      window.speechSynthesis.speak(utterance);
+  // Revoke blob URLs on unmount so we don't leak memory across navigations.
+  useEffect(() => {
+    const cache = cacheRef.current;
+    return () => {
+      const a = audioRef.current;
+      if (a) { a.pause(); a.src = ''; }
+      for (const url of cache.values()) URL.revokeObjectURL(url);
+      cache.clear();
     };
+  }, []);
 
-    // Voices load async — wait for them if needed
-    if (window.speechSynthesis.getVoices().length > 0) {
-      doSpeak();
-    } else {
-      window.speechSynthesis.onvoiceschanged = () => { doSpeak(); window.speechSynthesis.onvoiceschanged = null; };
-      // Fallback if event never fires
-      setTimeout(doSpeak, 200);
+  const speak = async (text: string) => {
+    if (typeof window === 'undefined') return;
+
+    const prev = audioRef.current;
+    if (prev) { prev.pause(); prev.src = ''; }
+
+    activeTextRef.current = text;
+    setSpeaking(text);
+    const cacheKey = `${language || ''}:${text}`;
+    let url = cacheRef.current.get(cacheKey);
+
+    try {
+      if (!url) {
+        const res = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, lang: language }),
+        });
+        if (!res.ok) throw new Error(`TTS ${res.status}`);
+        const blob = await res.blob();
+        url = URL.createObjectURL(blob);
+        cacheRef.current.set(cacheKey, url);
+      }
+
+      // User tapped a different phrase while we were fetching — abandon this play.
+      if (activeTextRef.current !== text) return;
+
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.onended = () => setSpeaking(prevSpeak => (prevSpeak === text ? null : prevSpeak));
+      audio.onerror = () => setSpeaking(prevSpeak => (prevSpeak === text ? null : prevSpeak));
+      await audio.play();
+    } catch (err) {
+      console.warn('[tts] playback failed', err);
+      setSpeaking(prevSpeak => (prevSpeak === text ? null : prevSpeak));
     }
   };
 
+  if (!allEntries.length) return null;
+  const entries = showAll ? allEntries : allEntries.slice(0, 6);
+
   return (
-    <section>
-      <div className="flex items-center gap-2 mb-4">
-        <Languages size={14} className="text-[color:var(--trip-base)]" />
-        <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif">Essential Phrases</h3>
-        {language && <span className="text-xs font-medium text-gray-500 dark:text-gray-400">({language})</span>}
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+    <section className="flex flex-col h-full">
+      <SectionHeader
+        eyebrow="Local Language"
+        title={`Essential Phrases${language ? ` · ${language}` : ''}`}
+        icon={Languages}
+      />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1 auto-rows-fr">
         {entries.map(([english, translated]) => (
           <button key={english}
             onClick={() => speak(translated)}
@@ -462,7 +561,7 @@ function PhrasesSection({ phrases, language }: { phrases: Record<string, string>
         ))}
       </div>
       {allEntries.length > 6 && (
-        <button onClick={() => setShowAll(v => !v)} className="mt-2 text-[11px] font-medium hover:underline text-[color:var(--trip-base)]">
+        <button onClick={() => setShowAll(v => !v)} className="mt-2 text-[11px] font-medium hover:underline text-[color:var(--trip-base)] self-start">
           {showAll ? 'Show less' : `Show ${allEntries.length - 6} more phrases`}
         </button>
       )}
@@ -685,6 +784,11 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     staleTime: 30 * 60 * 1000,
   });
 
+  // Stored phrases may be `{}` for older English-destination trips — treat
+  // that as missing so the live query fills it in.
+  const storedPhrases = trip?.trip_context?.phrases as Record<string, string> | undefined;
+  const hasStoredPhrases = !!storedPhrases && Object.keys(storedPhrases).length > 0;
+
   const { data: livePhrases } = useQuery({
     queryKey: ['trip-phrases', tripCountryShort],
     queryFn: async () => {
@@ -693,7 +797,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
       const data = await res.json();
       return data?.phrases ?? null;
     },
-    enabled: !!tripCountryShort && !enriching && !trip?.trip_context?.phrases,
+    enabled: !!tripCountryShort && !enriching && !hasStoredPhrases,
     staleTime: 60 * 60 * 1000,
   });
 
@@ -717,6 +821,20 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     category: e.category, image: hiRes(e.image),
   }))) || [];
 
+  // Background preload for flights/hotels/cars + image warming. Self-throttling,
+  // skips on slow networks. Visible-on-overview images (hero + explore) are
+  // queued first; flights/hotels/cars images are warmed once their searches
+  // return. Hook order is stable — calls every render before any early return.
+  useTripPreload({
+    tripId: id,
+    trip: trip ?? null,
+    overviewImages: [
+      ...(trip?.trip_context?.hero_images ?? []),
+      ...(exploreItems as Array<{ image?: string }>).map((e) => e.image),
+      ...(events as Array<{ image?: string }>).map((e) => e.image),
+    ],
+  });
+
   if (isLoading || enriching) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
@@ -734,10 +852,10 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
   }
 
   const hasExploreItems = exploreItems.length > 0;
-  const ctxRestaurants = (trip?.trip_context?.restaurants as any[] | undefined)?.filter((r: any) => r.image) ?? [];
+  const ctxRestaurants = (trip?.trip_context?.restaurants as any[] | undefined)?.filter((r: any) => r.image).map((r: any) => ({ ...r, image: hiRes(r.image) })) ?? [];
   const restaurantData = ctxRestaurants.length > 0 ? ctxRestaurants : (liveRestaurants ?? []);
   const hasRestaurants = restaurantData.length > 0;
-  const phrasesData = trip?.trip_context?.phrases ?? livePhrases;
+  const phrasesData = hasStoredPhrases ? storedPhrases : livePhrases;
   const costData = trip?.trip_context?.cost_of_living ?? liveCostOfLiving;
   const hasNewsArticles = news.some(n => n.category === 'news' || n.category === 'advisory');
 
@@ -747,7 +865,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
     title: e.name,
     description: `${safeDate(e.date)} ${e.venue ? '· ' + e.venue : ''}`.trim() || e.description || '',
     category: e.category || 'Event',
-    image: e.photo_url || '',
+    image: hiRes(e.photo_url ?? undefined),
   }));
   // Fallback: use explore_items that AREN'T already in "Things to Do" (which shows the first items)
   // Take from the back half of the list to avoid duplicates
@@ -775,6 +893,11 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
 
           {/* Weather is now shown in the compact header toggle — removed duplicate widget */}
 
+          {/* ── Itinerary Section ── */}
+          <div className="mt-6">
+            <ItinerarySection tripId={id} />
+          </div>
+
           {/* ── Row 1: Things to Do (left) + Restaurants (right) ── */}
           <div className={`mt-6 ${sectionCard}`}>
             <div className="flex flex-col lg:flex-row gap-6">
@@ -794,9 +917,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
               {/* Must-Try Restaurants — real places with photos, ratings, addresses */}
               {hasRestaurants && (
                 <div className="shrink-0 w-full lg:w-[380px]">
-                  <div className="mb-4">
-                    <h3 className="text-xl font-normal tracking-wide text-gray-900 dark:text-white font-serif">Must-Try Restaurants</h3>
-                  </div>
+                  <SectionHeader eyebrow="Where to Eat" title="Must-Try Restaurants" icon={UtensilsCrossed} />
                   <div className="flex gap-2 overflow-x-auto scrollbar-hide snap-x snap-mandatory">
                     {restaurantData.slice(0, 6).map((r: any) => (
                       <div key={r.id} className="relative flex-shrink-0 w-full rounded-xl overflow-hidden snap-start cursor-pointer group" style={{ height: 360 }}
@@ -809,8 +930,7 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
                           address: r.address, website: r.website, reviewCount: r.reviewCount,
                           phone: r.phone, hours: r.hours, priceLevel: r.priceLevel,
                         })}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={r.image} alt={r.name} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onError={handleImgError} referrerPolicy="no-referrer" />
+                        <Image src={upscaleGoogleImage(r.image) || r.image} alt={r.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="380px" onError={handleImgError} />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
                         {/* Add to trip button */}
                         <div className="absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
@@ -858,20 +978,25 @@ export default function TripOverview({ params }: { params: Promise<{ id: string 
           {/* ── Row 3: Phrases + Cost of Living ── */}
           {(phrasesData || costData) && (
             <div className={`relative z-10 mt-8 ${sectionCard}`}>
-              <div className="flex flex-col lg:flex-row gap-6 items-start">
+              <div className="flex flex-col lg:flex-row gap-6 items-stretch">
                 {phrasesData && Object.keys(phrasesData).length > 0 && (
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 flex flex-col">
                     <PhrasesSection phrases={phrasesData as any} language={trip?.trip_context?.country?.language} />
                   </div>
                 )}
                 {costData && (
-                  <div className="flex-1 min-w-0">
-                    <CostOfLivingSection cost={costData} currency={trip?.trip_context?.country?.currency?.code} />
+                  <div className="flex-1 min-w-0 flex flex-col">
+                    <CostOfLivingSection cost={costData} localCurrency={trip?.trip_context?.country?.currency?.code} />
                   </div>
                 )}
               </div>
             </div>
           )}
+
+          {/* ── Row 3.5: Budget Summary ── */}
+          <div className="mt-8">
+            <OverviewBudgetSummary trip={trip} />
+          </div>
 
           {/* ── Row 4: Nearby Cities ── */}
           {trip?.trip_context?.nearby_cities && trip.trip_context.nearby_cities.length > 0 && (

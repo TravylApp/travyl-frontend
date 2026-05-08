@@ -27,10 +27,10 @@ const QUOTES = [
 
 // Fallback images — only used if trending + API images both fail
 const FALLBACK_IMAGES = [
-  "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1400&fit=crop&q=75&fm=webp",
-  "https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1400&fit=crop&q=75&fm=webp",
-  "https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=1400&fit=crop&q=75&fm=webp",
-  "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1400&fit=crop&q=75&fm=webp",
+  "https://images.pexels.com/photos/29213215/pexels-photo-29213215.jpeg?auto=compress&cs=tinysrgb&w=1400",
+  "https://images.pexels.com/photos/34600662/pexels-photo-34600662.jpeg?auto=compress&cs=tinysrgb&w=1400",
+  "https://images.pexels.com/photos/35134885/pexels-photo-35134885.jpeg?auto=compress&cs=tinysrgb&w=1400",
+  "https://images.pexels.com/photos/37297741/pexels-photo-37297741.jpeg?auto=compress&cs=tinysrgb&w=1400",
 ];
 
 // Daily seed — same for server and client on the same day
@@ -102,7 +102,7 @@ export const ParallaxQuoteDivider = forwardRef<HTMLDivElement, Props>(
     }, [slides.length]);
 
     return (
-      <section ref={ref} className="relative h-[50vh] overflow-hidden">
+      <section ref={ref} className="relative h-[40vh] overflow-hidden">
         <motion.div className="absolute inset-[-20%]" style={{ y: bgY }}>
           {slides.map((slide, i) => (
             <img

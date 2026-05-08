@@ -22,6 +22,8 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useQueryClient } from '@tanstack/react-query';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   useHomeScreen,
@@ -37,12 +39,10 @@ import {
   FontFamily,
 } from '@travyl/shared';
 import { savePlanToSupabase } from '@travyl/shared';
-import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useAddToTrip } from '@/hooks/useAddToTrip';
 
 import { PaperPlane } from '@/components/icons/PaperPlane';
-import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import {
   HowItWorks,
   GetInspired,
@@ -59,20 +59,20 @@ import { TakeoffTransition } from '@/components/home/TakeoffTransition';
 // Includes the same images used on the web app + additional variety
 const STOCK_HERO_SLIDES = [
   // ── All web images included ──
-  'https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=1200&q=80', // tropical beach (web hero fallback)
-  'https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=1200&q=80', // mountain lake (web parallax)
-  'https://images.unsplash.com/photo-1530789253388-582c481c54b0?w=1200&q=80', // hot air balloons (web parallax)
-  'https://images.unsplash.com/photo-1493246507139-91e8fad9978e?w=1200&q=80', // misty mountains (web parallax)
-  'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&q=80', // road trip (web parallax)
-  'https://images.unsplash.com/photo-1533104816931-20fa691ff6ca?w=1200&q=80', // travel planning map (web HowItWorks)
-  'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=1200&q=80', // Rome Colosseum (web HowItWorks)
-  'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=1200&q=80', // Bali temple (web HowItWorks)
+  'https://images.pexels.com/photos/30978583/pexels-photo-30978583.jpeg?auto=compress&cs=tinysrgb&w=2400', // tropical beach (web hero fallback)
+  'https://images.pexels.com/photos/29213215/pexels-photo-29213215.jpeg?auto=compress&cs=tinysrgb&w=2400', // mountain lake (web parallax)
+  'https://images.pexels.com/photos/34600662/pexels-photo-34600662.jpeg?auto=compress&cs=tinysrgb&w=2400', // hot air balloons (web parallax)
+  'https://images.pexels.com/photos/35134885/pexels-photo-35134885.jpeg?auto=compress&cs=tinysrgb&w=2400', // misty mountains (web parallax)
+  'https://images.pexels.com/photos/37297741/pexels-photo-37297741.jpeg?auto=compress&cs=tinysrgb&w=2400', // road trip (web parallax)
+  'https://images.pexels.com/photos/29081769/pexels-photo-29081769.jpeg?auto=compress&cs=tinysrgb&w=2400', // travel planning map (web HowItWorks)
+  'https://images.pexels.com/photos/38841507/pexels-photo-38841507.jpeg?auto=compress&cs=tinysrgb&w=2400', // Rome Colosseum (web HowItWorks)
+  'https://images.pexels.com/photos/24995221/pexels-photo-24995221.jpeg?auto=compress&cs=tinysrgb&w=2400', // Bali temple (web HowItWorks)
   // ── Mobile extra variety ──
-  'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=1200&q=80', // Paris Eiffel Tower
-  'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=1200&q=80', // Tokyo skyline
-  'https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?w=1200&q=80', // Santorini blue domes
-  'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1200&q=80', // Dubai skyline
-  'https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?w=1200&q=80', // Sydney Opera House
+  'https://images.pexels.com/photos/33800139/pexels-photo-33800139.jpeg?auto=compress&cs=tinysrgb&w=2400', // Paris Eiffel Tower
+  'https://images.pexels.com/photos/427747/pexels-photo-427747.jpeg?auto=compress&cs=tinysrgb&w=2400', // Tokyo skyline
+  'https://images.pexels.com/photos/29081769/pexels-photo-29081769.jpeg?auto=compress&cs=tinysrgb&w=2400', // Santorini blue domes
+  'https://images.pexels.com/photos/373076/pexels-photo-373076.jpeg?auto=compress&cs=tinysrgb&w=2400', // Dubai skyline
+  'https://images.pexels.com/photos/461064/pexels-photo-461064.jpeg?auto=compress&cs=tinysrgb&w=2400', // Sydney Opera House
 ];
 const SHUFFLED_STOCK = shuffle(STOCK_HERO_SLIDES).slice(0, 5);
 
@@ -248,7 +248,9 @@ function StatsSection({ scrollY, screenHeight }: { scrollY: { value: number }; s
 
 export default function HomeScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const colors = useThemeColors();
+  const insets = useSafeAreaInsets();
   const { addToTrip, state: tripSheetState, selectTrip, selectDay, dismiss, createTrip } = useAddToTrip();
   const { height: screenHeight } = useWindowDimensions();
   const {
@@ -263,27 +265,32 @@ export default function HomeScreen() {
   const { data: heroConfig } = useHeroConfig();
   const planner = useTripPlanner();
 
-  // Trending destinations — used for suggestion pills, NOT for hero images
+  // Trending destinations — feeds both suggestion pills AND hero rotation.
+  // Thumbnails are SerpAPI-backed (via /api/trending-destinations on the web layer),
+  // so when trending is loaded we get fresh, contextual hero imagery instead of
+  // hardcoded stock. Falls back to SHUFFLED_STOCK while loading or if empty.
   const { data: trending } = useTrendingDestinations();
+  const trendingHeroImages = useMemo(
+    () => (trending ?? []).map((d) => d.thumbnail).filter((u): u is string => !!u),
+    [trending]
+  );
 
-  // Hero slideshow — always high-res: admin config or Unsplash stock
+  // Hero slideshow — admin config > SerpAPI trending > stock fallback
   const heroSlides = heroConfig?.background_image_url
     ? [heroConfig.background_image_url]
-    : SHUFFLED_STOCK;
+    : trendingHeroImages.length >= 3
+      ? trendingHeroImages.slice(0, 5)
+      : SHUFFLED_STOCK;
   const [heroSlide, setHeroSlide] = useState(0);
-  const [selectedPlaceIdx, setSelectedPlaceIdx] = useState(-1);
-  const setSelectedPlace = useCallback((place: PlaceItem | null) => {
-    if (!place) { setSelectedPlaceIdx(-1); return; }
-    const idx = ([] as PlaceItem[]).findIndex((p) => p.id === place.id);
-    setSelectedPlaceIdx(idx >= 0 ? idx : -1);
-  }, []);
   useEffect(() => {
     if (heroSlides.length <= 1) return;
+    // Pause rotation while user is typing — context shifts are jarring mid-input
+    if (tripQuery.length > 0) return;
     const interval = setInterval(() => {
       setHeroSlide((prev) => (prev + 1) % heroSlides.length);
     }, 6000);
     return () => clearInterval(interval);
-  }, [heroSlides.length]);
+  }, [heroSlides.length, tripQuery.length === 0]);
 
   // Subtitle from API config only
 
@@ -333,10 +340,22 @@ export default function HomeScreen() {
 
   // Conversational flow removed — direct AI planner
   const inputRef = useRef<TextInput>(null);
+  const scrollRef = useRef<Animated.ScrollView>(null);
+
+  // Bring the user back to the search field — used by empty-state and
+  // HowItWorks CTAs that previously dead-ended on the empty Trips tab.
+  const focusSearchAtTop = useCallback(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+    // Small delay so the scroll lands before the keyboard pops up
+    setTimeout(() => inputRef.current?.focus(), 350);
+  }, []);
 
   const sendButtonRef = useRef<View>(null);
-  const clarifyRetries = useRef(0);
   const [showTakeoff, setShowTakeoff] = useState(false);
+  // Clarifying-question UI state — mirrors web's pattern in apps/web/app/(main)/page.tsx
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string[]>>({});
+  const [currentQIdx, setCurrentQIdx] = useState(0);
+  const clarifySubmittedRef = useRef(false);
   const buttonLayoutRef = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
   const [buttonLayout, setButtonLayout] = useState<{
     x: number;
@@ -350,25 +369,13 @@ export default function HomeScreen() {
     if (__DEV__) console.log('[HOME] planner phase:', planner.state.phase, 'showTakeoff:', showTakeoff);
     if (!showTakeoff) return;
     const s = planner.state;
-    // Auto-answer clarifying questions during takeoff — pick first option for each (max 1 retry)
+    // Clarifying phase — surface questions to the user via the overlay UI.
+    // Reset selection state once per arrival in this phase.
     if (s.phase === 'clarifying' && s.questions?.length) {
-      if (clarifyRetries.current >= 3) {
-        if (__DEV__) console.log('[HOME] Max clarify retries — forcing plan');
-        // Instead of giving up, force plan with whatever we have
-        const autoAnswers: Record<string, string> = {};
-        for (const q of s.questions) {
-          autoAnswers[q.id] = q.options?.[0] ?? 'flexible';
-        }
-        planner.submitAnswers(autoAnswers);
-        return;
+      if (!clarifySubmittedRef.current) {
+        // No-op here: the overlay JSX below renders the questions and
+        // calls planner.submitAnswers when the user finishes.
       }
-      clarifyRetries.current += 1;
-      if (__DEV__) console.log('[HOME] Auto-answering clarifying questions (attempt', clarifyRetries.current, ')');
-      const autoAnswers: Record<string, string> = {};
-      for (const q of s.questions) {
-        autoAnswers[q.id] = q.options?.[0] ?? '';
-      }
-      planner.submitAnswers(autoAnswers);
       return;
     }
     if (s.phase === 'complete' && s.plan) {
@@ -376,9 +383,13 @@ export default function HomeScreen() {
       (async () => {
         try {
           const tripId = await savePlanToSupabase(s.plan as any);
+          if (!tripId || typeof tripId !== 'string') {
+            throw new Error('savePlanToSupabase returned no tripId');
+          }
+          // Refresh the trips list so the new trip shows on Trips tab + home recents
+          queryClient.invalidateQueries({ queryKey: ['trips'] });
           // Navigate FIRST while takeoff animation is still covering the screen
           router.push(`/trip/${tripId}` as any);
-          // Then clean up after navigation transition starts
           setTimeout(() => {
             planner.reset();
             setShowTakeoff(false);
@@ -387,18 +398,21 @@ export default function HomeScreen() {
           if (__DEV__) console.error('Failed to save trip:', err?.message || err);
           // Navigate anyway — trip was likely created, only activities may have failed
           const partialId = (err as any)?.tripId;
-          if (partialId) {
+          if (partialId && typeof partialId === 'string') {
+            queryClient.invalidateQueries({ queryKey: ['trips'] });
             router.push(`/trip/${partialId}` as any);
             setTimeout(() => {
               planner.reset();
               setShowTakeoff(false);
             }, 800);
           } else {
-            setPlannerError('Trip save failed. Please try again.');
+            // Trip may still have been created — refresh trips list and surface a friendly error
+            queryClient.invalidateQueries({ queryKey: ['trips'] });
+            setPlannerError("Couldn't open your new trip — check the Trips tab.");
             setTimeout(() => {
               planner.reset();
               setShowTakeoff(false);
-            }, 2000);
+            }, 2500);
           }
         }
       })();
@@ -431,13 +445,72 @@ export default function HomeScreen() {
     },
   });
 
+  // Status-bar backdrop: invisible while hero is on screen, fades in once
+  // scrolled past so content doesn't render under the system status bar.
+  const topCapStyle = useAnimatedStyle(() => {
+    const start = screenHeight - 100;
+    const end = screenHeight - 40;
+    const t = Math.min(1, Math.max(0, (scrollY.value - start) / (end - start)));
+    return { opacity: t };
+  });
+
   const launchTakeoff = useCallback((query: string) => {
     setTripQuery(query);
     setButtonLayout(buttonLayoutRef.current);
     setShowTakeoff(true);
-    clarifyRetries.current = 0;
+    clarifySubmittedRef.current = false;
+    setSelectedAnswers({});
+    setCurrentQIdx(0);
     planner.submitPrompt(query);
   }, [setTripQuery, planner]);
+
+  const flattenAnswers = useCallback((answers: Record<string, string[]>) => {
+    const flat: Record<string, string> = {};
+    for (const [k, v] of Object.entries(answers)) flat[k] = v.join(', ');
+    return flat;
+  }, []);
+
+  const submitClarifyingAnswers = useCallback((finalAnswers: Record<string, string[]>) => {
+    if (clarifySubmittedRef.current) return;
+    clarifySubmittedRef.current = true;
+    planner.submitAnswers(flattenAnswers(finalAnswers));
+  }, [planner, flattenAnswers]);
+
+  const handleOptionToggle = useCallback((questionId: string, option: string, totalQuestions: number) => {
+    setSelectedAnswers((prev) => {
+      const current = prev[questionId] ?? [];
+      const isDeselecting = current.includes(option);
+      const next = isDeselecting ? current.filter((o) => o !== option) : [...current, option];
+      const updated = { ...prev, [questionId]: next };
+      // Auto-advance after a select (not deselect)
+      if (!isDeselecting) {
+        setTimeout(() => {
+          setCurrentQIdx((i) => {
+            if (i < totalQuestions - 1) return i + 1;
+            submitClarifyingAnswers(updated);
+            return i;
+          });
+        }, 450);
+      }
+      return updated;
+    });
+  }, [submitClarifyingAnswers]);
+
+  // Custom-answer path — when the user types their own response and submits,
+  // treat it as a single-element answer for that question and advance/submit.
+  const handleCustomAnswer = useCallback((questionId: string, text: string, totalQuestions: number) => {
+    setSelectedAnswers((prev) => {
+      const updated = { ...prev, [questionId]: [text] };
+      setTimeout(() => {
+        setCurrentQIdx((i) => {
+          if (i < totalQuestions - 1) return i + 1;
+          submitClarifyingAnswers(updated);
+          return i;
+        });
+      }, 200);
+      return updated;
+    });
+  }, [submitClarifyingAnswers]);
 
   const onSearch = () => {
     const val = tripQuery.trim();
@@ -451,6 +524,7 @@ export default function HomeScreen() {
     <View style={{ flex: 1 }}>
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
     <Animated.ScrollView
+      ref={scrollRef}
       onScroll={scrollHandler}
       scrollEventThrottle={16}
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -481,7 +555,7 @@ export default function HomeScreen() {
           />
         ))}
         <LinearGradient
-          colors={['rgba(0,0,0,0.35)', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.45)']}
+          colors={['rgba(0,0,0,0.40)', 'rgba(0,0,0,0.45)', 'rgba(0,0,0,0.55)']}
           locations={[0, 0.5, 1]}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
         />
@@ -514,12 +588,12 @@ export default function HomeScreen() {
               left: 0,
               right: 0,
               ...TextStyles.subhead,
-              color: 'rgba(255,255,255,0.85)',
+              color: '#fff',
               textAlign: 'center',
               paddingHorizontal: 16,
-              textShadowColor: 'rgba(0,0,0,0.3)',
+              textShadowColor: 'rgba(0,0,0,0.7)',
               textShadowOffset: { width: 0, height: 1 },
-              textShadowRadius: 6,
+              textShadowRadius: 10,
             }}
           >
             {heroConfig?.subtitle ?? 'Plan your next adventure'}
@@ -571,6 +645,8 @@ export default function HomeScreen() {
             <FontAwesome name="search" size={16} color={colors.textTertiary} />
             <TextInput
               ref={inputRef}
+              testID="home-trip-search-input"
+              accessibilityLabel="Trip search"
               value={tripQuery}
               onChangeText={(v) => { setTripQuery(v); if (plannerError) setPlannerError(null); }}
               onSubmitEditing={onSearch}
@@ -581,6 +657,8 @@ export default function HomeScreen() {
             />
             <Pressable
               ref={sendButtonRef}
+              testID="home-trip-search-submit"
+              accessibilityLabel="Plan trip"
               onPress={onSearch}
               onLayout={onButtonLayout}
               collapsable={false}
@@ -651,7 +729,11 @@ export default function HomeScreen() {
               {visiblePills.map((s) => (
                 <Pressable
                   key={s.id}
-                  onPress={() => setTripQuery(s.short_label ?? s.label)}
+                  onPress={() => {
+                    const q = s.short_label ?? s.label;
+                    setTripQuery(q);
+                    launchTakeoff(q);
+                  }}
                   style={{
                     borderRadius: 20,
                     paddingHorizontal: 14,
@@ -806,7 +888,7 @@ export default function HomeScreen() {
               search bar above or tap the button below.
             </Text>
             <Pressable
-              onPress={() => router.push('/(tabs)/trips')}
+              onPress={focusSearchAtTop}
               style={{
                 backgroundColor: Blue[600],
                 borderRadius: 12,
@@ -828,7 +910,7 @@ export default function HomeScreen() {
 
       {/* ─── Scroll-animated Sections ─────────────────────────── */}
       <FadeInOnScroll scrollY={scrollY}>
-        <HowItWorks onCtaPress={() => router.push('/(tabs)/trips')} />
+        <HowItWorks onCtaPress={focusSearchAtTop} />
       </FadeInOnScroll>
 
       <TravelMosaic scrollY={scrollY} />
@@ -849,29 +931,281 @@ export default function HomeScreen() {
     </Animated.ScrollView>
     </KeyboardAvoidingView>
 
+    {/* Status-bar backdrop — masks scrolled content under the iOS status bar */}
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        {
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: insets.top,
+          backgroundColor: colors.background,
+        },
+        topCapStyle,
+      ]}
+    />
+
     {/* ─── Takeoff Animation Overlay ─────────────────────────── */}
     <TakeoffTransition
       visible={showTakeoff}
       buttonLayout={buttonLayout}
+      completed={planner.state.phase === 'complete'}
       onComplete={() => {
         // Animation done — keep overlay visible while planner works
         // The useEffect below handles navigation when plan completes
       }}
     />
 
-    {/* ─── Place Detail — Magazine Card ─────────────────────────────── */}
-    {selectedPlaceIdx >= 0 && (
-      <CardStackCarousel
-        places={([] as PlaceItem[])}
-        initialIndex={selectedPlaceIdx}
-        favorites={[]}
-        onToggleFav={() => {}}
-        onAddToTrip={addToTrip}
-        tripSheet={{ state: tripSheetState, selectTrip, selectDay, dismiss, createTrip }}
-        overlay
-        onClose={() => setSelectedPlaceIdx(-1)}
-      />
-    )}
+    {/* ─── Clarifying-question overlay (above takeoff) ──────── */}
+    <ClarifyingOverlay
+      visible={planner.state.phase === 'clarifying' && !clarifySubmittedRef.current}
+      questions={planner.state.questions ?? []}
+      currentQIdx={currentQIdx}
+      selectedAnswers={selectedAnswers}
+      onSelectOption={handleOptionToggle}
+      onSkip={() => {
+        const total = planner.state.questions?.length ?? 0;
+        setCurrentQIdx((i) => {
+          if (i < total - 1) return i + 1;
+          submitClarifyingAnswers(selectedAnswers);
+          return i;
+        });
+      }}
+      onSubmitAll={() => submitClarifyingAnswers(selectedAnswers)}
+      onCustomAnswer={handleCustomAnswer}
+      colors={colors}
+    />
+
     </View>
+  );
+}
+
+// ─── Clarifying-question overlay ──────────────────────────────────────
+// Mirrors the web pattern in apps/web/app/(main)/page.tsx. Renders above
+// the takeoff animation; lets the user select options and auto-advances
+// after each pick. On the final pick, submitClarifyingAnswers fires and
+// the overlay disappears as the planner moves out of the 'clarifying' phase.
+type FollowUpQuestion = { id: string; question: string; options: string[] };
+type ClarifyingOverlayProps = {
+  visible: boolean;
+  questions: FollowUpQuestion[];
+  currentQIdx: number;
+  selectedAnswers: Record<string, string[]>;
+  onSelectOption: (questionId: string, option: string, totalQuestions: number) => void;
+  onSkip: () => void;
+  onSubmitAll: () => void;
+  onCustomAnswer: (questionId: string, text: string, totalQuestions: number) => void;
+  colors: any;
+};
+
+function ClarifyingOverlay({
+  visible,
+  questions,
+  currentQIdx,
+  selectedAnswers,
+  onSelectOption,
+  onSkip,
+  onSubmitAll,
+  onCustomAnswer,
+}: ClarifyingOverlayProps) {
+  // NOTE: hooks must be called before any early return to keep the call order stable
+  // across renders (visible can flip multiple times for the same overlay instance).
+  const [customText, setCustomText] = useState('');
+
+  // Reset the custom-answer field whenever we navigate to a new question.
+  useEffect(() => { setCustomText(''); }, [currentQIdx]);
+
+  if (!visible || !questions.length) return null;
+  const q = questions[Math.min(currentQIdx, questions.length - 1)];
+  if (!q) return null;
+  if (__DEV__) console.log('[CLARIFY] q=', JSON.stringify(q));
+  const selected = selectedAnswers[q.id] ?? [];
+  const isLast = currentQIdx >= questions.length - 1;
+  const hasAny = selected.length > 0 || customText.trim().length > 0;
+  const letters = ['A', 'B', 'C', 'D', 'E'];
+
+  return (
+    <Animated.View
+      entering={FadeIn.duration(220)}
+      exiting={FadeOut.duration(180)}
+      pointerEvents="auto"
+      style={{
+        position: 'absolute',
+        top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        zIndex: 1000,
+        elevation: 1000,
+        justifyContent: 'center',
+        paddingHorizontal: 18,
+      }}
+    >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
+        <Animated.View
+          entering={FadeIn.duration(260).delay(40)}
+          style={{
+            backgroundColor: 'rgba(10,18,40,0.92)',
+            borderRadius: 22,
+            borderWidth: 1,
+            borderColor: 'rgba(255,255,255,0.18)',
+            padding: 18,
+            shadowColor: '#000',
+            shadowOpacity: 0.45,
+            shadowRadius: 20,
+            shadowOffset: { width: 0, height: 10 },
+          }}
+        >
+          {/* Header: progress dots */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {questions.map((_, i) => (
+                <View
+                  key={i}
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: '#fff',
+                    opacity: i === currentQIdx ? 1 : i < currentQIdx ? 0.7 : 0.2,
+                  }}
+                />
+              ))}
+            </View>
+            <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 11 }}>
+              {currentQIdx + 1} / {questions.length}
+            </Text>
+          </View>
+
+          {/* Question — use the bold family variant rather than fontWeight to avoid
+              the iOS RN bug where Satoshi-Regular + fontWeight:'600' renders empty. */}
+          <Text
+            style={{
+              color: '#fff',
+              fontSize: 16,
+              fontFamily: FontFamily.sansBold,
+              marginBottom: 14,
+              lineHeight: 22,
+            }}
+          >
+            {q.question}
+          </Text>
+
+          {/* Option cards */}
+          <View style={{ gap: 8 }}>
+            {q.options.map((opt, i) => {
+              const isOn = selected.includes(opt);
+              return (
+                <Pressable
+                  key={opt}
+                  onPress={() => onSelectOption(q.id, opt, questions.length)}
+                  style={{
+                    paddingVertical: 12,
+                    paddingHorizontal: 14,
+                    borderRadius: 14,
+                    borderWidth: isOn ? 0 : 1,
+                    borderColor: 'rgba(255,255,255,0.25)',
+                    backgroundColor: isOn ? '#1e3a5f' : 'rgba(0,0,0,0.45)',
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View
+                      style={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: 8,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
+                        backgroundColor: isOn ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.15)',
+                      }}
+                    >
+                      <Text style={{
+                        color: '#fff',
+                        fontSize: 12,
+                        fontFamily: FontFamily.sansBold,
+                      }}>
+                        {isOn ? '✓' : (letters[i] ?? String(i + 1))}
+                      </Text>
+                    </View>
+                    <Text
+                      style={{ color: '#fff', fontSize: 14, fontFamily: FontFamily.sans, flexShrink: 1 }}
+                      numberOfLines={3}
+                    >
+                      {opt}
+                    </Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Custom answer field — mirrors web's "Or type your own" affordance */}
+          <View style={{ marginTop: 10 }}>
+            <TextInput
+              value={customText}
+              onChangeText={setCustomText}
+              placeholder="Or type your own answer…"
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                const t = customText.trim();
+                if (!t) return;
+                onCustomAnswer(q.id, t, questions.length);
+                setCustomText('');
+              }}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.08)',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.18)',
+                borderRadius: 12,
+                paddingHorizontal: 14,
+                paddingVertical: 10,
+                color: '#fff',
+                fontSize: 14,
+                fontFamily: FontFamily.sans,
+              }}
+            />
+          </View>
+
+          {/* Footer: skip / submit */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14 }}>
+            <Pressable
+              onPress={onSkip}
+              style={({ pressed }) => ({ paddingVertical: 6, paddingHorizontal: 4, opacity: pressed ? 0.5 : 0.7 })}
+            >
+              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontFamily: FontFamily.sans }}>
+                Skip
+              </Text>
+            </Pressable>
+            {isLast && hasAny ? (
+              <Pressable
+                onPress={() => {
+                  const t = customText.trim();
+                  if (t) onCustomAnswer(q.id, t, questions.length);
+                  else onSubmitAll();
+                  setCustomText('');
+                }}
+                style={({ pressed }) => ({
+                  paddingVertical: 9,
+                  paddingHorizontal: 16,
+                  borderRadius: 999,
+                  backgroundColor: '#fff',
+                  opacity: pressed ? 0.8 : 1,
+                })}
+              >
+                <Text style={{ color: '#0A1228', fontSize: 13, fontFamily: FontFamily.sansBold }}>
+                  Plan my trip
+                </Text>
+              </Pressable>
+            ) : (
+              <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, fontFamily: FontFamily.sans }}>
+                Tap an option or type your answer
+              </Text>
+            )}
+          </View>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </Animated.View>
   );
 }

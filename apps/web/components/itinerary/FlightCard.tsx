@@ -16,7 +16,7 @@ export function FlightCard({ flight, variant = 'outbound' }: FlightCardProps) {
   const tripId = params?.id as string;
 
   return (
-    <Link href={`/trip/${tripId}/flights/${flight.id}`} className="block">
+    <Link href={`/trip/${tripId}/flights?expand=${flight.id}`} className="block">
     <div className="rounded-xl bg-white overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition-shadow mb-3">
       {/* Header band — sky blue gradient (outbound) or navy gradient (return) */}
       <div

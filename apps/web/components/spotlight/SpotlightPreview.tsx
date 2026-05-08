@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
 import { Building2, Plane, MapPin, Calendar, Star, DollarSign, Users, ArrowRight, Image as ImageIcon } from 'lucide-react'
-import type { SpotlightResult } from '@travyl/shared'
+import { formatDateRange, type SpotlightResult } from '@travyl/shared'
 
 const LeafletMap = dynamic(() => import('@/components/leaflet-map'), { ssr: false })
 
@@ -375,13 +375,3 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function formatDateRange(start: string, end: string): string {
-  try {
-    const s = new Date(start)
-    const e = new Date(end)
-    const fmt = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' })
-    return `${fmt.format(s)} - ${fmt.format(e)}`
-  } catch {
-    return `${start} - ${end}`
-  }
-}

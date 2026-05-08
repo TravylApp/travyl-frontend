@@ -138,8 +138,10 @@ async function parseViaLLM(query: string, token: string): Promise<ParsedIntent> 
     if (cached) return JSON.parse(cached) as ParsedIntent
   } catch { /* SSR / unavailable */ }
 
+  const apiUrl = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
   try {
-    const res = await fetch(`/api/parse-intent?q=${encodeURIComponent(query)}`, {
+    if (!apiUrl) return { intent: 'unknown', rawQuery: query }
+    const res = await fetch(`${apiUrl}/parse-intent?q=${encodeURIComponent(query)}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
     const data = await res.json() as ParsedIntent

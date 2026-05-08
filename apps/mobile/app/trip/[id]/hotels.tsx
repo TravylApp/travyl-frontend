@@ -1,15 +1,18 @@
 import { useState, useMemo, useEffect, useContext, useRef, useCallback } from 'react';
-import { View, Text, ScrollView, Pressable, Image, Linking, Platform, TextInput, Keyboard, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, Image, Linking, Platform, TextInput, Keyboard, ActivityIndicator, Alert } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
-import Constants from 'expo-constants';
 import { PageTransition, useTabAccent, TabCtx } from './_layout';
-// Conditionally import react-native-maps — skip on web AND in Expo Go (no native module)
+// Conditional react-native-maps — try the require, fall back to View if
+// the native module isn't bundled (e.g. Expo Go). Don't gate on
+// Constants.appOwnership: it's deprecated and returns null in custom dev
+// clients on newer SDKs, which would skip the require entirely.
 let MapView: any = View;
 let Marker: any = View;
-if (Platform.OS !== 'web' && Constants.appOwnership !== 'expo') {
+if (Platform.OS !== 'web') {
   try {
     const maps = require('react-native-maps');
     MapView = maps.default;
@@ -19,7 +22,7 @@ if (Platform.OS !== 'web' && Constants.appOwnership !== 'expo') {
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { TextStyles, FontFamily, useItineraryScreen, useHotelSearch, upscaleGoogleImage, getWebApiBase } from '@travyl/shared';
+import { TextStyles, FontFamily, useItineraryScreen, useHotelSearch, upscaleGoogleImage, getWebApiBase, supabase } from '@travyl/shared';
 
 
 /* ------------------------------------------------------------------ */
@@ -65,6 +68,14 @@ interface HotelData {
   phone: string;
   bookingLink: string;
   guestRatings: GuestRatings;
+  /** Free-text "About this hotel" — populated from SerpAPI/Booking when available. */
+  description?: string;
+  /** Lodging category (Hotel, Resort, Boutique, Hostel, etc.) — pulled from API tags. */
+  category?: string;
+  /** Optional opening / front-desk hours summary. */
+  hours?: string;
+  /** Walking-distance landmarks summary. */
+  nearby?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -589,10 +600,15 @@ function OtherHotelCard({ hotel, onPress }: { hotel: { id: string; name: string;
               {hotel.rating > 0 && <RatingBadge rating={hotel.rating} />}
             </View>
           </View>
-          {hotel.price > 0 && (
+          {hotel.price > 0 ? (
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={{ ...TextStyles.bodyXlEm, color: ACCENT }}>${hotel.price}</Text>
               <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>per night</Text>
+            </View>
+          ) : (
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={{ ...TextStyles.captionEm, color: colors.textTertiary }}>Rates vary</Text>
+              <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>tap to view</Text>
             </View>
           )}
         </View>
@@ -832,13 +848,19 @@ function BrowseHotelCard({ hotel, onPress, isSelected, isBooked }: { hotel: { id
           </View>
         )}
 
-        {/* Price row */}
-        {hotel.price > 0 && (
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
-            <Text style={{ ...TextStyles.title, color: colors.text }}>${hotel.price}</Text>
-            <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 6 }}>/night</Text>
-          </View>
-        )}
+        {/* Price row — always rendered. Live rates aren't always
+            available (older trips, off-the-grid hotels), so we surface
+            "Rates vary" rather than silently dropping the row. */}
+        <View style={{ flexDirection: 'row', alignItems: 'baseline', marginTop: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.borderLight }}>
+          {hotel.price > 0 ? (
+            <>
+              <Text style={{ ...TextStyles.title, color: colors.text }}>${hotel.price}</Text>
+              <Text style={{ fontSize: 10, color: colors.textTertiary, marginLeft: 6 }}>/night</Text>
+            </>
+          ) : (
+            <Text style={{ ...TextStyles.bodyEm, color: colors.textSecondary }}>Rates vary — tap for details</Text>
+          )}
+        </View>
       </View>
     </Pressable>
   );
@@ -978,7 +1000,17 @@ function HotelListCard({ hotel, nights, onPress }: { hotel: any; nights: number;
             </View>
           )}
 
-          {/* Price */}
+          {/* Price — always rendered. Live rates aren't always
+              available (older trips, third-party listings); surface a
+              graceful fallback rather than silently dropping the row. */}
+          {hotel.price <= 0 && (
+            <View style={{ marginTop: 16 }}>
+              <Text style={{ fontSize: 18, fontFamily: FontFamily.sansBold, color: colors.text }}>Rates not available</Text>
+              <Text style={{ fontSize: 13, color: colors.textTertiary, marginTop: 2 }}>
+                {hotel.link ? 'Tap "View on Booking" below for current pricing' : `Live rates depend on dates · ${nights} night${nights !== 1 ? 's' : ''}`}
+              </Text>
+            </View>
+          )}
           {hotel.price > 0 && (
             <View style={{ marginTop: 16 }}>
               <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
@@ -1075,7 +1107,7 @@ export default function HotelsScreen() {
   const id = _id || ctxId;
   const { trip } = useItineraryScreen(id);
   const [selectedRoom, setSelectedRoom] = useState(0);
-  const [browseMode, setBrowseMode] = useState<'cards' | 'list'>('cards');
+  const [browseMode, setBrowseMode] = useState<'cards' | 'list'>('list');
   const [cardIdx, setCardIdx] = useState(-1); // -1 = hidden
   const [selectedHotelIdx, setSelectedHotelIdx] = useState(0);
   const [detailExpanded, setDetailExpanded] = useState(true);
@@ -1298,6 +1330,18 @@ export default function HotelsScreen() {
 
   const filteredHotels = useMemo(() => {
     let result = [...realHotels];
+    // Narrow by query — typing should filter the visible list, not just
+    // refresh the API call.
+    const q = userSearch.trim().toLowerCase();
+    if (q) {
+      result = result.filter((h) => {
+        const hay = [
+          h.name, h.brand, h.address, h.neighborhood,
+          ...(h.amenities ?? []),
+        ].filter(Boolean).join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+    }
     if (starFilter.length > 0) {
       result = result.filter((h) => starFilter.includes(h.stars));
     }
@@ -1315,7 +1359,7 @@ export default function HotelsScreen() {
       default: break;
     }
     return result;
-  }, [realHotels, starFilter, amenityFilter, brandFilter, sortBy]);
+  }, [realHotels, starFilter, amenityFilter, brandFilter, sortBy, userSearch]);
 
   // Build detail from the selected hotel in the browse list
   const hotel = useMemo<HotelData | null>(() => {
@@ -1367,9 +1411,15 @@ export default function HotelsScreen() {
       roomTypes,
       checkIn: trip?.start_date ? new Date(trip.start_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
       checkOut: trip?.end_date ? new Date(trip.end_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
-      cancellation: '',
-      phone: '',
-      bookingLink: h.link ?? '',
+      cancellation: h.cancellation ?? '',
+      // Surface phone if the source has one — was hardcoded to '' before,
+      // which silently disabled the Call button.
+      phone: h.phone ?? h.formatted_phone_number ?? '',
+      bookingLink: h.link ?? h.website ?? h.url ?? '',
+      description: h.description ?? h.about ?? h.summary ?? h.tagline ?? '',
+      category: h.category ?? h.type ?? (Array.isArray(h.types) ? h.types[0] : undefined) ?? '',
+      hours: h.hours ?? h.opening_hours_summary ?? '',
+      nearby: h.nearby_summary ?? h.transit ?? '',
       guestRatings: {
         overall: rating,
         label: ratingLabel,
@@ -1400,6 +1450,61 @@ export default function HotelsScreen() {
     setBooked(true);
   };
 
+  const queryClient = useQueryClient();
+  const [savingHotel, setSavingHotel] = useState(false);
+
+  // Persist the currently-selected hotel into trip_context.hotels[0]. The
+  // budget tab pulls accommodation cost from trip_context.hotels[0].price,
+  // so this is what makes the hotel's price show up in Budget after the
+  // user picks a hotel.
+  const addHotelToTrip = useCallback(async () => {
+    if (!id || !hotel) return;
+    const room = currentRoom ?? hotel.roomTypes[selectedRoom];
+    const ctxHotel = {
+      id: hotel.id,
+      name: hotel.name,
+      stars: hotel.stars,
+      rating: hotel.rating,
+      review_count: hotel.reviews,
+      price: room?.price ?? hotel.price,
+      price_per_night: room?.price ?? hotel.price,
+      neighborhood: hotel.neighborhood,
+      address: hotel.address,
+      image: hotel.images?.[0] ?? '',
+      images: hotel.images ?? [],
+      amenities: hotel.amenities,
+      checkIn: hotel.checkIn,
+      checkOut: hotel.checkOut,
+      cancellation: hotel.cancellation,
+      phone: hotel.phone,
+      link: hotel.bookingLink,
+      website: hotel.bookingLink,
+      description: hotel.description,
+      category: hotel.category,
+      hours: hotel.hours,
+      nearby: hotel.nearby,
+      room_type: room?.type ?? '',
+      room_types: hotel.roomTypes,
+    };
+    setSavingHotel(true);
+    try {
+      const { data: row } = await supabase.from('trips').select('trip_context').eq('id', id).single();
+      const ctx = (row?.trip_context || {}) as Record<string, unknown>;
+      (ctx as any).hotels = [ctxHotel];
+      const existingAll = Array.isArray((ctx as any).all_hotels) ? ((ctx as any).all_hotels as any[]) : [];
+      const dedup = [ctxHotel, ...existingAll.filter((h: any) => h?.id !== ctxHotel.id && h?.name !== ctxHotel.name)];
+      (ctx as any).all_hotels = dedup;
+      const { error } = await supabase.from('trips').update({ trip_context: ctx }).eq('id', id);
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ['trip', id] });
+      Alert.alert('Hotel added', 'This hotel is now in your trip and budget.');
+    } catch (e: any) {
+      Alert.alert('Could not add hotel', e?.message || 'Please try again.');
+    } finally {
+      setSavingHotel(false);
+    }
+  }, [id, hotel, currentRoom, selectedRoom, queryClient]);
+
   const scrollRef = useRef<ScrollView>(null);
   const detailRef = useRef<View>(null);
   const detailYRef = useRef(0);
@@ -1414,6 +1519,27 @@ export default function HotelsScreen() {
       onScroll={handleHotelScroll}
       scrollEventThrottle={16}
     >
+      {/* ── Search bar (top so it's discoverable) ── */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, height: 40 }}>
+          <FontAwesome name="search" size={13} color={colors.textTertiary} />
+          <TextInput
+            value={userSearch}
+            onChangeText={setUserSearch}
+            onSubmitEditing={() => { Keyboard.dismiss(); if (userSearch.trim()) { setHotelSearchPage(0); setHasMoreHotels(true); fetchHotelPage(userSearch, 0, false); } }}
+            returnKeyType="search"
+            placeholder="Search hotels — Marriott, boutique, spa..."
+            placeholderTextColor={colors.textTertiary}
+            style={{ flex: 1, fontSize: 14, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
+          />
+          {userSearch.length > 0 && (
+            <Pressable onPress={() => { setUserSearch(''); if (destination) { setHotelSearchPage(0); setHasMoreHotels(true); fetchHotelPage(`hotels in ${destination}`, 0, false); } }}>
+              <FontAwesome name="times-circle" size={14} color={colors.textTertiary} />
+            </Pressable>
+          )}
+        </View>
+      </View>
+
       {/* ── Selected Hotel Detail (top, like Figma) ── */}
       {hotel && (() => {
         const nights = (trip?.start_date && trip?.end_date)
@@ -1468,10 +1594,44 @@ export default function HotelsScreen() {
           {/* Hotel Name */}
           <Text style={{ ...TextStyles.title, fontFamily: FontFamily.serif, color: colors.text, paddingHorizontal: 14, marginTop: 8 }} numberOfLines={2}>{hotel.name}</Text>
 
-          {/* Stars row */}
-          {hotel.stars > 0 && (
-            <View style={{ paddingHorizontal: 14, marginTop: 4 }}>
-              <StarRow count={hotel.stars} />
+          {/* Stars + Type pill */}
+          <View style={{ paddingHorizontal: 14, marginTop: 4, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            {hotel.stars > 0 && <StarRow count={hotel.stars} />}
+            {!!hotel.category && (
+              <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: colors.borderLight }}>
+                <Text style={{ ...TextStyles.xs, color: colors.textSecondary, fontWeight: '600' }}>{hotel.category}</Text>
+              </View>
+            )}
+            {!!hotel.neighborhood && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <FontAwesome name="map-marker" size={11} color={colors.textTertiary} />
+                <Text style={{ ...TextStyles.xs, color: colors.textSecondary }}>{hotel.neighborhood}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Description (if present) */}
+          {!!hotel.description && (
+            <Text style={{ ...TextStyles.body, color: colors.textSecondary, paddingHorizontal: 14, marginTop: 10, lineHeight: 19 }} numberOfLines={4}>
+              {hotel.description}
+            </Text>
+          )}
+
+          {/* Hours / Nearby summary */}
+          {(!!hotel.hours || !!hotel.nearby) && (
+            <View style={{ paddingHorizontal: 14, marginTop: 8, gap: 4 }}>
+              {!!hotel.hours && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <FontAwesome name="clock-o" size={11} color={colors.textTertiary} />
+                  <Text style={{ ...TextStyles.caption, color: colors.textSecondary, flex: 1 }}>{hotel.hours}</Text>
+                </View>
+              )}
+              {!!hotel.nearby && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <FontAwesome name="compass" size={11} color={colors.textTertiary} />
+                  <Text style={{ ...TextStyles.caption, color: colors.textSecondary, flex: 1 }}>{hotel.nearby}</Text>
+                </View>
+              )}
             </View>
           )}
 
@@ -1541,45 +1701,42 @@ export default function HotelsScreen() {
               </View>
             )}
 
-            {/* ── Book Now — opens hotel site in-app ── */}
-            {!!hotel.bookingLink && (
+            {/* ── Add to Trip + Book Now ── */}
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 16 }}>
               <Pressable
-                onPress={() => WebBrowser.openBrowserAsync(hotel.bookingLink.startsWith('http') ? hotel.bookingLink : `https://www.google.com/search?q=${encodeURIComponent(hotel.name + ' booking')}`)}
+                onPress={addHotelToTrip}
+                disabled={savingHotel}
                 style={({ pressed }) => ({
-                  marginTop: 16, backgroundColor: pressed ? colors.tint : colors.tint, borderRadius: 12, paddingVertical: 15,
+                  flex: 1, backgroundColor: colors.tint, borderRadius: 12, paddingVertical: 15,
                   flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  opacity: pressed || savingHotel ? 0.85 : 1,
                 })}
               >
-                <FontAwesome name="building" size={14} color="#fff" />
-                <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>Book Now</Text>
+                <FontAwesome name="plus" size={14} color="#fff" />
+                <Text style={{ ...TextStyles.bodyLgEm, color: '#fff' }}>
+                  {savingHotel ? 'Adding…' : 'Add to Trip'}
+                </Text>
               </Pressable>
-            )}
+              {!!hotel.bookingLink && (
+                <Pressable
+                  onPress={() => WebBrowser.openBrowserAsync(hotel.bookingLink.startsWith('http') ? hotel.bookingLink : `https://www.google.com/search?q=${encodeURIComponent(hotel.name + ' booking')}`)}
+                  style={({ pressed }) => ({
+                    flex: 1, backgroundColor: colors.cardBackground, borderRadius: 12, paddingVertical: 15,
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                    borderWidth: 1, borderColor: colors.tint,
+                    opacity: pressed ? 0.9 : 1,
+                  })}
+                >
+                  <FontAwesome name="external-link" size={13} color={colors.tint} />
+                  <Text style={{ ...TextStyles.bodyLgEm, color: colors.tint }}>Book Now</Text>
+                </Pressable>
+              )}
+            </View>
           </View>
         </View>
       </View>
         );
       })()}
-
-      {/* ── Search bar ── */}
-      <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, height: 40 }}>
-          <FontAwesome name="search" size={13} color={colors.textTertiary} />
-          <TextInput
-            value={userSearch}
-            onChangeText={setUserSearch}
-            onSubmitEditing={() => { Keyboard.dismiss(); if (userSearch.trim()) { setHotelSearchPage(0); setHasMoreHotels(true); fetchHotelPage(userSearch, 0, false); } }}
-            returnKeyType="search"
-            placeholder="Search hotels — Marriott, boutique, spa..."
-            placeholderTextColor={colors.textTertiary}
-            style={{ flex: 1, fontSize: 14, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
-          />
-          {userSearch.length > 0 && (
-            <Pressable onPress={() => { setUserSearch(''); if (destination) { setHotelSearchPage(0); setHasMoreHotels(true); fetchHotelPage(`hotels in ${destination}`, 0, false); } }}>
-              <FontAwesome name="times-circle" size={14} color={colors.textTertiary} />
-            </Pressable>
-          )}
-        </View>
-      </View>
 
       {/* ── Browse Hotels — toggle + list/card views ── */}
       {realHotels.length > 0 && (
@@ -1619,7 +1776,7 @@ export default function HotelsScreen() {
                 setSelectedHotelIdx(Math.max(0, realHotels.findIndex((rh: any) => rh.id === h.id)));
                 setSelectedRoom(0);
                 setBooked(false);
-                setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 100);
+                // Don't scroll to top — keep the user where they are.
               }}
             />
           ))}
@@ -1637,7 +1794,6 @@ export default function HotelsScreen() {
                   setSelectedHotelIdx(idx);
                   setSelectedRoom(0);
                   setBrowseMode('list');
-                  setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 100);
                 }
               }}
               onClose={() => setBrowseMode('list')}

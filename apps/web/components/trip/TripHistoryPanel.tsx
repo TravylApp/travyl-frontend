@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { History, X } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@travyl/shared'
+import { supabase, fetchAuditEntries, type EnrichedAuditEntry } from '@travyl/shared'
 import { formatDistanceToNow } from 'date-fns'
 
 // ── Types ───────────────────────────────────────────────────
@@ -29,18 +29,42 @@ function actionBadge(action: string): { label: string; color: string; bg: string
   return { label: 'Changed', color: '#94a3b8', bg: 'rgba(148,163,184,0.12)' }
 }
 
+// ── Helpers ─────────────────────────────────────────────────
+
+function auditEntryToHistoryEntry(e: EnrichedAuditEntry, nameMap: Record<string, string>): HistoryEntry {
+  let action = ''
+  switch (e.edit_type) {
+    case 'create':  action = `Added "${e.activityName}"`; break
+    case 'delete':  action = `Removed "${e.activityName}"`; break
+    case 'move':    action = `Moved "${e.activityName}"`; break
+    case 'edit':    action = `Edited "${e.activityName}"`; break
+    case 'revert':  action = `Reverted "${e.activityName}"`; break
+    default:        action = `Changed "${e.activityName}"`
+  }
+
+  return {
+    id: `audit-${e.id}`,
+    type: 'audit',
+    action,
+    activityName: e.activityName,
+    displayName: e.user_id ? (nameMap[e.user_id] ?? 'Someone') : 'Someone',
+    timestamp: e.created_at,
+  }
+}
+
 // ── Data fetcher ────────────────────────────────────────────
 
 async function fetchTripHistory(tripId: string): Promise<HistoryEntry[]> {
   const entries: HistoryEntry[] = []
 
-  // 1. Fetch audit entries from itinerary_edits
-  const { data: edits } = await supabase
-    .from('itinerary_edits')
-    .select('*')
-    .eq('trip_id', tripId)
-    .order('created_at', { ascending: false })
-    .limit(50)
+  // 1. Fetch audit entries from shared service
+  const edits = await fetchAuditEntries(tripId, { limit: 100 })
+
+  // Build name map from returned entries (already resolved by shared service)
+  const nameMap: Record<string, string> = {}
+  for (const e of edits) {
+    if (e.user_id) nameMap[e.user_id] = e.displayName
+  }
 
   // 2. Fetch activity records for created_at timestamps (supplements audit)
   const { data: activities } = await supabase
@@ -50,56 +74,29 @@ async function fetchTripHistory(tripId: string): Promise<HistoryEntry[]> {
     .order('created_at', { ascending: false })
     .limit(50)
 
-  // Collect all user IDs for profile lookup
-  const userIds = new Set<string>()
-  for (const e of edits ?? []) if (e.user_id) userIds.add(e.user_id)
-  for (const a of activities ?? []) if (a.user_id) userIds.add(a.user_id)
+  // Add any missing user IDs from activities
+  const activityUserIds = new Set<string>()
+  for (const a of activities ?? []) if (a.user_id) activityUserIds.add(a.user_id)
 
-  const nameMap: Record<string, string> = {}
-  if (userIds.size > 0) {
+  const missingIds = [...activityUserIds].filter((id) => !nameMap[id])
+  if (missingIds.length > 0) {
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, display_name')
-      .in('id', [...userIds])
+      .in('id', missingIds)
     for (const p of profiles ?? []) {
       nameMap[p.id] = p.display_name ?? 'Unknown'
     }
   }
 
-  // Build audit entries
+  // Track which activities have audit creates
   const auditActivityIds = new Set<string>()
-  for (const e of edits ?? []) {
-    const name =
-      (e.new_data as any)?.title ??
-      (e.original_data as any)?.title ??
-      (e.new_data as any)?.activity_name ??
-      (e.original_data as any)?.activity_name ??
-      'Activity'
-    const displayName = e.user_id ? (nameMap[e.user_id] ?? 'Someone') : 'Someone'
-
-    let action = ''
-    switch (e.edit_type) {
-      case 'create':  action = `Added "${name}"`; break
-      case 'delete':  action = `Removed "${name}"`; break
-      case 'move':    action = `Moved "${name}"`; break
-      case 'edit':    action = `Edited "${name}"`; break
-      case 'revert':  action = `Reverted "${name}"`; break
-      default:        action = `Changed "${name}"`
-    }
-
-    entries.push({
-      id: `audit-${e.id}`,
-      type: 'audit',
-      action,
-      activityName: name,
-      displayName,
-      timestamp: e.created_at,
-    })
-
+  for (const e of edits) {
     if (e.edit_type === 'create') auditActivityIds.add(e.activity_id)
+    entries.push(auditEntryToHistoryEntry(e, nameMap))
   }
 
-  // Add activity creation entries that have no audit trail (pre-audit activities)
+  // Add activity creation entries that have no audit trail
   for (const a of activities ?? []) {
     if (auditActivityIds.has(a.id)) continue
     const displayName = a.user_id ? (nameMap[a.user_id] ?? 'Someone') : 'Someone'
@@ -113,7 +110,7 @@ async function fetchTripHistory(tripId: string): Promise<HistoryEntry[]> {
     })
   }
 
-  // 3. Always pull from trip_context — user_history (manual actions) + itinerary (planner)
+  // 3. Enrich from trip_context
   {
     const { data: trip } = await supabase
       .from('trips')
@@ -124,7 +121,6 @@ async function fetchTripHistory(tripId: string): Promise<HistoryEntry[]> {
     if (trip) {
       const ctx = trip.trip_context as any
 
-      // User actions (manual adds/removes)
       const userHistory = (ctx?.user_history ?? []) as { action: string; timestamp: string; actor: string }[]
       for (const h of userHistory) {
         entries.push({
@@ -137,7 +133,6 @@ async function fetchTripHistory(tripId: string): Promise<HistoryEntry[]> {
         })
       }
 
-      // Planner-generated itinerary items (only if no audit data)
       if (entries.length === userHistory.length) {
         const itinerary = ctx?.itinerary ?? []
         for (const day of itinerary) {
@@ -155,7 +150,6 @@ async function fetchTripHistory(tripId: string): Promise<HistoryEntry[]> {
         }
       }
 
-      // Trip lifecycle events
       entries.push({
         id: 'trip-created',
         type: 'audit',
@@ -178,9 +172,7 @@ async function fetchTripHistory(tripId: string): Promise<HistoryEntry[]> {
     }
   }
 
-  // Sort all entries by timestamp, newest first
   entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-
   return entries
 }
 
@@ -197,8 +189,7 @@ function useTripHistory(tripId: string, enabled: boolean) {
 
 // ── Panel Component ─────────────────────────────────────────
 
-// Compact floating panel — top-right corner, no backdrop, doesn't block the page
-function HistoryPanel({ tripId, isOpen, onClose }: { tripId: string; isOpen: boolean; onClose: () => void }) {
+export function HistoryPanel({ tripId, isOpen, onClose }: { tripId: string; isOpen: boolean; onClose: () => void }) {
   const { data: entries = [], isLoading } = useTripHistory(tripId, isOpen)
 
   if (!isOpen || typeof document === 'undefined') return null

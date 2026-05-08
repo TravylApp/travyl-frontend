@@ -90,6 +90,7 @@ const SWIPE_THRESHOLD = 80;
 
 function InspirationCard({ place, isFront }: { place: PlaceItem; isFront: boolean }) {
   const [imgIdx, setImgIdx] = useState(0);
+  const [imgError, setImgError] = useState(false);
   const images = place.images?.length ? place.images : [place.image];
 
   const goNextImg = () => setImgIdx((i) => (i + 1) % images.length);
@@ -97,13 +98,20 @@ function InspirationCard({ place, isFront }: { place: PlaceItem; isFront: boolea
 
   return (
     <div className="w-full h-full rounded-2xl overflow-hidden bg-black relative group">
-      <Image
-        src={images[imgIdx]}
-        alt={place.name}
-        fill
-        className="absolute inset-0 w-full h-full object-cover"
-        sizes="(max-width: 768px) 100vw, 380px"
-              />
+      {imgError ? (
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#1e3a5f] to-[#2563eb]">
+          <MapPin size={32} className="text-white/30" />
+        </div>
+      ) : (
+        <Image
+          src={images[imgIdx]}
+          alt={place.name}
+          fill
+          className="absolute inset-0 w-full h-full object-cover"
+          sizes="(max-width: 768px) 100vw, 380px"
+          onError={() => setImgError(true)}
+        />
+      )}
 
       {/* Gradient */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
@@ -284,11 +292,13 @@ export function GetInspired() {
   const [currentIdx, setCurrentIdx] = useState(0);
   const [direction, setDirection] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
-  const { data: cards = [] } = useQuery({
+  const { data: cards = [], isFetched, isError, refetch } = useQuery({
     queryKey: ['inspired-places'],
     queryFn: fetchInspiredPlaces,
     staleTime: 10 * 60 * 1000,
     enabled: inView,
+    retry: 2,
+    retryDelay: 2000,
   });
 
   // Reset flip when card changes
@@ -321,11 +331,11 @@ export function GetInspired() {
     else if (info.offset.x > SWIPE_THRESHOLD) goPrev();
   };
 
-  if (cards.length === 0) return null;
-
-  const prevIdx = currentIdx === 0 ? cards.length - 1 : currentIdx - 1;
-  const nextIdx = (currentIdx + 1) % cards.length;
-  const nextNextIdx = (currentIdx + 2) % cards.length;
+  const hasCards = cards.length > 0;
+  const L = cards.length;
+  const prevIdx = hasCards ? (currentIdx === 0 ? L - 1 : currentIdx - 1) : 0;
+  const nextIdx = hasCards ? (currentIdx + 1) % L : 0;
+  const nextNextIdx = hasCards ? (currentIdx + 2) % L : 0;
 
   // Shuffle animation: card lifts up, rotates out to the side, new card sweeps in from opposite side
   const cardVariants = {
@@ -353,7 +363,7 @@ export function GetInspired() {
   };
 
   return (
-    <section ref={sectionRef as React.RefObject<HTMLElement>} className="py-16 px-6">
+    <section ref={sectionRef as React.RefObject<HTMLElement>} className="py-20 sm:py-28 px-6">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8">
           <motion.h2
@@ -376,107 +386,147 @@ export function GetInspired() {
           </motion.p>
         </div>
 
-        {/* Card carousel with side peeks */}
-        <div className="relative mx-auto flex items-center justify-center" style={{ maxWidth: 700, height: 480 }}>
-          {/* Left peek card — angled, peeking from behind */}
-          <div
-            className="hidden md:block absolute rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:opacity-50"
-            style={{ width: 280, height: 420, opacity: 0.35, zIndex: 1, left: 20, top: '50%', transform: 'translateY(-50%) rotate(-6deg)' }}
-            onClick={goPrev}
-          >
-            <InspirationCard place={cards[prevIdx]} isFront={false} />
-          </div>
-
-          {/* Center card stack */}
-          <div className="relative" style={{ width: 380, height: 480, zIndex: 5 }}>
-            {/* Background card 2 */}
-            <div
-              className="absolute inset-0 rounded-2xl bg-gray-200 overflow-hidden"
-              style={{ transform: "scale(0.88) translateY(24px)", opacity: 0.4 }}
-            >
-              <InspirationCard place={cards[nextNextIdx]} isFront={false} />
-            </div>
-
-            {/* Background card 1 */}
-            <div
-              className="absolute inset-0 rounded-2xl overflow-hidden shadow-lg"
-              style={{ transform: "scale(0.94) translateY(12px)", opacity: 0.7 }}
-            >
-              <InspirationCard place={cards[nextIdx]} isFront={false} />
-            </div>
-
-            {/* Active card */}
-            <AnimatePresence mode="popLayout" custom={direction}>
-              <motion.div
-                key={currentIdx}
-                custom={direction}
-                variants={cardVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                drag={isFlipped ? false : "x"}
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.7}
-                onDragEnd={handleDragEnd}
-                className="absolute inset-0 shadow-xl"
-                style={{ zIndex: 10, perspective: 1000 }}
+        {hasCards ? (
+          <>
+            {/* Card carousel with side peeks */}
+            <div className="relative mx-auto flex items-center justify-center" style={{ maxWidth: 700, height: 480 }}>
+              {/* Left peek card */}
+              <div
+                className="hidden md:block absolute rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:opacity-50"
+                style={{ width: 280, height: 420, opacity: 0.35, zIndex: 1, left: 20, top: '50%', transform: 'translateY(-50%) rotate(-6deg)' }}
+                onClick={goPrev}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goPrev(); } }}
+                role="button"
+                tabIndex={0}
+                aria-label="Previous destination"
               >
-                {/* Heart — floats above flip so it's always visible */}
-                <button
-                  onClick={(e) => e.stopPropagation()}
-                  className="absolute top-4 right-4 w-9 h-9 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-sm transition-all z-30"
-                >
-                  <Heart size={16} className="text-gray-400" />
-                </button>
-                <motion.div
-                  animate={{ rotateY: isFlipped ? 180 : 0 }}
-                  transition={{ duration: 0.6, type: "spring", damping: 15, stiffness: 100 }}
-                  className="w-full h-full relative cursor-pointer"
-                  style={{ transformStyle: "preserve-3d" }}
-                  onClick={() => setIsFlipped((f) => !f)}
-                >
-                  {/* Front */}
-                  <div className="absolute inset-0 rounded-2xl overflow-hidden" style={{ backfaceVisibility: "hidden" }}>
-                    <InspirationCard place={cards[currentIdx]} isFront />
-                  </div>
-                  {/* Back */}
-                  <div className="absolute inset-0 rounded-2xl overflow-hidden" style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
-                    <InspirationCardBack place={cards[currentIdx]} />
-                  </div>
-                </motion.div>
-              </motion.div>
-            </AnimatePresence>
-          </div>
+                <InspirationCard place={cards[prevIdx]} isFront={false} />
+              </div>
 
-          {/* Right peek card — angled, peeking from behind */}
-          <div
-            className="hidden md:block absolute rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:opacity-50"
-            style={{ width: 280, height: 420, opacity: 0.35, zIndex: 1, right: 20, top: '50%', transform: 'translateY(-50%) rotate(6deg)' }}
-            onClick={goNext}
-          >
-            <InspirationCard place={cards[nextIdx]} isFront={false} />
-          </div>
-        </div>
+              {/* Center card stack */}
+              <div className="relative" style={{ width: 380, height: 480, zIndex: 5 }}>
+                {/* Background card 2 */}
+                <div
+                  className="absolute inset-0 rounded-2xl bg-gray-200 overflow-hidden"
+                  style={{ transform: "scale(0.88) translateY(24px)", opacity: 0.4 }}
+                >
+                  <InspirationCard place={cards[nextNextIdx]} isFront={false} />
+                </div>
 
-        {/* Navigation */}
-        <div className="flex items-center justify-center gap-4 mt-6">
-          <button
-            onClick={goPrev}
-            className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition-colors"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <span className="text-sm text-muted-foreground tabular-nums">
-            {currentIdx + 1} / {cards.length}
-          </span>
-          <button
-            onClick={goNext}
-            className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition-colors"
-          >
-            <ChevronRight size={20} />
-          </button>
-        </div>
+                {/* Background card 1 */}
+                <div
+                  className="absolute inset-0 rounded-2xl overflow-hidden shadow-lg"
+                  style={{ transform: "scale(0.94) translateY(12px)", opacity: 0.7 }}
+                >
+                  <InspirationCard place={cards[nextIdx]} isFront={false} />
+                </div>
+
+                {/* Active card */}
+                <AnimatePresence mode="popLayout" custom={direction}>
+                  <motion.div
+                    key={currentIdx}
+                    custom={direction}
+                    variants={cardVariants}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                    drag={isFlipped ? false : "x"}
+                    dragConstraints={{ left: 0, right: 0 }}
+                    dragElastic={0.7}
+                    onDragEnd={handleDragEnd}
+                    className="absolute inset-0 shadow-xl"
+                    style={{ zIndex: 10, perspective: 1000 }}
+                  >
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute top-4 right-4 w-9 h-9 bg-white/90 hover:bg-white rounded-full flex items-center justify-center shadow-sm transition-all z-30"
+                      aria-label="Save to favorites"
+                    >
+                      <Heart size={16} className="text-gray-400" />
+                    </button>
+                    <motion.div
+                      animate={{ rotateY: isFlipped ? 180 : 0 }}
+                      transition={{ duration: 0.6, type: "spring", damping: 15, stiffness: 100 }}
+                      className="w-full h-full relative cursor-pointer"
+                      style={{ transformStyle: "preserve-3d" }}
+                      onClick={() => setIsFlipped((f) => !f)}
+                      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setIsFlipped((f) => !f); } }}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={isFlipped ? "Show front of card" : "Show details"}
+                    >
+                      <div className="absolute inset-0 rounded-2xl overflow-hidden" style={{ backfaceVisibility: "hidden" }}>
+                        <InspirationCard place={cards[currentIdx]} isFront />
+                      </div>
+                      <div className="absolute inset-0 rounded-2xl overflow-hidden" style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
+                        <InspirationCardBack place={cards[currentIdx]} />
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* Right peek card */}
+              <div
+                className="hidden md:block absolute rounded-2xl overflow-hidden cursor-pointer transition-all duration-300 hover:opacity-50"
+                style={{ width: 280, height: 420, opacity: 0.35, zIndex: 1, right: 20, top: '50%', transform: 'translateY(-50%) rotate(6deg)' }}
+                onClick={goNext}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goNext(); } }}
+                role="button"
+                tabIndex={0}
+                aria-label="Next destination"
+              >
+                <InspirationCard place={cards[nextIdx]} isFront={false} />
+              </div>
+            </div>
+
+            {/* Navigation */}
+            <div className="flex items-center justify-center gap-4 mt-6">
+              <button
+                onClick={goPrev}
+                aria-label="Previous destination"
+                className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <span className="text-sm text-muted-foreground tabular-nums">
+                {currentIdx + 1} / {cards.length}
+              </span>
+              <button
+                onClick={goNext}
+                aria-label="Next destination"
+                className="w-10 h-10 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition-colors"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </>
+        ) : isError ? (
+          <div className="flex items-center justify-center" style={{ height: 480 }}>
+            <div className="flex flex-col items-center gap-3 text-muted-foreground">
+              <MapPin size={32} className="text-gray-300" />
+              <p className="text-sm">Couldn&apos;t load destinations.</p>
+              <button
+                onClick={() => refetch()}
+                className="text-xs font-medium text-white bg-[#1e3a5f] px-4 py-2 rounded-full hover:bg-[#162d4a] transition-colors"
+              >
+                Try again
+              </button>
+            </div>
+          </div>
+        ) : isFetched && !hasCards ? (
+          <div className="flex items-center justify-center" style={{ height: 480 }}>
+            <p className="text-sm text-muted-foreground">No destinations available right now.</p>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center" style={{ height: 480 }}>
+            <div className="flex flex-col items-center gap-3 text-muted-foreground">
+              <div className="w-12 h-12 rounded-full border-2 border-gray-200 border-t-gray-400 animate-spin" />
+              <p className="text-sm">Loading destinations...</p>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

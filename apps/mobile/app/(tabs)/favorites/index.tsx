@@ -11,12 +11,17 @@ import {
   ActivityIndicator,
   Linking,
   Keyboard,
+  Animated,
 } from 'react-native';
 import { Image } from 'expo-image';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import {
   Navy, TextStyles, FontSize, FontFamily,
   haversineKm as distanceKm, fetchDiscoverPage, fetchNearbyPlaces, searchPlaces, dedupPlaces, distanceLabel,
+  inferSearchHint,
+  favoritesKeyFor,
+  favoritePlacesKeyFor,
+  useAuthStore,
   type PlaceItem, type DiscoverPageResult,
 } from '@travyl/shared';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,6 +32,7 @@ import { ExplorePreview } from '@/components/home/ExplorePreview';
 import { OceanWave, Footer } from '@/components/home';
 import PlaceDetailModal from '@/components/places/PlaceDetailModal';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
+import { GridPlaceCard, getImageHeight } from '@/components/places/GridPlaceCard';
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const PAD = 16;
@@ -35,18 +41,6 @@ const AUTO_LOAD_THRESHOLD = 100;
 const SCROLL_LOAD_DISTANCE = 1200;
 const NO_COORDS_DISTANCE = 99999;
 const NEARBY_MERGE_RADIUS_KM = 16;
-
-function hashCode(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
-  }
-  return Math.abs(hash);
-}
-
-function getImageHeight(id: string): number {
-  return 140 + (hashCode(id + 'h') % 100);
-}
 
 function balanceColumns(places: PlaceItem[]): [PlaceItem[], PlaceItem[]] {
   const left: PlaceItem[] = [];
@@ -82,216 +76,6 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: 'az', label: 'A-Z' },
 ];
 
-/* ═══════════════ Grid Place Card ═══════════════ */
-
-const TYPE_ICON: Record<string, string> = {
-  event: 'calendar', restaurant: 'cutlery', experience: 'compass',
-  destination: 'map-marker', attraction: 'university', hotel: 'bed',
-};
-const TYPE_COLOR: Record<string, string> = {
-  event: '#8b5cf6', restaurant: '#ef4444', experience: '#f59e0b',
-  destination: '#3b82f6', attraction: '#10b981', hotel: '#6366f1',
-};
-
-const GridPlaceCard = memo(function GridPlaceCard({
-  place, isFav, onPress, onToggleFav, colors, flush, userLoc,
-}: {
-  place: PlaceItem;
-  flush?: boolean;
-  isFav: boolean;
-  onPress: () => void;
-  onToggleFav: () => void;
-  colors: ReturnType<typeof useThemeColors>;
-  userLoc?: { lat: number; lng: number } | null;
-}) {
-  const imgH = getImageHeight(place.id);
-  const imgs = place.images && place.images.length > 1 ? place.images : place.image ? [place.image] : [];
-  const [imgIdx, setImgIdx] = useState(0);
-  const hasMultiple = imgs.length > 1;
-  const hasImage = imgs.length > 0 && !!imgs[0];
-  const typeColor = TYPE_COLOR[place.type] || '#6b7280';
-  const typeIcon = TYPE_ICON[place.type] || 'globe';
-  const isEvent = place.type === 'event';
-  const priceStr = place.priceLevel ? '$'.repeat(place.priceLevel) : '';
-
-  // Calculate distance from user
-  let distLabel = '';
-  if (userLoc && place.latitude != null && place.longitude != null) {
-    const dist = distanceKm(userLoc.lat, userLoc.lng, place.latitude, place.longitude);
-    const mi = dist * 0.621371;
-    distLabel = mi < 0.3 ? `${Math.round(mi * 5280)} ft` : mi < 10 ? `${mi.toFixed(1)} mi` : `${Math.round(mi)} mi`;
-  }
-
-  return (
-    <Pressable onPress={onPress} style={{ marginBottom: flush ? 1 : GAP }}>
-      <View style={{
-        borderRadius: flush ? 0 : 14, overflow: 'hidden',
-        backgroundColor: colors.cardBackground,
-        borderWidth: flush ? 0 : 1, borderColor: colors.border,
-      }}>
-        <View style={{ height: imgH, position: 'relative' }}>
-          {hasImage ? (
-            <Image source={{ uri: imgs[imgIdx], headers: { Referer: '' } }} style={{ width: '100%', height: imgH }} contentFit="cover" cachePolicy="memory-disk" transition={200} />
-          ) : (
-            <View style={{ width: '100%', height: imgH, backgroundColor: typeColor + '18', alignItems: 'center', justifyContent: 'center' }}>
-              <FontAwesome name={typeIcon as any} size={32} color={typeColor + '40'} />
-            </View>
-          )}
-
-          {hasMultiple && (
-            <Pressable
-              onPress={() => setImgIdx((prev) => (prev + 1) % imgs.length)}
-              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-            />
-          )}
-
-          {/* Type badge — top-left */}
-          <View style={{
-            position: 'absolute', top: 8, left: 8,
-            flexDirection: 'row', alignItems: 'center', gap: 4,
-            backgroundColor: typeColor, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8,
-          }}>
-            <FontAwesome name={typeIcon as any} size={8} color="#fff" />
-            <Text style={{ ...TextStyles.micro, color: '#fff', textTransform: 'capitalize' }}>{place.type}</Text>
-          </View>
-
-          {/* Heart button — top-right */}
-          <Pressable
-            onPress={onToggleFav}
-            style={{
-              position: 'absolute', top: 8, right: 8,
-              width: 28, height: 28, borderRadius: 14,
-              backgroundColor: isFav ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.9)',
-              borderWidth: isFav ? 1 : 0,
-              borderColor: 'rgba(239,68,68,0.4)',
-              alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            <FontAwesome name={isFav ? 'heart' : 'heart-o'} size={12} color={isFav ? colors.error : colors.textTertiary} />
-          </Pressable>
-
-          {/* Dot indicators */}
-          {hasMultiple && (
-            <View pointerEvents="none" style={{
-              position: 'absolute', bottom: 8, left: 0, right: 0,
-              flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 4,
-            }}>
-              {imgs.map((_, i) => (
-                <View key={i} style={{
-                  width: imgIdx === i ? 14 : 5, height: 5, borderRadius: 3,
-                  backgroundColor: imgIdx === i ? '#fff' : 'rgba(255,255,255,0.5)',
-                }} />
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* Content below image */}
-        {!flush && <View style={{ paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10 }}>
-          {/* Location + distance */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
-            <FontAwesome name="map-marker" size={9} color={colors.textTertiary} style={{ marginRight: 4 }} />
-            <Text style={{ ...TextStyles.sm, color: colors.textTertiary, flex: 1 }} numberOfLines={1}>
-              {distLabel ? `${distLabel} · ` : ''}{place.address || place.tagline}
-            </Text>
-          </View>
-
-          {/* Name */}
-          <Text style={{ ...TextStyles.bodyLgEm, color: colors.text, marginBottom: 2 }} numberOfLines={2}>{place.name}</Text>
-
-          {/* Rating + reviews + price row */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginBottom: 4 }}>
-            {place.rating > 0 && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-                <FontAwesome name="star" size={10} color="#fbbf24" />
-                <Text style={{ ...TextStyles.smEm, color: colors.text }}>{place.rating}</Text>
-              </View>
-            )}
-            {(place.reviewCount ?? 0) > 0 && (
-              <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>
-                ({(place.reviewCount ?? 0).toLocaleString()})
-              </Text>
-            )}
-            {priceStr ? (
-              <Text style={{ ...TextStyles.smEm, color: colors.success }}>{priceStr}</Text>
-            ) : null}
-          </View>
-
-          {/* Description */}
-          {place.description ? (
-            <Text style={{ ...TextStyles.sm, color: colors.textSecondary, marginBottom: 4 }} numberOfLines={2}>{place.description}</Text>
-          ) : null}
-
-          {/* Hours + Duration row */}
-          {(place.hours || place.duration) && (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
-              {place.hours && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                  <FontAwesome name="clock-o" size={9} color={colors.textTertiary} />
-                  <Text style={{ ...TextStyles.xs, color: colors.textSecondary }} numberOfLines={1}>{place.hours}</Text>
-                </View>
-              )}
-              {place.duration && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                  <FontAwesome name="hourglass-half" size={8} color={colors.textTertiary} />
-                  <Text style={{ ...TextStyles.xs, color: colors.textSecondary }}>{place.duration}</Text>
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* Event: date/time + ticket link */}
-          {isEvent && place.tagline && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
-              <FontAwesome name="calendar" size={9} color={typeColor} />
-              <Text style={{ ...TextStyles.sm, color: typeColor, flex: 1 }} numberOfLines={1}>{place.tagline}</Text>
-            </View>
-          )}
-          {isEvent && place.website && (
-            <Pressable
-              onPress={() => Linking.openURL(place.website!).catch(() => {})}
-              style={{
-                flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-                backgroundColor: typeColor + '15', borderRadius: 8,
-                paddingVertical: 6, marginBottom: 4,
-              }}
-            >
-              <FontAwesome name="ticket" size={10} color={typeColor} />
-              <Text style={{ ...TextStyles.smEm, color: typeColor }}>Get Tickets</Text>
-            </Pressable>
-          )}
-
-          {/* Website link for non-events */}
-          {!isEvent && place.website && (
-            <Pressable
-              onPress={() => Linking.openURL(place.website!).catch(() => {})}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}
-            >
-              <FontAwesome name="external-link" size={9} color={colors.tint} />
-              <Text style={{ ...TextStyles.xs, color: colors.tint }} numberOfLines={1}>Visit website</Text>
-            </Pressable>
-          )}
-
-          {/* Tags */}
-          {place.tags && place.tags.length > 0 && (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
-              {place.tags.slice(0, 3).map((tag) => (
-                <View key={tag} style={{
-                  paddingHorizontal: 6, paddingVertical: 2,
-                  backgroundColor: colors.surface, borderRadius: 10,
-                }}>
-                  <Text style={{ ...TextStyles.xs, color: colors.textTertiary }}>{tag}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>}
-      </View>
-    </Pressable>
-  );
-});
-
-
 /* ═══════════════ Main Screen ═══════════════ */
 
 export default function FavoritesScreen() {
@@ -325,14 +109,18 @@ export default function FavoritesScreen() {
   });
   const [searchCity, setSearchCity] = useState('');
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Per-user favorites — read with the user-scoped key so a sign-out →
+  // sign-in switches lists rather than carrying the previous user's saves.
+  const userId = useAuthStore((s) => s.user?.id ?? null);
   const [favorites, setFavorites] = useState<string[]>([]);
   useEffect(() => {
+    setFavorites([]);
     import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
-      AsyncStorage.getItem('travyl-favorites').then(val => {
+      AsyncStorage.getItem(favoritesKeyFor(userId)).then(val => {
         if (val) try { setFavorites(JSON.parse(val)); } catch {}
       });
     }).catch(() => {});
-  }, []);
+  }, [userId]);
   const [sortBy, setSortBy] = useState<SortKey>('default');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [selectedPlace, setSelectedPlace] = useState<PlaceItem | null>(null);
@@ -345,7 +133,7 @@ export default function FavoritesScreen() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['mobile-places-discover', userLocation?.lat],
+    queryKey: ['mobile-places-discover', userLocation?.lat, userLocation?.lng],
     queryFn: ({ pageParam }) => fetchDiscoverPage(pageParam, userLocation),
     initialPageParam: 0,
     getNextPageParam: (lastPage: DiscoverPageResult) =>
@@ -426,13 +214,58 @@ export default function FavoritesScreen() {
 
   const toggleFavorite = useCallback((id: string) => {
     setFavorites((prev) => {
-      const next = prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id];
+      const wasFavorited = prev.includes(id);
+      const next = wasFavorited ? prev.filter((f) => f !== id) : [...prev, id];
       import('@react-native-async-storage/async-storage').then(({ default: AsyncStorage }) => {
-        AsyncStorage.setItem('travyl-favorites', JSON.stringify(next)).catch(() => {});
+        AsyncStorage.setItem(favoritesKeyFor(userId), JSON.stringify(next)).catch(() => {});
+        // Persist a snapshot of the full PlaceItem alongside the id list
+        // so the profile (and any other screen that doesn't have a fresh
+        // discover query for this place) can render the favorite without
+        // needing to re-fetch. On unfavorite, drop it from the snapshot.
+        AsyncStorage.getItem(favoritePlacesKeyFor(userId)).then((raw) => {
+          let map: Record<string, PlaceItem> = {};
+          if (raw) {
+            try { map = JSON.parse(raw) || {}; } catch {}
+          }
+          if (wasFavorited) {
+            delete map[id];
+          } else {
+            // Look across every list this screen knows about — search
+            // results, the discover feed, and the strict-radius nearby
+            // query — so wherever the user heart-tapped from, we
+            // capture the full record.
+            const hit =
+              (PLACES.find((p) => p.id === id)) ||
+              (searchResults.find((p) => p.id === id)) ||
+              (discoveredPlaces.find((p) => p.id === id)) ||
+              (nearbyPlaces.find((p) => p.id === id));
+            if (hit) map[id] = hit;
+          }
+          AsyncStorage.setItem(favoritePlacesKeyFor(userId), JSON.stringify(map)).catch(() => {});
+        }).catch(() => {});
       }).catch(() => {});
+      setToastMessage(
+        wasFavorited
+          ? `Removed (${next.length} saved)`
+          : `Saved to your places (${next.length} total)`,
+      );
       return next;
     });
-  }, []);
+  }, [userId, PLACES, searchResults, discoveredPlaces, nearbyPlaces]);
+
+  // Toast lifecycle — fade in on message, fade out after 1.5s.
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!toastMessage) return;
+    Animated.timing(toastOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
+    const t = setTimeout(() => {
+      Animated.timing(toastOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+        setToastMessage(null);
+      });
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [toastMessage]);
 
   const tabFiltered = useMemo(() => {
     if (activeTab === 'all') return PLACES;
@@ -577,6 +410,38 @@ export default function FavoritesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <StatusBar barStyle="dark-content" />
+
+      {/* Favorite-toggle toast — floats above content, doesn't block taps */}
+      {toastMessage && (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: insets.top + 12,
+            left: PAD,
+            right: PAD,
+            zIndex: 1000,
+            opacity: toastOpacity,
+            backgroundColor: 'rgba(15,23,42,0.92)',
+            borderRadius: 12,
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 12,
+            elevation: 8,
+          }}
+        >
+          <FontAwesome name="heart" size={14} color="#ef4444" />
+          <Text style={{ ...TextStyles.bodyEm, color: '#fff', flex: 1 }} numberOfLines={1}>
+            {toastMessage}
+          </Text>
+        </Animated.View>
+      )}
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }} onScroll={handleScroll} scrollEventThrottle={16}>
         {/* Header */}
@@ -741,6 +606,18 @@ export default function FavoritesScreen() {
         {nearbyLoading && !searchCity && activeTab === 'all' && (
           <View style={{ paddingHorizontal: PAD, paddingVertical: 20, alignItems: 'center' }}>
             <Text style={{ ...TextStyles.caption, color: colors.textTertiary }}>Finding places near you...</Text>
+          </View>
+        )}
+
+        {/* Searching feedback — show inferred intent so the user sees what
+            we understood (e.g. "Searching nightlife near San Francisco…")
+            instead of a bare spinner. */}
+        {searchCity && searchLoading && (
+          <View style={{ paddingHorizontal: PAD, paddingVertical: 20, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <ActivityIndicator size="small" color={colors.tint} />
+            <Text style={{ ...TextStyles.body, color: colors.textSecondary, flex: 1 }} numberOfLines={1}>
+              {inferSearchHint(searchCity, null)}
+            </Text>
           </View>
         )}
 

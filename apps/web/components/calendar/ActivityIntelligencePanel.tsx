@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import type { ReactNode } from 'react'
+import Image from 'next/image'
 import { MapPin, Clock, Cloud, Wallet, NavArrowDown, NavArrowRight } from 'iconoir-react'
 import { useActivityIntelligence } from './hooks/useActivityIntelligence'
 import { getWmoWeather } from './utils/wmoWeatherCode'
@@ -14,12 +15,12 @@ interface Props {
 function Section({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {
   const [open, setOpen] = useState(true)
   return (
-    <div className="border-t border-gray-100 dark:border-[#1e3a5f]/30">
+    <div className="border-t border-gray-100 dark:border-cal-border">
       <button
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={`${title} section`}
-        className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-gray-500 dark:text-[#7a9cc0] hover:bg-gray-50 dark:hover:bg-[#1e3a5f]/20 transition-colors"
+        className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-medium text-gray-500 dark:text-cal-text-secondary hover:bg-gray-50 dark:hover:bg-cal-accent-bg/60 transition-colors"
       >
         {icon}
         <span className="flex-1 text-left">{title}</span>
@@ -35,7 +36,7 @@ export function ActivityIntelligencePanel({ activity, tripId }: Props) {
 
   if (isLoading) {
     return (
-      <div className="px-4 py-3 text-xs text-gray-400 dark:text-[#4a7ab5] animate-pulse">
+      <div className="px-4 py-3 text-xs text-gray-400 dark:text-cal-text-secondary animate-pulse">
         Loading place info…
       </div>
     )
@@ -51,13 +52,17 @@ export function ActivityIntelligencePanel({ activity, tripId }: Props) {
       {/* Place Info */}
       <Section icon={<MapPin className="w-3.5 h-3.5" />} title="Place Info">
         {data.place.photos[0] && (
-          <img
-            src={data.place.photos[0]}
-            alt={data.place.name}
-            className="w-full h-28 object-cover rounded-lg mb-2"
-          />
+          <div className="relative w-full h-28 rounded-lg overflow-hidden mb-2">
+            <Image
+              src={data.place.photos[0]}
+              alt={data.place.name}
+              fill
+              className="object-cover"
+              sizes="300px"
+            />
+          </div>
         )}
-        <div className="space-y-0.5 text-xs text-gray-600 dark:text-[#cdd9e5]">
+        <div className="space-y-0.5 text-xs text-gray-600 dark:text-cal-text">
           {data.place.rating && (
             <div className="flex items-center gap-1">
               <span className="text-amber-500">★</span>
@@ -65,7 +70,7 @@ export function ActivityIntelligencePanel({ activity, tripId }: Props) {
               {data.place.priceTier && <span className="ml-1 text-gray-400">{data.place.priceTier}</span>}
             </div>
           )}
-          {data.place.address && <div className="text-gray-500 dark:text-[#7a9cc0]">{data.place.address}</div>}
+          {data.place.address && <div className="text-gray-500 dark:text-cal-text-secondary">{data.place.address}</div>}
           {data.place.openingHours && (
             <div className="mt-1 space-y-0.5">
               {data.place.openingHours.map((h) => (
@@ -81,7 +86,7 @@ export function ActivityIntelligencePanel({ activity, tripId }: Props) {
 
       {/* Logistics */}
       <Section icon={<Clock className="w-3.5 h-3.5" />} title="Getting There">
-        <p className="text-xs text-gray-600 dark:text-[#cdd9e5]">
+        <p className="text-xs text-gray-600 dark:text-cal-text">
           {data.logistics.travelTimeMinutes !== null
             ? <>~{data.logistics.travelTimeMinutes} min drive from <span className="font-medium">{data.logistics.previousActivityName}</span> ({data.logistics.distanceKm?.toFixed(1) ?? '?'} km)</>
             : 'First activity of the day'}
@@ -94,7 +99,7 @@ export function ActivityIntelligencePanel({ activity, tripId }: Props) {
       {/* Weather */}
       {weather && (
         <Section icon={<Cloud className="w-3.5 h-3.5" />} title="Weather">
-          <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-[#cdd9e5]">
+          <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-cal-text">
             <span className="text-lg">{wmo.icon}</span>
             <div>
               <div className="font-medium">{wmo.label}</div>
@@ -106,7 +111,7 @@ export function ActivityIntelligencePanel({ activity, tripId }: Props) {
 
       {/* Budget Impact */}
       <Section icon={<Wallet className="w-3.5 h-3.5" />} title="Budget">
-        <p className="text-xs text-gray-600 dark:text-[#cdd9e5]">
+        <p className="text-xs text-gray-600 dark:text-cal-text">
           {activity.price
             ? `Estimated cost: ${activity.price}`
             : 'No cost estimate'}

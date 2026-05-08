@@ -1,6 +1,6 @@
 'use client'
 
-import { Search, X, Loader2 } from 'lucide-react'
+import { Search, X, Loader2, Upload } from 'lucide-react'
 import { useRef, useEffect, useState, useCallback } from 'react'
 import type { SearchScope } from '@/hooks/useSpotlightSearch'
 
@@ -22,6 +22,8 @@ interface Props {
   tripContextName: string | null
   onRemoveTripContext: () => void
   showTripContext: boolean
+  onUploadClick: () => void
+  onPaste: (e: React.ClipboardEvent) => void
 }
 
 function useIsMac() {
@@ -41,6 +43,8 @@ export function SpotlightInput({
   tripContextName,
   onRemoveTripContext,
   showTripContext,
+  onUploadClick,
+  onPaste,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const isMac = useIsMac()
@@ -126,6 +130,7 @@ export function SpotlightInput({
         value={query}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onPaste={onPaste}
         placeholder={scope ? `Search ${scope}...` : 'Search trips, activities, restaurants...'}
         className="flex-1 bg-transparent text-base text-gray-900 dark:text-gray-100 placeholder:text-gray-400 outline-none"
       />
@@ -134,6 +139,14 @@ export function SpotlightInput({
           <X className="w-4 h-4" />
         </button>
       )}
+      {/* Document upload button */}
+      <button
+        onClick={onUploadClick}
+        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+        title="Upload a reservation or travel document"
+      >
+        <Upload className="w-4 h-4" />
+      </button>
       <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-medium text-gray-400 bg-gray-100 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
         ESC
       </kbd>

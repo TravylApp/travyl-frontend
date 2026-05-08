@@ -151,9 +151,10 @@ export function PlaceDetailOverlay({
     >
       <button
         onClick={onClose}
-        className={`fixed z-[60] w-9 h-9 rounded-full bg-white/15 border border-white/20 shadow-md flex items-center justify-center hover:bg-white/25 transition-colors text-white ${minimal ? 'top-[68px] right-4' : 'top-4 right-4'}`}
+        aria-label="Close"
+        className={`fixed z-[60] w-10 h-10 rounded-full bg-black/70 border border-white/30 shadow-xl backdrop-blur-md flex items-center justify-center hover:bg-black/85 transition-colors text-white ring-1 ring-black/20 ${minimal ? 'top-[68px] right-4' : 'top-4 right-4'}`}
       >
-        <X size={16} className="text-gray-600" />
+        <X size={18} className="text-white drop-shadow" strokeWidth={2.5} />
       </button>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-6 pb-4">

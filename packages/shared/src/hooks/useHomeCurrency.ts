@@ -1,7 +1,8 @@
 /**
  * @module useHomeCurrency
  * Provides the user's home currency along with conversion and formatting utilities.
- * Reads the preferred currency from `settingsStore` and fetches rates via `useExchangeRates`.
+ * Currency is derived from `profile.country` via `useDisplayPrefs` (Noah removed
+ * the manual Display tab — currency follows where you live).
  * Used by the budget tab and anywhere prices from external APIs need to be shown
  * in the user's local currency.
  */
@@ -9,7 +10,7 @@
 'use client';
 
 import { useCallback } from 'react'
-import { useSettingsStore } from '../stores/settingsStore'
+import { useDisplayPrefs } from './useDisplayPrefs'
 import { useExchangeRates } from './useExchangeRates'
 import { convertToTripCurrency } from '../utils/currency'
 
@@ -48,7 +49,7 @@ interface UseHomeCurrencyResult {
  * ```
  */
 export function useHomeCurrency(): UseHomeCurrencyResult {
-  const currency = useSettingsStore((s) => s.currency)
+  const { currency } = useDisplayPrefs()
   const { rates, isLoading } = useExchangeRates(currency)
 
   const convert = useCallback(
@@ -66,10 +67,11 @@ export function useHomeCurrency(): UseHomeCurrencyResult {
           return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency,
-            maximumFractionDigits: 0,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
           }).format(amount)
         } catch {
-          return `${currency} ${amount.toLocaleString()}`
+          return `${currency} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         }
       }
 
@@ -79,10 +81,11 @@ export function useHomeCurrency(): UseHomeCurrencyResult {
           return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency,
-            maximumFractionDigits: 0,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
           }).format(amount)
         } catch {
-          return `${currency} ${amount.toLocaleString()}`
+          return `${currency} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         }
       }
 
@@ -94,10 +97,11 @@ export function useHomeCurrency(): UseHomeCurrencyResult {
           return new Intl.NumberFormat('en-US', {
             style: 'currency',
             currency: sourceCurrency,
-            maximumFractionDigits: 0,
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
           }).format(amount)
         } catch {
-          return `${sourceCurrency} ${amount.toLocaleString()}`
+          return `${sourceCurrency} ${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
         }
       }
 
@@ -106,10 +110,11 @@ export function useHomeCurrency(): UseHomeCurrencyResult {
         return new Intl.NumberFormat('en-US', {
           style: 'currency',
           currency,
-          maximumFractionDigits: 0,
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
         }).format(converted)
       } catch {
-        return `${currency} ${converted.toLocaleString()}`
+        return `${currency} ${converted.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       }
     },
     [convert, currency],

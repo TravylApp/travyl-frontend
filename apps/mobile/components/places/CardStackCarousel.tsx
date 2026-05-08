@@ -13,11 +13,13 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import Constants from 'expo-constants';
-// Conditionally import react-native-maps — skip on web AND in Expo Go (no native module)
+// Conditional react-native-maps — try the require, fall back to View if
+// the native module isn't bundled. Don't gate on Constants.appOwnership:
+// it's deprecated and returns null in custom dev clients on newer SDKs,
+// which would skip the require even when the module IS available.
 let MapView: any = View;
 let Marker: any = View;
-if (Platform.OS !== 'web' && Constants.appOwnership !== 'expo') {
+if (Platform.OS !== 'web') {
   try {
     const maps = require('react-native-maps');
     MapView = maps.default;
@@ -25,7 +27,7 @@ if (Platform.OS !== 'web' && Constants.appOwnership !== 'expo') {
   } catch {}
 }
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { PlaceItem } from '@travyl/shared';
+import { getWebApiBase, type PlaceItem } from '@travyl/shared';
 import { MagazineCurtain } from './MagazineCurtain';
 import { AddToTripSheet } from '@/components/AddToTripSheet';
 
@@ -63,7 +65,9 @@ export interface CardStackCarouselProps {
   onClose?: () => void;
   navColor?: string;
   hideArrows?: boolean;
+  hideCounter?: boolean;
   showMapBg?: boolean;
+  disableMap?: boolean;
 }
 
 /* ═══════════════ Component ═══════════════ */
@@ -82,7 +86,9 @@ export function CardStackCarousel({
   onClose,
   navColor,
   hideArrows = false,
+  hideCounter = false,
   showMapBg = false,
+  disableMap = false,
 }: CardStackCarouselProps) {
   const insets = useSafeAreaInsets();
   const CARD_W = cardWidth ?? SCREEN_WIDTH - 24;
@@ -97,8 +103,10 @@ export function CardStackCarousel({
   const showMapRef = useRef(showMap);
   showMapRef.current = showMap;
 
-  // Magazine dimensions
-  const magW = Math.min(SCREEN_WIDTH - 32, CARD_W * 1.15);
+  // Magazine dimensions. When the caller passes an explicit `cardWidth`
+  // we honor it directly so the card can fill an embedded slide-up
+  // wrapper without a forced 32px side gutter.
+  const magW = cardWidth != null ? CARD_W : Math.min(SCREEN_WIDTH - 32, CARD_W * 1.15);
   const magH = CARD_H;
 
   // ── Map height animation ──
@@ -211,7 +219,53 @@ export function CardStackCarousel({
     });
   }, []);
 
-  const place = places[currentIdx];
+  const rawPlace = places[currentIdx];
+
+  // Lazy on-demand geocoding for the visible card. The discover/search
+  // pipeline skips Nominatim batch enrichment on the critical path
+  // (~5-10s saved on first paint), so cards arrive without coords. We
+  // hit the geocode proxy for *just* the card the user is currently
+  // looking at — single request, ~300ms — and stash the result in a
+  // session-lifetime map keyed by place id so swiping back doesn't
+  // re-fetch.
+  const [resolvedCoords, setResolvedCoords] = useState<Record<string, { lat: number; lng: number } | null>>({});
+  useEffect(() => {
+    if (!rawPlace) return;
+    if (rawPlace.latitude != null && rawPlace.longitude != null) return;
+    if (resolvedCoords[rawPlace.id] !== undefined) return; // already tried
+    const cancelled = { current: false };
+    const query = rawPlace.address ? `${rawPlace.name}, ${rawPlace.address}` : rawPlace.name;
+    fetch(`${getWebApiBase()}/api/geocode?q=${encodeURIComponent(query)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: any[]) => {
+        if (cancelled.current) return;
+        if (Array.isArray(data) && data.length > 0 && data[0].lat && data[0].lon) {
+          setResolvedCoords((prev) => ({
+            ...prev,
+            [rawPlace.id]: { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) },
+          }));
+        } else {
+          setResolvedCoords((prev) => ({ ...prev, [rawPlace.id]: null }));
+        }
+      })
+      .catch(() => {
+        if (!cancelled.current) {
+          setResolvedCoords((prev) => ({ ...prev, [rawPlace.id]: null }));
+        }
+      });
+    return () => { cancelled.current = true; };
+  }, [rawPlace?.id, rawPlace?.latitude, rawPlace?.longitude]);
+
+  // Splice the resolved coords back onto the place so every downstream
+  // consumer (map markers, region calc, the "no coords → no map"
+  // fallback) sees a complete record.
+  const place = (() => {
+    if (!rawPlace) return rawPlace;
+    if (rawPlace.latitude != null && rawPlace.longitude != null) return rawPlace;
+    const looked = resolvedCoords[rawPlace.id];
+    if (!looked) return rawPlace;
+    return { ...rawPlace, latitude: looked.lat, longitude: looked.lng };
+  })();
   const isFav = place ? favorites.includes(place.id) : false;
 
   const goNext = useCallback(() => {
@@ -329,9 +383,11 @@ export function CardStackCarousel({
           <FontAwesome name="chevron-left" size={14} color={navIconColor} />
         </Pressable>
       )}
-      <Text style={{ fontSize: 14, color: navTextColor, fontVariant: ['tabular-nums'] }}>
-        {currentIdx + 1} / {places.length}
-      </Text>
+      {!hideCounter && (
+        <Text style={{ fontSize: 14, color: navTextColor, fontVariant: ['tabular-nums'] }}>
+          {currentIdx + 1} / {places.length}
+        </Text>
+      )}
       {!hideArrows && (
         <Pressable onPress={goNext} style={{
           width: 40, height: 40, borderRadius: 20, backgroundColor: navBtnBg,
@@ -369,7 +425,8 @@ export function CardStackCarousel({
         isFav={isFav}
         onToggleFav={() => onToggleFav(place.id)}
         onAddToTrip={onAddToTrip}
-        onMapPress={!showMap && hasCoords ? (overlay ? toggleMap : () => setSelfOverlay(true)) : undefined}
+        onClose={!overlay ? onClose : undefined}
+        onMapPress={!disableMap && !showMap && hasCoords ? (overlay ? toggleMap : () => setSelfOverlay(true)) : undefined}
         width={magW}
         height={magH}
       />
@@ -421,12 +478,15 @@ export function CardStackCarousel({
     PanResponder.create({
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponderCapture: (_, gs) => {
-        // Lower threshold for easier vertical dragging
-        if (Math.abs(gs.dy) > 6 && Math.abs(gs.dy) > Math.abs(gs.dx)) {
+        // Direction is decided by which axis dominates clearly. A bare `>`
+        // ratio let horizontal swipes get misclassified as vertical when the
+        // first few pixels of motion had a small dy component, which would
+        // dismiss the sheet instead of navigating between cards.
+        if (Math.abs(gs.dy) > 8 && Math.abs(gs.dy) > Math.abs(gs.dx) * 1.5) {
           gestureDirRef.current = 'v';
           return true;
         }
-        if (Math.abs(gs.dx) > 12 && Math.abs(gs.dx) > Math.abs(gs.dy)) {
+        if (Math.abs(gs.dx) > 15 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5) {
           gestureDirRef.current = 'h';
           return true;
         }
@@ -473,8 +533,11 @@ export function CardStackCarousel({
     <Modal visible transparent animationType="slide" statusBarTranslucent>
       <View style={{ flex: 1, backgroundColor: '#000' }}>
 
-        {/* ── Map background (fills entire screen) ── */}
-        {hasCoords && Platform.OS !== 'web' ? (
+        {/* ── Map background (fills entire screen). `disableMap` lets the
+            caller suppress this layer when the surrounding screen already
+            shows a map (e.g. profile country modal already has its own
+            map at the top). */}
+        {!disableMap && hasCoords && Platform.OS !== 'web' ? (
           <MapView
             ref={mapRef}
             style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}

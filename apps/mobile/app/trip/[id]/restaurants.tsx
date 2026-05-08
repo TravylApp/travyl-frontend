@@ -4,11 +4,13 @@ import { useLocalSearchParams } from 'expo-router';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PageTransition, useTabAccent, TabCtx } from './_layout';
 import { CardStackCarousel } from '@/components/places/CardStackCarousel';
 import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
-import { TextStyles, FontFamily, useItineraryScreen, upscaleGoogleImage, getWebApiBase } from '@travyl/shared';
+import { useAddToTrip } from '@/hooks/useAddToTrip';
+import { TextStyles, FontFamily, useItineraryScreen, upscaleGoogleImage, getWebApiBase, shuffle, favoritesKeyFor, favoritePlacesKeyFor, useAuthStore } from '@travyl/shared';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -660,6 +662,45 @@ export default function RestaurantsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const scrollRef = useRef<ScrollView>(null);
 
+  // Favorites — per-user AsyncStorage key (matches profile + favorites tab).
+  const userId = useAuthStore((s) => s.user?.id ?? null);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  // Ref onto the rendered restaurantPlaces list so toggleFavorite can
+  // look up the full PlaceItem at call time (declaration order: state →
+  // toggleFavorite → restaurantPlaces; the ref bridges that).
+  const restaurantPlacesRef = useRef<PlaceItem[]>([]);
+  useEffect(() => {
+    setFavorites([]);
+    AsyncStorage.getItem(favoritesKeyFor(userId)).then((val) => {
+      if (val) try { setFavorites(JSON.parse(val)); } catch {}
+    }).catch(() => {});
+  }, [userId]);
+  const toggleFavorite = useCallback((placeId: string) => {
+    setFavorites((prev) => {
+      const wasFavorited = prev.includes(placeId);
+      const next = wasFavorited ? prev.filter((id) => id !== placeId) : [...prev, placeId];
+      AsyncStorage.setItem(favoritesKeyFor(userId), JSON.stringify(next)).catch(() => {});
+      // Snapshot the full PlaceItem alongside the id so the profile's
+      // "My Saves" grid can render it without depending on the discover
+      // query containing a matching place. Same flow as /favorites tab.
+      AsyncStorage.getItem(favoritePlacesKeyFor(userId)).then((raw) => {
+        let map: Record<string, PlaceItem> = {};
+        if (raw) { try { map = JSON.parse(raw) || {}; } catch {} }
+        if (wasFavorited) {
+          delete map[placeId];
+        } else {
+          const hit = restaurantPlacesRef.current.find((p) => p.id === placeId);
+          if (hit) map[placeId] = hit;
+        }
+        AsyncStorage.setItem(favoritePlacesKeyFor(userId), JSON.stringify(map)).catch(() => {});
+      }).catch(() => {});
+      return next;
+    });
+  }, [userId]);
+
+  // Add-to-trip — wires the bottom sheet that the home/places tabs use.
+  const { addToTrip } = useAddToTrip(id);
+
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 800);
     return () => clearTimeout(timer);
@@ -810,9 +851,12 @@ export default function RestaurantsScreen() {
       }
 
       const results = await Promise.all(fetches);
-      const all = results.flat()
+      const flat = results.flat()
         .filter((p: any) => p.name)
         .map((p: any, i: number) => mapResult(p, i + page * 100, `sr-p${page}`));
+      // Shuffle page-0 so the same top result doesn't always lead the list.
+      // Pages 1+ keep API order so loadMore() appends predictably.
+      const all = page === 0 ? shuffle(flat) : flat;
       if (all.length === 0 && page > 0) { setHasMore(false); setIsLoadingMore(false); return; }
       setSearchRestaurants(prev => {
         if (!append) return all;
@@ -844,6 +888,15 @@ export default function RestaurantsScreen() {
     }, 400) as unknown as NodeJS.Timeout;
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
   }, [userSearch]);
+
+  // Immediate search — fired by keyboard "Search" key and clear-button.
+  // Cancels any pending debounce so the explicit submit takes precedence.
+  const runSearch = useCallback((query: string) => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    setSearchPage(0);
+    setHasMore(true);
+    fetchPage(query, 0, false);
+  }, [fetchPage]);
 
   // Load more on scroll
   const loadMore = useCallback(() => {
@@ -905,10 +958,26 @@ export default function RestaurantsScreen() {
     })),
     [realRestaurants],
   );
+  // Keep the ref in sync so toggleFavorite (declared earlier) can resolve
+  // the full PlaceItem at call time for the favorite-snapshot map.
+  useEffect(() => { restaurantPlacesRef.current = restaurantPlaces; }, [restaurantPlaces]);
 
   // Filtered + sorted list
   const filteredRestaurants = useMemo(() => {
     let result = [...realRestaurants];
+    // Narrow by the search query so typing actually filters the visible list,
+    // not just the API call. Without this the trip's preloaded restaurants
+    // stay on screen and search appears to do nothing.
+    const q = userSearch.trim().toLowerCase();
+    if (q) {
+      result = result.filter((r) => {
+        const hay = [
+          r.name, r.cuisine, r.address, r.neighborhood,
+          ...(r.tags ?? []),
+        ].filter(Boolean).join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+    }
     if (cuisineFilter.length > 0) {
       result = result.filter((r) => {
         const rCuisine = (r?.cuisine || '').toLowerCase();
@@ -924,7 +993,7 @@ export default function RestaurantsScreen() {
       default: break;
     }
     return result;
-  }, [realRestaurants, cuisineFilter, sortBy]);
+  }, [realRestaurants, cuisineFilter, sortBy, userSearch]);
 
   // Build detail for selected restaurant
   const restaurant = useMemo<RestaurantData | null>(() => {
@@ -976,6 +1045,27 @@ export default function RestaurantsScreen() {
       onScroll={handleScroll}
       scrollEventThrottle={16}
     >
+      {/* ── Search bar (top so it's discoverable) ── */}
+      <View style={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, height: 40 }}>
+          <FontAwesome name="search" size={13} color={colors.textTertiary} />
+          <TextInput
+            value={userSearch}
+            onChangeText={setUserSearch}
+            onSubmitEditing={() => { Keyboard.dismiss(); if (userSearch.trim()) runSearch(userSearch.trim()); }}
+            returnKeyType="search"
+            placeholder="Search restaurants — Nobu, sushi, tacos..."
+            placeholderTextColor={colors.textTertiary}
+            style={{ flex: 1, fontSize: 14, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
+          />
+          {userSearch.length > 0 && (
+            <Pressable onPress={() => { setUserSearch(''); if (destination) runSearch(`restaurants in ${destination}`); }}>
+              <FontAwesome name="times-circle" size={14} color={colors.textTertiary} />
+            </Pressable>
+          )}
+        </View>
+      </View>
+
       {/* ── Selected Restaurant Detail (top, like hotels pattern) ── */}
       {restaurant && (() => {
         return (
@@ -1113,27 +1203,6 @@ export default function RestaurantsScreen() {
         );
       })()}
 
-      {/* ── Search bar ── */}
-      <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardBackground, borderRadius: 12, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, height: 40 }}>
-          <FontAwesome name="search" size={13} color={colors.textTertiary} />
-          <TextInput
-            value={userSearch}
-            onChangeText={setUserSearch}
-            onSubmitEditing={() => { Keyboard.dismiss(); if (userSearch.trim()) runSearch(userSearch.trim()); }}
-            returnKeyType="search"
-            placeholder="Search restaurants — Nobu, sushi, tacos..."
-            placeholderTextColor={colors.textTertiary}
-            style={{ flex: 1, fontSize: 14, color: colors.text, marginLeft: 8, paddingVertical: 0 }}
-          />
-          {userSearch.length > 0 && (
-            <Pressable onPress={() => { setUserSearch(''); if (destination) runSearch(`restaurants in ${destination}`); }}>
-              <FontAwesome name="times-circle" size={14} color={colors.textTertiary} />
-            </Pressable>
-          )}
-        </View>
-      </View>
-
       {/* ── Browse Restaurants — toggle + list/card views ── */}
       {realRestaurants.length > 0 && (
         <View style={{ paddingHorizontal: 16, marginTop: 16 }}>
@@ -1183,10 +1252,8 @@ export default function RestaurantsScreen() {
                     restaurant={r}
                     onPress={() => {
                       const idx = realRestaurants.findIndex((rr: any) => rr.id === r.id);
-                      if (idx >= 0) {
-                        setSelectedIdx(idx);
-                        setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 100);
-                      }
+                      if (idx >= 0) setSelectedIdx(idx);
+                      // Don't scroll to top — keep the user in place.
                     }}
                   />
                 ))
@@ -1207,15 +1274,10 @@ export default function RestaurantsScreen() {
             <CardStackCarousel
               places={restaurantPlaces}
               initialIndex={0}
-              favorites={[]}
-              onToggleFav={() => {}}
+              favorites={favorites}
+              onToggleFav={(id) => toggleFavorite(id)}
               onAddToTrip={(place) => {
-                const idx = realRestaurants.findIndex((rr: any) => rr.id === place.id);
-                if (idx >= 0) {
-                  setSelectedIdx(idx);
-                  setBrowseMode('list');
-                  setTimeout(() => scrollRef.current?.scrollTo({ y: 0, animated: true }), 100);
-                }
+                addToTrip(place);
               }}
               onClose={() => setBrowseMode('list')}
               hideArrows

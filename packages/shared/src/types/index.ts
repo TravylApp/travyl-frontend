@@ -11,6 +11,7 @@ export interface Profile {
   avatar_url: string | null;
   city: string | null;
   country: string | null;
+  home_airport: string | null;
   onboarding_completed: boolean;
   preferences: Record<string, any>;
   created_at: string;
@@ -211,6 +212,8 @@ export interface Activity {
 
 export interface FlightData {
   airline: string;
+  /** Carrier logo URL (e.g. SerpAPI Google Flights image). Optional. */
+  airline_logo?: string | null;
   flight_number: string | null;
   origin_iata: string;
   origin_name: string | null;
@@ -253,6 +256,26 @@ export interface Hotel {
   id: string;
   trip_id: string;
   data: HotelData;
+  created_at: string;
+}
+
+export interface CarData {
+  company: string;
+  model: string | null;
+  pickup_location: string | null;
+  dropoff_location: string | null;
+  pickup_at: string | null;
+  dropoff_at: string | null;
+  price: number | null;
+  currency: string | null;
+  booking_ref: string | null;
+  image_url: string | null;
+}
+
+export interface Car {
+  id: string;
+  trip_id: string;
+  data: CarData;
   created_at: string;
 }
 
@@ -469,6 +492,8 @@ export interface ActivityData {
   booking_ref?: string
   pollResult?: 'remove'
   unscheduled?: boolean
+  /** Transit vehicle type for ground transport activities */
+  transit_vehicle_type?: string
 }
 
 export interface CalendarActivity {
@@ -514,6 +539,8 @@ export interface CalendarActivity {
   checkOut?: string
   /** Booking confirmation reference */
   bookingRef?: string
+  /** Transit vehicle type for transport activities */
+  transitVehicleType?: import('./transit').VehicleType
 }
 
 export interface Poll {
@@ -604,6 +631,7 @@ export interface UserAwareness {
   userId: string;
   name: string;
   avatarInitial: string;
+  avatarUrl?: string | null;
   color: string;
   isOnline: boolean;
   selectedEventId: string | null;
@@ -918,7 +946,7 @@ export interface TripCollaborator {
   invited_email: string | null
   invite_token: string | null
   role_type: CollaboratorRole
-  invite_status: 'pending' | 'accepted' | 'declined'
+  invite_status: 'pending' | 'accepted' | 'cancelled'
   invited_by: string
   accepted_at: string | null
   created_at: string
@@ -1038,6 +1066,7 @@ export interface HotelDetail {
 export interface PackingItem {
   item: string;
   packed: boolean;
+  quantity?: number;
 }
 
 export type PackingList = Record<string, PackingItem[]>;
@@ -1057,4 +1086,129 @@ export interface BudgetItem {
   actual: number;
   fixed: boolean;
   expenses: BudgetExpense[];
+}
+
+// ─── History / Audit ───────────────────────────────────────
+
+export interface ItineraryEditRow {
+  id: string
+  trip_id: string
+  activity_id: string
+  edit_type: 'create' | 'delete' | 'move' | 'edit' | 'revert'
+  original_data: Record<string, unknown> | null
+  new_data: Record<string, unknown> | null
+  user_id: string | null
+  created_at: string
+}
+
+export interface EnrichedAuditEntry extends ItineraryEditRow {
+  displayName: string
+  activityName: string
+}
+
+export interface TimelineGroup {
+  id: string
+  entries: EnrichedAuditEntry[]
+  label: string
+  timestamp: string
+  earliestId: string
+}
+
+// ─── Document OCR Types ─────────────────────────────────────
+
+export type DocumentType = 'hotel' | 'flight' | 'car' | 'activity' | 'other'
+
+export interface AlternativeValue<T> {
+  value: T
+  alternatives?: T[]
+  note?: string
+}
+
+export interface HotelParseData {
+  name: string
+  address?: string
+  checkIn: string
+  checkOut: string
+  pricePerNight?: number | AlternativeValue<number>
+  totalPrice?: number | AlternativeValue<number>
+  currency?: string
+  bookingRef?: string
+}
+
+export interface FlightParseData {
+  airline: string
+  flightNumber?: string
+  origin?: string
+  destination?: string
+  departureAt?: string
+  arrivalAt?: string
+  bookingRef?: string
+  cabinClass?: string
+}
+
+export interface CarParseData {
+  company: string
+  pickupLocation?: string
+  dropoffLocation?: string
+  pickupAt?: string
+  dropoffAt?: string
+  price?: number | AlternativeValue<number>
+  currency?: string
+  bookingRef?: string
+}
+
+export interface ActivityParseData {
+  name: string
+  date?: string
+  time?: string
+  location?: string
+  price?: number | AlternativeValue<number>
+  currency?: string
+  bookingRef?: string
+  duration?: string
+  notes?: string
+}
+
+export type DocumentParseData = HotelParseData | FlightParseData | CarParseData | ActivityParseData | Record<string, never>
+
+export interface DocumentParseResult {
+  documentType: DocumentType
+  confidence: number
+  rawText: string | null
+  data: DocumentParseData
+}
+
+export type {
+  TransitData, TransitSegment, VehicleType, TransitMode,
+  TransitDirectionStep, TransitDirectionResult, CreateTransitInput, CreateTransitBookingInput,
+} from './transit';
+
+/** Editorial summary for one day in the At-a-Glance slide. */
+export interface DayStory {
+  /** Short serif headline. May contain `<em>...</em>` around the last 1–2 words. */
+  headline: string;
+  /** 1–2 sentence narrative intro (plain text). */
+  narrative: string;
+  /** Optional URL of the image to feature for the day. */
+  featuredImageUrl?: string;
+  /** Index into the day's flattened activity list — the "starring" moment. */
+  featuredActivityIndex?: number;
+  /** Whether this story was AI-generated or a templated fallback. */
+  source: 'bedrock' | 'template';
+}
+
+/** Input contract for /api/day-story. */
+export interface DayStoryRequest {
+  tripId: string;
+  dayIndex: number;
+  destination: string;
+  dateLabel: string;
+  isFirstDay: boolean;
+  isLastDay: boolean;
+  activities: Array<{
+    name: string;
+    type: string;
+    startHour: number;
+    image?: string;
+  }>;
 }

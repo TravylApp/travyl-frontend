@@ -95,8 +95,8 @@ export function parseQueryIntentSync(rawQuery: string): ParsedIntent | null {
     }
   }
 
-  // Pattern 7 (Lambda variant): bare single word → entity-search (searches user data first)
-  if (!q.includes(' ')) return { intent: 'entity-search', location: toTitleCase(q), entityType: undefined, rawQuery }
+  // Pattern 7 (Lambda variant): bare single word → entity-search (no location context)
+  if (!q.includes(' ')) return { intent: 'entity-search', location: undefined, entityType: undefined, rawQuery }
 
   // No match
   return null

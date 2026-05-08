@@ -7,7 +7,7 @@ interface CalendarErrorProps {
 
 export function CalendarError({ message, onBack }: CalendarErrorProps) {
   return (
-    <div className="flex h-screen items-center justify-center bg-[var(--cal-bg)] text-[var(--cal-text)]">
+    <div className="flex h-screen items-center justify-center bg-cal-bg text-cal-text">
       <div className="flex flex-col items-center gap-4 text-center max-w-sm px-4">
         <svg
           width="48"
@@ -25,11 +25,11 @@ export function CalendarError({ message, onBack }: CalendarErrorProps) {
             strokeLinecap="round"
           />
         </svg>
-        <p className="text-sm text-[var(--cal-text-secondary)]">{message}</p>
+        <p className="text-sm text-cal-text-secondary">{message}</p>
         {onBack && (
           <button
             onClick={onBack}
-            className="px-4 py-2 rounded bg-[var(--cal-border)] hover:bg-[var(--cal-border-light)] transition-colors text-sm font-medium text-[var(--cal-text)]"
+            className="px-4 py-2 rounded bg-cal-border hover:bg-cal-border-light transition-colors text-sm font-medium text-cal-text"
           >
             Go back
           </button>

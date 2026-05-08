@@ -5,8 +5,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, ArrowLeft, Mail, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PaperPlane } from '@/components/ui';
 import { motion, AnimatePresence } from 'motion/react';
-import { useAuthStore, LOGIN_DESTINATIONS } from '@travyl/shared';
+import { useAuthStore, LOGIN_DESTINATIONS, getWebApiBase } from '@travyl/shared';
 import { supabase } from '@travyl/shared';
+import { useQueries } from '@tanstack/react-query';
+import { safeNextPath } from '@/lib/safe-redirect';
 
 export default function LoginPage() {
   return (
@@ -44,7 +46,7 @@ function LoginPageInner() {
       } else {
         await signIn(email, password);
       }
-      router.replace(searchParams.get('next') || '/');
+      router.replace(safeNextPath(searchParams.get('next')));
     } catch (err: any) {
       setError(err.message ?? (isSignUp ? 'Sign up failed.' : 'Sign in failed.'));
     } finally {
@@ -55,6 +57,27 @@ function LoginPageInner() {
   const nextPage = () => setCurrentPage((p) => (p + 1) % LOGIN_DESTINATIONS.length);
   const prevPage = () => setCurrentPage((p) => (p - 1 + LOGIN_DESTINATIONS.length) % LOGIN_DESTINATIONS.length);
   const dest = LOGIN_DESTINATIONS[currentPage];
+
+  const imageQueries = useQueries({
+    queries: LOGIN_DESTINATIONS.map((d) => {
+      const destination = d.imageQuery ?? `${d.name}, ${d.country}`;
+      return {
+        queryKey: ['destination-image', destination],
+        queryFn: async () => {
+          const res = await fetch(
+            `${getWebApiBase()}/api/images/destination?destination=${encodeURIComponent(destination)}`,
+          );
+          if (!res.ok) return { url: null, images: [] };
+          const data = (await res.json()) as { url?: string; image_url?: string; images?: string[] };
+          const url = data?.url ?? data?.image_url ?? null;
+          const images = data?.images ?? (url ? [url] : []);
+          return { url, images };
+        },
+        staleTime: 24 * 60 * 60 * 1000,
+      };
+    }),
+  });
+  const currentImageUrl = imageQueries[currentPage]?.data?.url ?? null;
 
   const handleForgotPassword = async () => {
     if (!email) {
@@ -99,7 +122,9 @@ function LoginPageInner() {
             transition={{ duration: 0.25, ease: 'easeInOut' }}
             className="absolute inset-0"
           >
-            <img src={dest.image} alt={dest.name} className="absolute inset-0 w-full h-full object-cover" />
+            {currentImageUrl && (
+              <img src={currentImageUrl} alt={dest.name} className="absolute inset-0 w-full h-full object-cover" />
+            )}
             <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-black/70" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent" />
           </motion.div>

@@ -55,10 +55,12 @@ async function fetchExploreSections() {
 }
 
 function useExploreSections() {
-  const { data: sections = [], isLoading } = useQuery({
+  const { data: sections = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['explore-sections'],
     queryFn: fetchExploreSections,
     staleTime: 10 * 60 * 1000,
+    retry: 2,
+    retryDelay: 2000,
   });
   const [expandedSet, setExpandedSet] = useState<Set<number>>(new Set([0]));
   const toggleRow = (i: number) => setExpandedSet((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; });
@@ -70,7 +72,7 @@ function useExploreSections() {
     items: s.items,
     isExpanded: expandedSet.has(i),
   }));
-  return { rows, toggleRow, collapseAll, expandAll, allExpanded, isLoading };
+  return { rows, toggleRow, collapseAll, expandAll, allExpanded, isLoading, isError, refetch };
 }
 
 // ─── Section Header ──────────────────────────────────────────
@@ -86,7 +88,9 @@ function SectionHeader({
   return (
     <button
       onClick={onToggle}
-      className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all border bg-white dark:bg-[var(--muted)] border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-white/[0.08] shadow-sm"
+      aria-expanded={isExpanded}
+      aria-controls={`explore-section-${title.replace(/\s+/g, '-').toLowerCase()}`}
+      className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all border bg-white dark:bg-muted border-gray-200 dark:border-white/[0.08] hover:bg-gray-50 dark:hover:bg-white/[0.08] shadow-sm"
       style={{ color: 'var(--magazine-heading, var(--foreground))' }}
     >
       <span className="tracking-wide">{title}</span>
@@ -137,6 +141,7 @@ function ExploreContainer({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 10 }}
             onClick={() => scroll('left')}
+            aria-label="Scroll left"
             className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/90 shadow-md flex items-center justify-center hover:bg-white transition-colors backdrop-blur-sm"
           >
             <ChevronLeft size={16} className="text-gray-700" />
@@ -152,6 +157,7 @@ function ExploreContainer({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }}
             onClick={() => scroll('right')}
+            aria-label="Scroll right"
             className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/90 shadow-md flex items-center justify-center hover:bg-white transition-colors backdrop-blur-sm"
           >
             <ChevronRight size={16} className="text-gray-700" />
@@ -220,6 +226,7 @@ function ExploreSection({
       <AnimatePresence initial={false}>
         {isExpanded && (
           <motion.div
+            id={`explore-section-${title.replace(/\s+/g, '-').toLowerCase()}`}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -238,7 +245,23 @@ function ExploreSection({
 
 // ─── Main Component ──────────────────────────────────────────
 export function ExplorePreview({ onItemClick }: { onItemClick?: (item: PlaceItem) => void }) {
-  const { rows, toggleRow, collapseAll, expandAll, allExpanded, isLoading } = useExploreSections();
+  const { rows, toggleRow, collapseAll, expandAll, allExpanded, isLoading, isError, refetch } = useExploreSections();
+
+  if (isError) {
+    return (
+      <section className="py-6 px-6">
+        <div className="max-w-6xl mx-auto flex flex-col items-center gap-4 py-12 text-muted-foreground" role="alert">
+          <p className="text-sm">Couldn&apos;t load places right now.</p>
+          <button
+            onClick={() => refetch()}
+            className="text-xs font-medium text-white bg-[#1e3a5f] px-4 py-2 rounded-full hover:bg-[#162d4a] transition-colors"
+          >
+            Try again
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -254,7 +277,7 @@ export function ExplorePreview({ onItemClick }: { onItemClick?: (item: PlaceItem
 
   return (
     <section className="py-6 px-6">
-      <div className="max-w-6xl mx-auto bg-white dark:bg-[var(--background)] rounded-xl border border-gray-200 dark:border-white/[0.08] shadow-sm overflow-hidden">
+      <div className="max-w-6xl mx-auto bg-white dark:bg-background rounded-xl border border-gray-200 dark:border-white/[0.08] shadow-sm overflow-hidden">
         {/* Collapse/Expand All toggle */}
         <div className="flex items-center justify-between px-4 pt-4 pb-3">
           <h2 className="text-xl font-extrabold" style={{ color: 'var(--magazine-heading, var(--foreground))' }}>Explore</h2>

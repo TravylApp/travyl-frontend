@@ -10,6 +10,10 @@ declare module "sst" {
       "name": string
       "type": "sst.aws.Bucket"
     }
+    "FoursquareApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "InteractionBus": {
       "arn": string
       "name": string
@@ -31,10 +35,6 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
-    "SupabasePublishableKey": {
-      "type": "sst.sst.Secret"
-      "value": string
-    }
     "SupabaseSecretKey": {
       "type": "sst.sst.Secret"
       "value": string
@@ -48,17 +48,12 @@ declare module "sst" {
       "sender": string
       "type": "sst.aws.Email"
     }
-    "TravylWeb": {
-      "type": "sst.aws.Nextjs"
-      "url": string
-    }
     "UserInteractions": {
       "name": string
       "type": "sst.aws.Dynamo"
     }
   }
 }
-/// <reference path="sst-env.d.ts" />
 
 import "sst"
 export {}

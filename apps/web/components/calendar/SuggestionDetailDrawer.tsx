@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
-import Link from 'next/link'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
 import type { SuggestionCard } from './types'
 
@@ -10,12 +9,23 @@ interface SuggestionDetailDrawerProps {
   suggestion: SuggestionCard
   isClosing: boolean
   onClose: () => void
+  /** Optional muted line under the title — used by events to surface
+   * "Thu May 7 · 7:00 PM at Cova Santa". */
+  subtitle?: string
+  /** Optional CTA button rendered at the bottom of the body. Used by events
+   * to surface "Get tickets" without us having to bake event-specific fields
+   * into SuggestionCard. */
+  ctaLabel?: string
+  ctaUrl?: string
 }
 
 export function SuggestionDetailDrawer({
   suggestion,
   isClosing,
   onClose,
+  subtitle,
+  ctaLabel,
+  ctaUrl,
 }: SuggestionDetailDrawerProps) {
   const [isVisible, setIsVisible] = useState(false)
   const [activeIdx, setActiveIdx] = useState(0)
@@ -69,7 +79,7 @@ export function SuggestionDetailDrawer({
     <div
       className={[
         'absolute inset-y-0 right-0 w-full z-30',
-        'bg-[var(--cal-surface-elevated)] flex flex-col',
+        'bg-cal-surface-elevated flex flex-col',
         'transition-transform duration-300 ease-out',
         !isVisible || isClosing ? 'translate-x-full' : 'translate-x-0',
       ].join(' ')}
@@ -159,9 +169,13 @@ export function SuggestionDetailDrawer({
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
         {/* Name */}
-        <h3 className="text-[15px] font-semibold text-[var(--cal-text)] leading-snug">
+        <h3 className="text-[15px] font-semibold text-cal-text leading-snug">
           {suggestion.name}
         </h3>
+
+        {subtitle && (
+          <p className="text-[12px] text-cal-text-secondary -mt-1">{subtitle}</p>
+        )}
 
         {/* Meta row */}
         <div className="flex flex-wrap items-center gap-1.5">
@@ -171,7 +185,7 @@ export function SuggestionDetailDrawer({
             </span>
           )}
           {suggestion.price != null && (
-            <span className="text-[11px] text-[var(--cal-text-secondary)]">
+            <span className="text-[11px] text-cal-text-secondary">
               {formatPrice(suggestion.price, suggestion.currency)}
             </span>
           )}
@@ -185,14 +199,14 @@ export function SuggestionDetailDrawer({
             {suggestion.category.charAt(0).toUpperCase() +
               suggestion.category.slice(1)}
           </span>
-          <span className="text-[11px] text-[var(--cal-text-tertiary)]">
+          <span className="text-[11px] text-cal-text-tertiary">
             ~{formatDuration(suggestion.duration)}
           </span>
         </div>
 
         {/* Location */}
         {suggestion.location && (
-          <p className="text-[11px] text-[var(--cal-text-secondary)] flex items-start gap-1">
+          <p className="text-[11px] text-cal-text-secondary flex items-start gap-1">
             <span className="mt-[1px] shrink-0" aria-hidden="true">📍</span>
             <span>{suggestion.location}</span>
           </p>
@@ -200,21 +214,22 @@ export function SuggestionDetailDrawer({
 
         {/* Description */}
         {suggestion.description && (
-          <p className="text-[12px] text-[var(--cal-text-secondary)] leading-relaxed">
+          <p className="text-[12px] text-cal-text-secondary leading-relaxed">
             {suggestion.description}
           </p>
         )}
 
-        {/* View full details link */}
-        <div className="pt-1">
-          <Link
-            href={`/activity/${suggestion.id}`}
+        {ctaLabel && ctaUrl && (
+          <a
+            href={ctaUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="flex items-center justify-center gap-1.5 w-full py-2 rounded-lg border border-[var(--cal-border)] text-[12px] font-medium text-[var(--cal-text-secondary)] hover:bg-[var(--cal-border-light)] hover:text-[var(--cal-text)] transition-colors"
+            className="mt-2 inline-flex items-center justify-center w-full py-2 rounded-lg bg-primary text-white text-[12.5px] font-semibold hover:bg-primary/90 transition-colors shadow-sm"
           >
-            View full details
-          </Link>
-        </div>
+            {ctaLabel}
+          </a>
+        )}
       </div>
     </div>
   )

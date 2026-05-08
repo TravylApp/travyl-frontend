@@ -9,11 +9,12 @@ import {
   TILE_CATEGORY_GRADIENTS,
   TILE_CATEGORY_COLORS,
   getWebApiBase,
-  useTrendingDestinations,
 } from '@travyl/shared';
 import type { PlaceItem } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 import { useAddToTrip } from '@/hooks/useAddToTrip';
+import { ICONIC_DESTINATIONS } from '@/hooks/usePlacesBatch';
+import { cached } from '@/hooks/persistentCache';
 
 import type { MosaicTile, TileCategory } from '@travyl/shared';
 import { TileFadeIn } from './TileFadeIn';
@@ -31,15 +32,74 @@ const ROW_LAYOUT: [number, number, number][] = [
   [0.5, 0.5, 150],
 ];
 
-const PLACEHOLDER_TILES: MosaicTile[] = [
-  { id: 'p-1', name: '', category: 'destination', tagline: '', image_url: null, gridSpan: [3, 2] },
-  { id: 'p-2', name: '', category: 'destination', tagline: '', image_url: null, gridSpan: [3, 2] },
-  { id: 'p-3', name: '', category: 'attraction', tagline: '', image_url: null, gridSpan: [2, 1] },
-  { id: 'p-4', name: '', category: 'experience', tagline: '', image_url: null, gridSpan: [2, 1] },
-  { id: 'p-5', name: '', category: 'dining', tagline: '', image_url: null, gridSpan: [2, 1] },
-  { id: 'p-6', name: '', category: 'destination', tagline: '', image_url: null, gridSpan: [2, 2] },
-  { id: 'p-7', name: '', category: 'attraction', tagline: '', image_url: null, gridSpan: [2, 1] },
-  { id: 'p-8', name: '', category: 'experience', tagline: '', image_url: null, gridSpan: [2, 1] },
+// Curated iconic-destination tiles shown while the SerpAPI fetch is in-flight
+// (and as a graceful fallback if the API is unreachable). Real names + 4K
+// Pexels imagery so the section never looks empty.
+const FALLBACK_TILES: MosaicTile[] = [
+  {
+    id: 'fb-santorini',
+    name: 'Santorini',
+    category: 'destination',
+    tagline: 'White-washed cliffs over the Aegean',
+    image_url: 'https://images.pexels.com/photos/29081769/pexels-photo-29081769.jpeg?auto=compress&cs=tinysrgb&w=2400',
+    gridSpan: [3, 2],
+  },
+  {
+    id: 'fb-tokyo',
+    name: 'Tokyo',
+    category: 'destination',
+    tagline: 'Neon nights and quiet shrines',
+    image_url: 'https://images.pexels.com/photos/427747/pexels-photo-427747.jpeg?auto=compress&cs=tinysrgb&w=2400',
+    gridSpan: [2, 1],
+  },
+  {
+    id: 'fb-bali',
+    name: 'Bali',
+    category: 'experience',
+    tagline: 'Rice terraces and temple sunrises',
+    image_url: 'https://images.pexels.com/photos/24995221/pexels-photo-24995221.jpeg?auto=compress&cs=tinysrgb&w=2400',
+    gridSpan: [2, 1],
+  },
+  {
+    id: 'fb-barcelona',
+    name: 'Barcelona',
+    category: 'attraction',
+    tagline: 'Gaudí, tapas, and Mediterranean light',
+    image_url: 'https://images.pexels.com/photos/1388030/pexels-photo-1388030.jpeg?auto=compress&cs=tinysrgb&w=2400',
+    gridSpan: [2, 1],
+  },
+  {
+    id: 'fb-paris',
+    name: 'Paris',
+    category: 'destination',
+    tagline: 'Boulevards, bakeries, and the Tower',
+    image_url: 'https://images.pexels.com/photos/33800139/pexels-photo-33800139.jpeg?auto=compress&cs=tinysrgb&w=2400',
+    gridSpan: [2, 2],
+  },
+  {
+    id: 'fb-kyoto',
+    name: 'Kyoto',
+    category: 'experience',
+    tagline: 'Bamboo groves and golden pavilions',
+    image_url: 'https://images.pexels.com/photos/35134885/pexels-photo-35134885.jpeg?auto=compress&cs=tinysrgb&w=2400',
+    gridSpan: [2, 1],
+  },
+  {
+    id: 'fb-marrakech',
+    name: 'Marrakech',
+    category: 'attraction',
+    tagline: 'Spice markets and riad courtyards',
+    image_url: 'https://images.pexels.com/photos/30978583/pexels-photo-30978583.jpeg?auto=compress&cs=tinysrgb&w=2400',
+    gridSpan: [2, 1],
+  },
+  {
+    id: 'fb-cape-town',
+    name: 'Cape Town',
+    category: 'destination',
+    tagline: 'Where Table Mountain meets two oceans',
+    image_url: 'https://images.pexels.com/photos/29213215/pexels-photo-29213215.jpeg?auto=compress&cs=tinysrgb&w=2400',
+    gridSpan: [2, 1],
+  },
 ];
 
 interface MosaicProps {
@@ -53,44 +113,45 @@ export function TravelMosaic({ scrollY }: MosaicProps) {
   const contentWidth = width - PADDING * 2;
   const containerY = useSharedValue(99999);
   const WEB_API = getWebApiBase();
-  const { data: trending } = useTrendingDestinations();
-  const trendingNames = trending?.map(d => d.name) ?? [];
+  // Pick a stable rotation of 3 iconic destinations per session — Santorini,
+  // Tokyo, Bali, Barcelona, etc. Each call uses a 24h persistent cache so we
+  // don't hammer SerpAPI on every cold start.
+  const mosaicCities = useMemo(
+    () => [...ICONIC_DESTINATIONS].sort(() => Math.random() - 0.5).slice(0, 3),
+    []
+  );
   const { data: fetchedData } = useQuery({
-    queryKey: ['mobile-mosaic', trendingNames.join(',')],
-    enabled: trending !== undefined, // wait for trending to load
-    staleTime: 10 * 60 * 1000,
+    queryKey: ['mobile-mosaic', mosaicCities.join(',')],
+    staleTime: 60 * 60 * 1000,
     queryFn: async (): Promise<{ tiles: MosaicTile[]; places: PlaceItem[] }> => {
-      // Pick 3 random trending cities (offset 10 to avoid overlap with other sections)
-      const searchTerms = trendingNames.length > 0
-        ? [...trendingNames].sort(() => Math.random() - 0.5).slice(0, 3)
-        : ['things to do'];
-
+      const TTL = 24 * 60 * 60 * 1000;
       const results = await Promise.all(
-        searchTerms.map(async (city) => {
-          // Try ?q= first, fall back to geocode + lat/lng
-          try {
-            const qRes = await fetch(`${WEB_API}/api/places?q=${encodeURIComponent(city)}&limit=3`);
-            if (qRes.ok) {
-              const data = await qRes.json();
-              if (Array.isArray(data) && data.length > 0) return data as PlaceItem[];
-            }
-          } catch {}
-          // Geocode fallback
-          try {
-            const geoRes = await fetch(
-              `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`,
-              { headers: { 'User-Agent': 'TravylApp/1.0' } }
-            );
-            if (geoRes.ok) {
-              const geo = await geoRes.json();
-              if (geo.length > 0) {
-                const res = await fetch(`${WEB_API}/api/places?lat=${geo[0].lat}&lng=${geo[0].lon}&category=sightseeing&limit=3`);
-                if (res.ok) return (await res.json()) as PlaceItem[];
+        mosaicCities.map((city) =>
+          cached(`mosaic-places:${city}`, TTL, async () => {
+            try {
+              const qRes = await fetch(`${WEB_API}/api/places?q=${encodeURIComponent(city)}&limit=3`);
+              if (qRes.ok) {
+                const data = await qRes.json();
+                if (Array.isArray(data) && data.length > 0) return data as PlaceItem[];
               }
-            }
-          } catch {}
-          return [] as PlaceItem[];
-        })
+            } catch {}
+            // Geocode fallback for endpoints that don't take ?q=
+            try {
+              const geoRes = await fetch(
+                `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1`,
+                { headers: { 'User-Agent': 'TravylApp/1.0' } }
+              );
+              if (geoRes.ok) {
+                const geo = await geoRes.json();
+                if (geo.length > 0) {
+                  const res = await fetch(`${WEB_API}/api/places?lat=${geo[0].lat}&lng=${geo[0].lon}&category=sightseeing&limit=3`);
+                  if (res.ok) return (await res.json()) as PlaceItem[];
+                }
+              }
+            } catch {}
+            return [] as PlaceItem[];
+          })
+        )
       );
       const places = filterAndUpscalePlaces(results.flat());
       const tiles = places.map((p) => ({
@@ -99,13 +160,12 @@ export function TravelMosaic({ scrollY }: MosaicProps) {
       }));
       return { tiles, places };
     },
-    staleTime: 10 * 60 * 1000,
   });
   const fetchedTiles = fetchedData?.tiles;
   const fetchedPlaces = fetchedData?.places ?? [];
   const [selectedIdx, setSelectedIdx] = useState(-1);
 
-  const allTiles = fetchedTiles?.length ? fetchedTiles : PLACEHOLDER_TILES;
+  const allTiles = fetchedTiles?.length ? fetchedTiles : FALLBACK_TILES;
 
   const tiles = allTiles.slice(0, 8);
   const featured = tiles[0];

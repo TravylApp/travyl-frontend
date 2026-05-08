@@ -129,28 +129,32 @@ export function pickRandomActivity(
   pool?: DiscoverItem[]
 ): DiscoverItem | null {
   // Filter pool by category if specified
-  let candidates = pool ?? [];
-  if (category && candidates.length > 0) {
+  let categoryFiltered = pool ?? [];
+  if (category && categoryFiltered.length > 0) {
     const catLower = category.toLowerCase();
-    candidates = candidates.filter(
+    categoryFiltered = categoryFiltered.filter(
       (item) =>
         item.category?.toLowerCase().includes(catLower) ||
         item.tags?.some((t) => t.toLowerCase().includes(catLower))
     );
   }
-  // Exclude already-used items
+  // Try to exclude already-used items, but if every candidate is
+  // excluded (common when the trip was generated from the same
+  // discover pool — every SerpAPI id is already a trip activity),
+  // fall back to the un-excluded list. Better to add a duplicate
+  // than to silently do nothing on "Add Random".
   const excludeSet = new Set(excludeIds);
-  candidates = candidates.filter((item) => !excludeSet.has(item.id));
-  // Return random candidate or null if empty
+  const unused = categoryFiltered.filter((item) => !excludeSet.has(item.id));
+  const candidates = unused.length > 0 ? unused : categoryFiltered;
   if (candidates.length === 0) return null;
   return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 // ─── Glance Hero Images ────────────────────────────────────
 export const GLANCE_HERO_IMAGES = [
-  'https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1400&q=85',
-  'https://images.unsplash.com/photo-1550340499-a6c60fc8287c?w=1400&q=85',
-  'https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=1400&q=85',
-  'https://images.unsplash.com/photo-1534156355180-a1b40e8282eb?w=1400&q=85',
-  'https://images.unsplash.com/photo-1478391679764-b2d8b3cd1e94?w=1400&q=85',
+  'https://images.pexels.com/photos/29213215/pexels-photo-29213215.jpeg?auto=compress&cs=tinysrgb&w=1400',
+  'https://images.pexels.com/photos/35134885/pexels-photo-35134885.jpeg?auto=compress&cs=tinysrgb&w=1400',
+  'https://images.pexels.com/photos/30978583/pexels-photo-30978583.jpeg?auto=compress&cs=tinysrgb&w=1400',
+  'https://images.pexels.com/photos/37297743/pexels-photo-37297743.jpeg?auto=compress&cs=tinysrgb&w=1400',
+  'https://images.pexels.com/photos/427747/pexels-photo-427747.jpeg?auto=compress&cs=tinysrgb&w=1400',
 ];
