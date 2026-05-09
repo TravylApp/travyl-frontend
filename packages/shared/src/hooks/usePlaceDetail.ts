@@ -10,6 +10,7 @@
 import { getWebApiBase } from '../utils';
 import { useQuery } from '@tanstack/react-query';
 import type { PlaceDetailResponse } from '../types';
+import { placeDetailResponseSchema, safeParse } from '../schemas';
 
 
 /**
@@ -24,7 +25,9 @@ async function fetchPlaceDetail(placeId: string): Promise<PlaceDetailResponse> {
     `${base}/api/places/${encodeURIComponent(placeId)}`
   );
   if (!res.ok) throw new Error(`Place detail fetch failed: ${res.status}`);
-  return res.json() as Promise<PlaceDetailResponse>;
+  const validated = safeParse(placeDetailResponseSchema, await res.json(), 'places/[id]');
+  if (!validated) throw new Error('Place detail response failed validation');
+  return validated;
 }
 
 /**

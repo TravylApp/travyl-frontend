@@ -1,9 +1,11 @@
 import { rateLimit } from '@/lib/api-utils'
+import { parseQuery } from '@/lib/zod-helpers'
 import { NextRequest, NextResponse } from 'next/server'
 import {
   BackendPlace,
   mapBackendToPlaceItem,
   isValidImageUrl,
+  placesQuerySchema,
 } from '@travyl/shared'
 import { filterByRadius } from '@/lib/haversine'
 import { createServerClient } from '@supabase/ssr'
@@ -30,11 +32,14 @@ const FOURSQUARE_CAT_MAP: Record<string, string> = {
 export async function GET(req: NextRequest) {
   const rl = rateLimit(req, 'places', 30, 60000)
   if (rl) return rl
-  const lat = req.nextUrl.searchParams.get('lat') ?? ''
-  const lng = req.nextUrl.searchParams.get('lng') ?? ''
-  const category = req.nextUrl.searchParams.get('category') ?? 'sightseeing'
-  const limit = req.nextUrl.searchParams.get('limit') ?? '20'
-  const q = req.nextUrl.searchParams.get('q')
+
+  const parsed = parseQuery(req, placesQuerySchema)
+  if (!parsed.ok) return parsed.response
+  const lat = parsed.data.lat != null ? String(parsed.data.lat) : ''
+  const lng = parsed.data.lng != null ? String(parsed.data.lng) : ''
+  const category = parsed.data.category ?? 'sightseeing'
+  const limit = String(parsed.data.limit)
+  const q = parsed.data.q ?? null
 
   if (!API_URL) {
     return NextResponse.json([], { status: 503 })

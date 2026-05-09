@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   BACKEND_URL,
   fetchExternal,
-  getRequiredParams,
-  getOptionalParam,
   errorResponse,
   CACHE_1H,
 rateLimit } from '@/lib/api-utils'
-import { upscaleGoogleImage } from '@travyl/shared'
+import { parseQuery } from '@/lib/zod-helpers'
+import { upscaleGoogleImage, z } from '@travyl/shared'
+
+const foursquareQuerySchema = z.object({
+  lat: z.string().regex(/^-?\d+(\.\d+)?$/),
+  lng: z.string().regex(/^-?\d+(\.\d+)?$/),
+  category: z.string().max(50).default('attraction'),
+  limit: z.string().regex(/^\d+$/).default('10'),
+})
 
 interface BackendPlace {
   id: string
@@ -32,11 +38,10 @@ interface BackendPlace {
 export async function GET(req: NextRequest) {
   const rl = rateLimit(req, 'foursquare', 30, 60000)
   if (rl) return rl
-  const params = getRequiredParams(req, 'lat', 'lng')
-  if (params instanceof NextResponse) return params
-
-  const category = getOptionalParam(req, 'category', 'attraction')
-  const limit = getOptionalParam(req, 'limit', '10')
+  const parsed = parseQuery(req, foursquareQuerySchema)
+  if (!parsed.ok) return parsed.response
+  const { lat, lng, category, limit } = parsed.data
+  const params = { lat, lng }
 
   if (!BACKEND_URL) {
     return errorResponse('Backend URL not configured', 503)

@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit } from '@/lib/api-utils'
+import { parseQuery } from '@/lib/zod-helpers'
+import { z } from '@travyl/shared'
+
+const forecastQuerySchema = z.object({
+  location: z.string().min(1).max(200),
+  days: z.coerce.number().int().min(1).max(16).default(7),
+})
 
 // WMO Weather codes → description
 const WEATHER_CODES: Record<number, string> = {
@@ -46,12 +53,9 @@ export async function GET(req: NextRequest) {
   const rl = rateLimit(req, 'weather-forecast', 60, 60000)
   if (rl) return rl
 
-  const location = req.nextUrl.searchParams.get('location')
-  if (!location) {
-    return NextResponse.json({ error: 'Missing location param' }, { status: 400 })
-  }
-
-  const days = req.nextUrl.searchParams.get('days') ?? '7'
+  const parsed = parseQuery(req, forecastQuerySchema)
+  if (!parsed.ok) return parsed.response
+  const { location, days } = parsed.data
 
   try {
     const geo = await geocode(location)

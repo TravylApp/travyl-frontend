@@ -2,16 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
 import { supabaseUrl, supabaseKey, checkOrigin, rateLimit } from '@/lib/api-utils'
+import { parseJsonBody } from '@/lib/zod-helpers'
+import { z } from '@travyl/shared'
+
+const deleteBodySchema = z.object({ tripId: z.string().min(1) })
 
 async function handleDeleteTrip(req: NextRequest) {
   try {
     const blocked = checkOrigin(req) || rateLimit(req, 'delete', 5, 60_000)
     if (blocked) return blocked
 
-    let tripId: any; try { ({ tripId } = await req.json()) } catch { return NextResponse.json({ error: 'Invalid request body' }, { status: 400 }) }
-    if (!tripId || typeof tripId !== 'string') {
-      return NextResponse.json({ error: 'Missing or invalid tripId' }, { status: 400 })
-    }
+    const parsed = await parseJsonBody(req, deleteBodySchema)
+    if (!parsed.ok) return parsed.response
+    const { tripId } = parsed.data
 
     const authHeader = req.headers.get('authorization')
     const supabase = authHeader

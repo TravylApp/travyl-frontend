@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin, rateLimit } from '@/lib/api-utils'
+import { parseQuery } from '@/lib/zod-helpers'
+import { z } from '@travyl/shared'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY
+
+const trendingDestQuerySchema = z.object({
+  region: z.string().regex(/^[a-z]{2}$/i).default('us'),
+})
 
 export async function GET(req: NextRequest) {
   const blocked = checkOrigin(req) || rateLimit(req, 'trending', 5, 60_000)
@@ -11,7 +17,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ destinations: [] })
   }
 
-  const region = req.nextUrl.searchParams.get('region') || 'us'
+  const parsed = parseQuery(req, trendingDestQuerySchema)
+  if (!parsed.ok) return parsed.response
+  const region = parsed.data.region
 
   try {
     // Use Google Trends trending searches via SerpAPI

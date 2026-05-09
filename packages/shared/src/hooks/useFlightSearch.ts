@@ -10,6 +10,7 @@
 
 import { getWebApiBase } from '../utils';
 import { useQuery } from '@tanstack/react-query';
+import { serpFlightSearchResponseSchema, safeParse } from '../schemas';
 
 
 /**
@@ -71,7 +72,8 @@ export function useFlightSearch(params: FlightSearchParams) {
         (globalThis as any).console?.warn?.('[useFlightSearch] non-OK', res.status, body?.error || text.slice(0, 200));
         return { flights: [], error: body?.error || `HTTP ${res.status}`, status: res.status };
       }
-      return body;
+      const validated = safeParse(serpFlightSearchResponseSchema, body, 'flights/search');
+      return validated ?? { flights: [], total: 0 };
     },
     enabled,
     staleTime: 15 * 60 * 1000,

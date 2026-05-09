@@ -10,6 +10,7 @@
 
 import { getWebApiBase } from '../utils';
 import { useQuery } from '@tanstack/react-query';
+import { serpHotelSearchResponseSchema, safeParse } from '../schemas';
 
 
 /**
@@ -55,7 +56,8 @@ export function useHotelSearch(params: HotelSearchParams) {
       if (guests) qs.set('guests', String(guests));
       const res = await fetch(`${base}/api/hotels/search?${qs}`);
       if (!res.ok) throw new Error('Hotel search failed');
-      return res.json();
+      const validated = safeParse(serpHotelSearchResponseSchema, await res.json(), 'hotels/search');
+      return validated ?? { total: 0, hotels: [] };
     },
     enabled,
     staleTime: 15 * 60 * 1000,
