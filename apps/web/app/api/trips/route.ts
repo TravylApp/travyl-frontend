@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { getSupabase, supabaseUrl, supabaseKey, rateLimit } from '@/lib/api-utils'
+import { parseQuery } from '@/lib/zod-helpers'
+import { z } from '@travyl/shared'
+
+const tripsListQuerySchema = z.object({
+  ids: z.string().max(1000).optional(),
+})
 
 export async function GET(req: NextRequest) {
   const rl = rateLimit(req, 'trips', 60, 60000)
@@ -38,7 +44,9 @@ export async function GET(req: NextRequest) {
   // and we explicitly restrict the response to non-sensitive columns and
   // anonymous-owned trips so this endpoint can never leak a real user's data
   // even if RLS policies regress.
-  const ids = req.nextUrl.searchParams.get('ids')
+  const parsed = parseQuery(req, tripsListQuerySchema)
+  if (!parsed.ok) return parsed.response
+  const ids = parsed.data.ids
   if (!ids) return NextResponse.json([])
 
   // Validate each ID is a UUID. Reject malformed input rather than letting

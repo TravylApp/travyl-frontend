@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, ArrowLeft, Mail, Lock, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PaperPlane } from '@/components/ui';
 import { motion, AnimatePresence } from 'motion/react';
-import { useAuthStore, LOGIN_DESTINATIONS, getWebApiBase } from '@travyl/shared';
+import { useAuthStore, LOGIN_DESTINATIONS, getWebApiBase, loginFormSchema, signupFormSchema } from '@travyl/shared';
 import { supabase } from '@travyl/shared';
 import { useQueries } from '@tanstack/react-query';
 import { safeNextPath } from '@/lib/safe-redirect';
@@ -37,7 +37,14 @@ function LoginPageInner() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
+    const schema = isSignUp ? signupFormSchema : loginFormSchema;
+    const parsed = schema.safeParse(
+      isSignUp ? { email, password, display_name: name || undefined } : { email, password },
+    );
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? 'Invalid input');
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {

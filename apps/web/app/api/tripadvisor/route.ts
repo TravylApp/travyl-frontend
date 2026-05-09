@@ -2,11 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import {
   BACKEND_URL,
   fetchExternal,
-  getOptionalParam,
   errorResponse,
   CACHE_1H,
 rateLimit } from '@/lib/api-utils'
-import { upscaleGoogleImage } from '@travyl/shared'
+import { parseQuery } from '@/lib/zod-helpers'
+import { upscaleGoogleImage, z } from '@travyl/shared'
+
+const tripadvisorQuerySchema = z.object({
+  lat: z.string().optional(),
+  lng: z.string().optional(),
+  q: z.string().max(200).optional(),
+  category: z.string().max(50).default('restaurants'),
+  limit: z.string().regex(/^\d+$/).default('8'),
+}).refine((q) => q.lat || q.q, { message: 'Provide lat or q' })
 
 interface BackendPlace {
   id: string
@@ -31,14 +39,9 @@ interface BackendPlace {
 export async function GET(req: NextRequest) {
   const rl = rateLimit(req, 'tripadvisor', 20, 60000)
   if (rl) return rl
-  const lat = req.nextUrl.searchParams.get('lat')
-  const lng = req.nextUrl.searchParams.get('lng')
-  const category = getOptionalParam(req, 'category', 'restaurants')
-  const limit = getOptionalParam(req, 'limit', '8')
-
-  if (!lat && !req.nextUrl.searchParams.get('q')) {
-    return errorResponse('Missing q or lat/lng', 400)
-  }
+  const parsed = parseQuery(req, tripadvisorQuerySchema)
+  if (!parsed.ok) return parsed.response
+  const { lat, lng, category, limit } = parsed.data
 
   if (!BACKEND_URL) {
     return errorResponse('Backend URL not configured', 503)

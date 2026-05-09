@@ -1,7 +1,14 @@
 import { rateLimit } from '@/lib/api-utils'
+import { parseQuery } from '@/lib/zod-helpers'
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from '@travyl/shared'
 
 const FSQ_API_KEY = process.env.FOURSQUARE_API_KEY
+
+const fsqQuerySchema = z.object({
+  q: z.string().min(1).max(200),
+  near: z.string().max(200).optional(),
+})
 
 const FIELDS = 'fsq_id,name,location,categories,rating,stats,price'
 
@@ -38,10 +45,11 @@ function inferType(categories: FsqCategory[] = []): 'restaurant' | 'hotel' | 'ac
 export async function GET(req: NextRequest) {
   const rl = rateLimit(req, 'fsq-search', 20, 60000)
   if (rl) return rl
-  const q = req.nextUrl.searchParams.get('q')
-  const near = req.nextUrl.searchParams.get('near')
+  const parsed = parseQuery(req, fsqQuerySchema)
+  if (!parsed.ok) return NextResponse.json({ results: [] })
+  const { q, near } = parsed.data
 
-  if (!q || !FSQ_API_KEY) {
+  if (!FSQ_API_KEY) {
     return NextResponse.json({ results: [] })
   }
 

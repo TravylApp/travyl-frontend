@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { CACHE_1H, rateLimit } from '@/lib/api-utils'
+import { parseQuery } from '@/lib/zod-helpers'
+import { z } from '@travyl/shared'
+
+const quoteQuerySchema = z.object({
+  tag: z.string().max(50).optional(),
+})
 
 interface Quote {
   content: string
@@ -27,7 +33,8 @@ export async function GET(req: NextRequest) {
   const rl = rateLimit(req, 'quote', 60, 60000)
   if (rl) return rl
   try {
-    const tag = req.nextUrl.searchParams.get('tag')
+    const parsed = parseQuery(req, quoteQuerySchema)
+    const tag = parsed.ok ? parsed.data.tag : null
     const url = tag
       ? `https://api.quotable.io/quotes/random?tags=${encodeURIComponent(tag)}`
       : 'https://api.quotable.io/quotes/random'

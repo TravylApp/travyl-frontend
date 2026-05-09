@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin, rateLimit } from '@/lib/api-utils'
+import { parseQuery } from '@/lib/zod-helpers'
+import { z } from '@travyl/shared'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY
+
+const opentableQuerySchema = z.object({
+  q: z.string().max(200).optional(),
+  location: z.string().max(200).optional(),
+}).refine((q) => q.q || q.location, { message: 'Provide q or location' })
 
 export async function GET(req: NextRequest) {
   const blocked = checkOrigin(req) || rateLimit(req, 'opentable', 10, 60_000)
   if (blocked) return blocked
 
-  const q = req.nextUrl.searchParams.get('q') // restaurant name
-  const location = req.nextUrl.searchParams.get('location') // city name
-
-  if (!q && !location) {
-    return NextResponse.json({ error: 'Missing q or location' }, { status: 400 })
-  }
+  const parsed = parseQuery(req, opentableQuerySchema)
+  if (!parsed.ok) return parsed.response
+  const { q, location } = parsed.data
   if (!SERPAPI_KEY) {
     return NextResponse.json({ restaurants: [] })
   }

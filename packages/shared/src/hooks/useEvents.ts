@@ -10,6 +10,7 @@
 import { getWebApiBase } from '../utils';
 import { useQuery } from '@tanstack/react-query';
 import type { TravylEvent } from '../types';
+import { travylEventsResponseSchema, safeParse } from '../schemas';
 
 
 /**
@@ -43,7 +44,7 @@ async function fetchEvents(params: UseEventsParams): Promise<TravylEvent[]> {
 
   const res = await fetch(`${base}/api/events/search?${searchParams.toString()}`);
   if (!res.ok) throw new Error(`Events fetch failed: ${res.status}`);
-  return res.json() as Promise<TravylEvent[]>;
+  return safeParse(travylEventsResponseSchema, await res.json(), 'events/search') ?? [];
 }
 
 /**

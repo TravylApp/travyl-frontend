@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin, rateLimit } from '@/lib/api-utils'
-import { upscaleGoogleImage } from '@travyl/shared'
+import { upscaleGoogleImage, z } from '@travyl/shared'
+import { parseQuery } from '@/lib/zod-helpers'
 import { withCache } from '@/lib/searchCache'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY
@@ -10,19 +11,21 @@ const SERPAPI_KEY = process.env.SERPAPI_KEY
 const HOTEL_TTL_SECONDS = 2 * 60 * 60
 const HOTEL_BROWSER_MAX_AGE = 30 * 60
 
+const hotelsQuerySchema = z.object({
+  destination: z.string().min(1).max(200),
+  check_in: z.string().optional(),
+  check_out: z.string().optional(),
+  guests: z.string().regex(/^\d+$/).default('2'),
+  sort: z.enum(['3', '8']).default('3'),
+})
+
 export async function GET(req: NextRequest) {
   const blocked = checkOrigin(req) || rateLimit(req, 'hotels', 10, 60_000)
   if (blocked) return blocked
 
-  const destination = req.nextUrl.searchParams.get('destination') // "Tokyo, Japan"
-  const checkIn = req.nextUrl.searchParams.get('check_in')       // YYYY-MM-DD
-  const checkOut = req.nextUrl.searchParams.get('check_out')      // YYYY-MM-DD
-  const guests = req.nextUrl.searchParams.get('guests') ?? '2'
-  const sort = req.nextUrl.searchParams.get('sort') ?? '3'       // 3 = lowest price
-
-  if (!destination) {
-    return NextResponse.json({ error: 'Missing destination' }, { status: 400 })
-  }
+  const parsed = parseQuery(req, hotelsQuerySchema)
+  if (!parsed.ok) return parsed.response
+  const { destination, check_in: checkIn = null, check_out: checkOut = null, guests, sort } = parsed.data
 
   if (!SERPAPI_KEY) {
     return NextResponse.json({ total: 0, hotels: [], error: 'unavailable' }, { status: 503 })

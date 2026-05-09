@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin, rateLimit } from '@/lib/api-utils'
+import { parseQuery } from '@/lib/zod-helpers'
+import { z } from '@travyl/shared'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY
+
+const taPlaceQuerySchema = z.object({
+  q: z.string().min(1).max(200),
+  location: z.string().max(200).optional(),
+  lat: z.string().optional(),
+  lng: z.string().optional(),
+})
 
 export async function GET(req: NextRequest) {
   const blocked = checkOrigin(req) || rateLimit(req, 'ta-place', 20, 60_000)
   if (blocked) return blocked
 
-  const q = req.nextUrl.searchParams.get('q')
-  const location = req.nextUrl.searchParams.get('location') // e.g. "Las Vegas"
-  const lat = req.nextUrl.searchParams.get('lat')
-  const lng = req.nextUrl.searchParams.get('lng')
-
-  if (!q) {
-    return NextResponse.json({ error: 'Missing q param (place name)' }, { status: 400 })
-  }
+  const parsed = parseQuery(req, taPlaceQuerySchema)
+  if (!parsed.ok) return parsed.response
+  const { q, location, lat, lng } = parsed.data
   if (!SERPAPI_KEY) {
     return NextResponse.json({ rankings: null, badges: [], reviews: [] })
   }

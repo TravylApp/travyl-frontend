@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin, rateLimit } from '@/lib/api-utils'
+import { parseJsonBody } from '@/lib/zod-helpers'
+import { z } from '@travyl/shared'
+
+const mpgBodySchema = z.object({
+  vehicles: z.array(z.string().max(200)).max(50),
+})
 
 const FUEL_ECO_BASE = 'https://www.fueleconomy.gov/ws/rest'
 
@@ -106,12 +112,14 @@ export async function POST(req: NextRequest) {
   const blocked = checkOrigin(req) || rateLimit(req, 'cars-mpg', 30, 60_000)
   if (blocked) return blocked
 
+  const parsed = await parseJsonBody(req, mpgBodySchema)
+  if (!parsed.ok) return parsed.response
+  const vehicles = parsed.data.vehicles
+  if (vehicles.length === 0) {
+    return NextResponse.json({ mpg: {} })
+  }
+
   try {
-    const body = await req.json()
-    const vehicles: string[] = body.vehicles ?? []
-    if (!Array.isArray(vehicles) || vehicles.length === 0) {
-      return NextResponse.json({ mpg: {} })
-    }
 
     // Deduplicate
     const unique = [...new Set(vehicles)]
