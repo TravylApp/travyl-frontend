@@ -13,12 +13,14 @@ export default $config({
     const secrets = await import('./infra/secrets')
     const storage = await import('./infra/storage')
     const events = await import('./infra/events')
+    const otp = await import('./infra/otp')
     const api = await import('./infra/api')
     const web = await import('./infra/web')
 
     return {
       apiUrl: api.api.url,
       siteUrl: web.site.url,
+      otpUrl: otp.otpService.url,
     }
   },
 })

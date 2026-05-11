@@ -22,6 +22,10 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
+    "ElevenLabsApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "EventbriteApiKey": {
       "type": "sst.sst.Secret"
       "value": string
@@ -70,6 +74,14 @@ declare module "sst" {
     "OtpServerUrl": {
       "type": "sst.sst.Secret"
       "value": string
+    }
+    "OtpService": {
+      "service": string
+      "type": "sst.aws.Service"
+      "url": string
+    }
+    "OtpVpc": {
+      "type": "sst.aws.Vpc"
     }
     "Pexels": {
       "type": "sst.sst.Secret"

@@ -14,6 +14,8 @@ import { useDayIntelligence } from './hooks/useDayIntelligence'
 import { getWmoWeather } from './utils/wmoWeatherCode'
 import DayHealthIndicator from './DayHealthIndicator'
 import TravelTimeBadge from './TravelTimeBadge'
+import TransitRouteBadge from './TransitRouteBadge'
+import { useTransitRouting } from './hooks/useTransitRouting'
 import { GhostEventBlock } from './GhostEventBlock'
 import { computeBlockedRanges } from './utils/travelConstraints'
 import { TravelConstraintBlock } from './TravelConstraintBlock'
@@ -130,6 +132,8 @@ export function DayColumn({
   }, [tripStartDate, dayIndex])
 
   const { data: dayIntel } = useDayIntelligence(tripId ?? null, date)
+
+  const transitRoutes = useTransitRouting(tripStartDate, dayIndex, activities)
 
   const sortedActivities = useMemo(
     () => [...activities].sort((a, b) => a.startHour - b.startHour),
@@ -358,15 +362,37 @@ export function DayColumn({
           timeRange={timeRange}
         />
 
-        {/* Travel time badges — day view only, shown between consecutive activities */}
-        {isDayView && dayIntel && sortedActivities.map((act, i) => {
+        {/* Travel time / transit badges — shown between consecutive activities */}
+        {sortedActivities.map((act, i) => {
           if (i === 0) return null
           const prev = sortedActivities[i - 1]
-          const intel = dayIntel.activities[act.id]
-          if (!intel?.logistics.travelTimeMinutes) return null
-          const travelMinutes = intel.logistics.travelTimeMinutes
+          const transitInfo = transitRoutes[act.id]
+          const intel = dayIntel?.activities[act.id]
           const gapMinutes = Math.round((act.startHour - (prev.startHour + prev.duration)) * 60)
           const midTop = ((prev.startHour + prev.duration + act.startHour) / 2 - timeRange.startHour) * HOUR_HEIGHT
+
+          // Prefer real transit routing data when available
+          if (transitInfo?.direction) {
+            return (
+              <div
+                key={`travel-${act.id}`}
+                className="absolute left-1/2 -translate-x-1/2 z-20 pointer-events-none group"
+                style={{ top: midTop }}
+              >
+                <TransitRouteBadge
+                  direction={transitInfo.direction}
+                  gapMinutes={gapMinutes}
+                  hasConflict={
+                    intel?.conflicts.travelTime ?? gapMinutes < transitInfo.direction.total_duration_minutes
+                  }
+                />
+              </div>
+            )
+          }
+
+          // Fall back to AI-estimated travel time
+          if (!intel?.logistics.travelTimeMinutes) return null
+          const travelMinutes = intel.logistics.travelTimeMinutes
           return (
             <div
               key={`travel-${act.id}`}

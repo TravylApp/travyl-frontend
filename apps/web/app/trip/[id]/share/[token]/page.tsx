@@ -189,12 +189,13 @@ function SharedCalendarView({ trip, user, token, shareRole, joinError, setJoinEr
           router.push(`/trip/${trip.id}`)
           return
         }
-        // If pending or cancelled, update to accepted
+        // If pending or cancelled, update to accepted via SECURITY DEFINER RPC.
+        // Direct UPDATE would fail because RLS requires user_id = auth.uid(),
+        // and the pending row has user_id = NULL.  The RPC also sets user_id
+        // so get_collaborator_trips later includes this trip.
         if (existingCollab.invite_status === 'pending' || existingCollab.invite_status === 'cancelled') {
           const { error: updateError } = await supabase
-            .from('trip_collaborators')
-            .update({ invite_status: 'accepted' })
-            .eq('id', existingCollab.id)
+            .rpc('accept_pending_collaboration', { p_collab_id: existingCollab.id })
 
           if (updateError) {
             console.error('[SharePage] Failed to update existing collaborator:', JSON.stringify({

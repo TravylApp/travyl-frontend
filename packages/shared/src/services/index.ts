@@ -24,7 +24,6 @@ export {
   fetchFlights,
   fetchHotels,
   fetchCars,
-  fetchActivities,
   forkTrip,
   fetchPublicTrips,
   fetchUserPublicTrips,

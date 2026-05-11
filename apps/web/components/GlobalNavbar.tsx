@@ -34,6 +34,8 @@ export default function GlobalNavbar() {
   const [shareBusy, setShareBusy] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  const [inviteWarning, setInviteWarning] = useState<{ message: string; acceptUrl: string } | null>(null);
+  const [inviteAcceptCopied, setInviteAcceptCopied] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -115,6 +117,7 @@ export default function GlobalNavbar() {
     setInviteEmail('');
     setInviteError(null);
     setInviteSuccess(null);
+    setInviteWarning(null);
     setShareModalOpen(true);
     setShareBusy(true);
     try {
@@ -166,6 +169,9 @@ export default function GlobalNavbar() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `Invite failed (${res.status})`);
       setInviteSuccess(`Invited ${inviteEmail.trim()}`);
+      if (data.emailWarning) {
+        setInviteWarning({ message: data.emailWarning, acceptUrl: data.acceptUrl });
+      }
       setInviteEmail('');
     } catch (err) {
       setInviteError(err instanceof Error ? err.message : 'Failed to send invite');
@@ -569,6 +575,42 @@ export default function GlobalNavbar() {
               )}
               {inviteSuccess && (
                 <p className={`mt-1.5 text-xs ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>{inviteSuccess}</p>
+              )}
+              {inviteWarning && (
+                <div className={`mt-2 rounded-lg border p-2.5 text-xs ${isDarkMode ? 'border-amber-500/30 bg-amber-500/10' : 'border-amber-400 bg-amber-50'}`}>
+                  <p className={`font-medium ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>Email not sent</p>
+                  <p className={`mt-0.5 ${isDarkMode ? 'text-amber-200/70' : 'text-amber-600'}`}>
+                    {inviteWarning.message}. Share the invite link directly instead:
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <input
+                      readOnly
+                      value={inviteWarning.acceptUrl}
+                      className={`flex-1 rounded px-2 py-1 text-xs font-mono outline-none ${
+                        isDarkMode
+                          ? 'bg-white/5 border border-white/10 text-white/70'
+                          : 'bg-white border border-gray-200 text-gray-600'
+                      }`}
+                    />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(inviteWarning.acceptUrl).then(() => {
+                          setInviteAcceptCopied(true);
+                          setTimeout(() => setInviteAcceptCopied(false), 2000);
+                        }).catch(() => {});
+                      }}
+                      className={`shrink-0 rounded px-2 py-1 text-xs font-medium transition-colors ${
+                        inviteAcceptCopied
+                          ? 'bg-green-500/20 text-green-600'
+                          : isDarkMode
+                            ? 'bg-white/10 text-white hover:bg-white/15'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {inviteAcceptCopied ? 'Copied!' : 'Copy'}
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
 

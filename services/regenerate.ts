@@ -51,11 +51,15 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       return { statusCode: 400, body: JSON.stringify({ error: 'destination is required' }) }
     }
 
-    // Fetch a broad pool with random query modifier for variety
-    const pool = await searchPlaces(destination, category, {
-      limit: Math.max(count, 4) * 3,
-      queryModifier: randomModifier(),
-    })
+    // Fetch a broad pool with random query modifier for variety.
+    // Retry up to 3 times with different modifiers if we get nothing.
+    let pool: SuggestionCard[] = []
+    for (let attempt = 0; attempt < 3 && pool.length === 0; attempt++) {
+      pool = await searchPlaces(destination, category, {
+        limit: Math.max(count, 4) * 3,
+        queryModifier: randomModifier(),
+      })
+    }
 
     // Shuffle first so every regeneration call returns different results
     const excludeLower = excludeNames.map((n) => n.toLowerCase())
@@ -117,11 +121,16 @@ export const dayHandler: APIGatewayProxyHandlerV2 = async (event) => {
 
     const slots: DaySlotAlternatives[] = await Promise.all(
       activities.map(async (activity) => {
-        // Each slot gets a different modifier for maximum variety
-        const pool = await searchPlaces(destination, activity.type, {
-          limit: 8,
-          queryModifier: randomModifier(),
-        })
+        // Retry up to 3 times with different modifiers if we get nothing.
+        // A single bad modifier (e.g. "instagrammable parks") can return zero
+        // results — retrying with a different one fills the gap.
+        let pool: SuggestionCard[] = []
+        for (let attempt = 0; attempt < 3 && pool.length === 0; attempt++) {
+          pool = await searchPlaces(destination, activity.type, {
+            limit: 8,
+            queryModifier: randomModifier(),
+          })
+        }
 
         // Shuffle first for variety, then filter duplicates
         const titleLower = activity.title.toLowerCase()
