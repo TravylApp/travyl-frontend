@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getSupabase, supabaseUrl, supabaseKey, rateLimit, checkOrigin } from '@/lib/api-utils'
-import { upscaleGoogleImage } from '@travyl/shared'
+import { upscaleGoogleImage, z } from '@travyl/shared'
+import { parseJsonBody } from '@/lib/zod-helpers'
 import { filterByRadius } from '@/lib/haversine'
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL || ''
 
+const enrichBodySchema = z.object({ tripId: z.string().min(1) })
 
 export async function POST(req: NextRequest) {
   const blocked = rateLimit(req, 'enrich', 3, 60_000)
@@ -15,8 +17,9 @@ export async function POST(req: NextRequest) {
   const originBlocked = checkOrigin(req)
   if (originBlocked) return originBlocked
 
-  let tripId: any; try { ({ tripId } = await req.json()) } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
-  if (!tripId || typeof tripId !== 'string') return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })
+  const parsed = await parseJsonBody(req, enrichBodySchema)
+  if (!parsed.ok) return parsed.response
+  const { tripId } = parsed.data
 
   // Use caller's auth token when available so RLS allows reading private trips (mobile sends Bearer token)
   const authHeader = req.headers.get('authorization')

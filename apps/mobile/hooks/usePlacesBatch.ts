@@ -1,5 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { type PlaceItem, getWebApiBase, useTrendingDestinations } from '@travyl/shared';
+import {
+  type PlaceItem,
+  getWebApiBase,
+  useTrendingDestinations,
+  placesResponseSchema,
+  safeParse,
+} from '@travyl/shared';
 import { filterAndUpscalePlaces } from '@/components/home/globalDedup';
 import { cached, cacheGet, cacheSet } from './persistentCache';
 
@@ -45,8 +51,8 @@ async function fetchPlaces(city: string | null, limit: number): Promise<PlaceIte
     try {
       const qRes = await fetch(`${WEB_API}/api/places?q=${encodeURIComponent(city)}&limit=${limit}`);
       if (qRes.ok) {
-        const data = await qRes.json();
-        if (Array.isArray(data) && data.length > 0) return data;
+        const validated = safeParse(placesResponseSchema, await qRes.json(), 'places?q');
+        if (validated && validated.length > 0) return validated;
       }
     } catch {}
 
@@ -57,7 +63,9 @@ async function fetchPlaces(city: string | null, limit: number): Promise<PlaceIte
       const res = await fetch(
         `${WEB_API}/api/places?lat=${coords.lat}&lng=${coords.lng}&category=sightseeing&limit=${limit}`
       );
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        return safeParse(placesResponseSchema, await res.json(), 'places?lat,lng') ?? [];
+      }
     } catch {}
 
     return [];

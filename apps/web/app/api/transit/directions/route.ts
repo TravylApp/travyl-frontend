@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { parseQuery } from '@/lib/zod-helpers';
+import { z } from '@travyl/shared';
 
 const API_URL = process.env.NEXT_PUBLIC_RECOMMENDATION_API_URL;
+
+const directionsQuerySchema = z.object({
+  origin_lat: z.coerce.number().min(-90).max(90),
+  origin_lng: z.coerce.number().min(-180).max(180),
+  dest_lat: z.coerce.number().min(-90).max(90),
+  dest_lng: z.coerce.number().min(-180).max(180),
+  mode: z.string().optional(),
+  departure_time: z.string().optional(),
+});
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
@@ -8,10 +19,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const parsed = parseQuery(req, directionsQuerySchema);
+  if (!parsed.ok) return parsed.response;
   const searchParams = req.nextUrl.searchParams;
-  if (!searchParams.get('origin_lat') || !searchParams.get('dest_lat')) {
-    return NextResponse.json({ error: 'Missing required params' }, { status: 400 });
-  }
 
   try {
     const response = await fetch(

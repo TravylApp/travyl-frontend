@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit } from '@/lib/api-utils'
+import { parseQuery } from '@/lib/zod-helpers'
+import { z } from '@travyl/shared'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY
+
+const trendingQuerySchema = z.object({
+  from: z.string().regex(/^[A-Z]{3}$/i).default('JFK'),
+})
 
 interface TrendingDestination {
   name: string
@@ -28,7 +34,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json([])
   }
 
-  const departureId = req.nextUrl.searchParams.get('from') ?? 'JFK'
+  const parsed = parseQuery(req, trendingQuerySchema)
+  if (!parsed.ok) return parsed.response
+  const departureId = parsed.data.from
 
   try {
     const params = new URLSearchParams({

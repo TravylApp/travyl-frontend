@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { proxyToBackend, BACKEND_URL, rateLimit } from '@/lib/api-utils'
 import { createServerClient } from '@supabase/ssr'
+import { parseJsonBody } from '@/lib/zod-helpers'
+import { createFavoriteBodySchema } from '@travyl/shared'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseKey = (
@@ -35,11 +37,12 @@ export async function POST(req: NextRequest) {
   const auth = await getAuthHeader(req)
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: any; try { body = await req.json() } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
+  const parsed = await parseJsonBody(req, createFavoriteBodySchema)
+  if (!parsed.ok) return parsed.response
   const res = await fetch(`${BACKEND_URL}/api/favorites`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: auth },
-    body: JSON.stringify(body),
+    body: JSON.stringify(parsed.data),
   })
   if (!res.ok) return NextResponse.json({ error: 'Failed' }, { status: res.status })
   return NextResponse.json(await res.json())

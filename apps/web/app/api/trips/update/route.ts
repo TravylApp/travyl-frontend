@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getSupabase, supabaseUrl, supabaseKey, checkOrigin, rateLimit } from '@/lib/api-utils'
+import { parseJsonBody } from '@/lib/zod-helpers'
+import { z, tripContextDataSchema } from '@travyl/shared'
+
+const updateBodySchema = z.object({
+  tripId: z.string().min(1),
+  trip_context: tripContextDataSchema.optional(),
+})
 
 /**
  * POST /api/trips/update
@@ -12,12 +19,9 @@ export async function POST(req: NextRequest) {
   if (blocked) return blocked
 
   const supabase = getSupabase()
-  let body: any; try { body = await req.json() } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
-  const { tripId, trip_context } = body
-
-  if (!tripId || typeof tripId !== 'string') {
-    return NextResponse.json({ error: 'Missing tripId' }, { status: 400 })
-  }
+  const parsed = await parseJsonBody(req, updateBodySchema)
+  if (!parsed.ok) return parsed.response
+  const { tripId, trip_context } = parsed.data
 
   // Verify trip exists and check ownership
   const { data: trip, error: fetchErr } = await supabase

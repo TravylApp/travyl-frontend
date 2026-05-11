@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import * as Linking from 'expo-linking';
-import { useAuthStore, supabase, Navy, TextStyles, FontFamily } from '@travyl/shared';
+import { useAuthStore, supabase, Navy, TextStyles, FontFamily, loginFormSchema, signupFormSchema } from '@travyl/shared';
 import { useThemeColors } from '@/hooks/useThemeColors';
 
 // OAuth providers available on this build. Update when adding/removing
@@ -56,7 +56,14 @@ export default function LoginScreen() {
   const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const handleSubmit = async () => {
-    if (!email || !password) return;
+    const schema = isSignUp ? signupFormSchema : loginFormSchema;
+    const parsed = schema.safeParse(
+      isSignUp ? { email, password, display_name: name || undefined } : { email, password },
+    );
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? 'Invalid input');
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {
