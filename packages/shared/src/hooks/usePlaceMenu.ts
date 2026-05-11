@@ -10,6 +10,7 @@
 import { getWebApiBase } from '../utils';
 import { useQuery } from '@tanstack/react-query';
 import type { MenuResponse } from '../types';
+import { menuResponseSchema, safeParse } from '../schemas';
 
 
 /**
@@ -25,7 +26,9 @@ async function fetchPlaceMenu(name: string, city?: string): Promise<MenuResponse
   if (city) params.set('city', city);
   const res = await fetch(`${base}/api/places/menu?${params}`);
   if (!res.ok) throw new Error(`Menu fetch failed: ${res.status}`);
-  return res.json() as Promise<MenuResponse>;
+  const validated = safeParse(menuResponseSchema, await res.json(), 'places/menu');
+  if (!validated) throw new Error('Menu response failed validation');
+  return validated;
 }
 
 /**

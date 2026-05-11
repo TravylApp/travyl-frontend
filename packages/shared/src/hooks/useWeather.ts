@@ -10,6 +10,7 @@
 import { getWebApiBase } from '../utils';
 import { useQuery } from '@tanstack/react-query';
 import type { WeatherForecastResponse } from '../types';
+import { weatherForecastResponseSchema, safeParse } from '../schemas';
 
 
 /**
@@ -24,7 +25,9 @@ async function fetchWeatherForecast(location: string): Promise<WeatherForecastRe
     `${base}/api/weather/forecast?location=${encodeURIComponent(location)}&days=7`
   );
   if (!res.ok) throw new Error(`Weather forecast fetch failed: ${res.status}`);
-  return res.json() as Promise<WeatherForecastResponse>;
+  const validated = safeParse(weatherForecastResponseSchema, await res.json(), 'weather/forecast');
+  if (!validated) throw new Error('Weather response failed validation');
+  return validated;
 }
 
 /**

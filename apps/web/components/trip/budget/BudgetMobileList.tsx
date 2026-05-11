@@ -49,7 +49,7 @@ export function BudgetMobileList({
                 <div className="w-7 h-7 rounded-md flex items-center justify-center" style={{ backgroundColor: 'rgb(var(--trip-base-rgb) / 0.08)', color: 'var(--trip-base)' }}>
                   <Icon size={14} />
                 </div>
-                <span className="text-[13px] font-semibold text-gray-900 dark:text-white">{item.category}</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">{item.category}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className={`text-[11px] font-semibold tabular-nums ${pctColor}`}>{pct.toFixed(0)}%</span>

@@ -111,7 +111,7 @@ export function FlightCard({ flight, onEdit, onDelete }: FlightCardProps) {
               <span />
             )}
             {flight.priceDisplay && (
-              <div className="text-right text-[13px] font-semibold text-gray-900 dark:text-white tabular-nums">
+              <div className="text-right text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
                 {flight.priceDisplay}
               </div>
             )}

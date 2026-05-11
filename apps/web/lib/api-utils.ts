@@ -166,13 +166,28 @@ export async function proxyToBackend(
     if (!res.ok) {
       const body = await res.text().catch(() => '')
       console.error(`[proxy ${path}] Backend error:`, res.status, body)
+      let message = 'Backend request failed'
+      try {
+        const parsed = JSON.parse(body)
+        message = parsed.error || message
+      } catch {}
       return NextResponse.json(
-        { error: 'Backend request failed' },
+        { error: message },
         { status: res.status },
       )
     }
 
-    const data = await res.json()
+    // Handle empty or 204 responses (backend returns 202 with empty body for fire-and-forget)
+    const body = await res.text()
+    if (!body) {
+      return new NextResponse(null, { status: res.status })
+    }
+    let data: unknown
+    try {
+      data = JSON.parse(body)
+    } catch {
+      data = { message: body }
+    }
     return NextResponse.json(data)
   } catch (err) {
     console.error(`[proxy ${path}] error:`, err)

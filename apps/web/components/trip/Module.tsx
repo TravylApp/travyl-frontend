@@ -25,7 +25,7 @@ export function Module({ title, description, action, children, className = '', t
       <header className={headerPadClass}>
         <div>
           <h2 className={titleClass}>{title}</h2>
-          {description && <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5">{description}</p>}
+          {description && <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">{description}</p>}
         </div>
         {action}
       </header>

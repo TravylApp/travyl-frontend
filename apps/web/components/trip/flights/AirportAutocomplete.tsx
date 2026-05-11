@@ -93,7 +93,7 @@ export function AirportAutocomplete({ label, value, onChange, invalid }: Airport
         onFocus={() => setOpen(true)}
         onKeyDown={handleKey}
         placeholder="Type a city or airport"
-        className={`w-full h-10 px-3 rounded-lg border bg-white dark:bg-white/[0.04] text-[13px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base)]/30 ${invalid ? 'border-red-400' : 'border-gray-200 dark:border-white/[0.10]'}`}
+        className={`w-full h-10 px-3 rounded-lg border bg-white dark:bg-white/[0.04] text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base)]/30 ${invalid ? 'border-red-400' : 'border-gray-200 dark:border-white/[0.10]'}`}
       />
       {open && results.length > 0 && (
         <div className="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-lg border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-[var(--background)] shadow-lg">
@@ -103,7 +103,7 @@ export function AirportAutocomplete({ label, value, onChange, invalid }: Airport
               type="button"
               onClick={() => select(a)}
               onMouseEnter={() => setActiveIdx(i)}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-left text-[13px] ${i === activeIdx ? 'bg-gray-100 dark:bg-white/[0.06]' : ''}`}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm ${i === activeIdx ? 'bg-gray-100 dark:bg-white/[0.06]' : ''}`}
             >
               <Plane size={12} className="text-gray-400 shrink-0" />
               <span className="font-mono font-semibold text-gray-900 dark:text-white">{a.iata}</span>

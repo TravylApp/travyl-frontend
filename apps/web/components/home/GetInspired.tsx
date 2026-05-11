@@ -163,7 +163,7 @@ function InspirationCard({ place, isFront }: { place: PlaceItem; isFront: boolea
           </div>
         )}
         {place.description && (
-          <p className="text-[13px] text-white/70 leading-snug line-clamp-2">
+          <p className="text-sm text-white/70 leading-snug line-clamp-2">
             {place.description}
           </p>
         )}
@@ -261,7 +261,7 @@ function InspirationCardBack({ place }: { place: PlaceItem }) {
 
           {/* Description */}
           {place.description && (
-            <p className="text-[13px] text-white/70 leading-snug">{place.description}</p>
+            <p className="text-sm text-white/70 leading-snug">{place.description}</p>
           )}
 
           {/* Tips */}

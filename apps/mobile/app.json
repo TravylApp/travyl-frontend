@@ -36,7 +36,22 @@
     },
     "plugins": [
       "expo-router",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "./assets/fonts/Lustria-Regular.ttf",
+            "./assets/fonts/Satoshi-Light.ttf",
+            "./assets/fonts/Satoshi-Regular.ttf",
+            "./assets/fonts/Satoshi-Medium.ttf",
+            "./assets/fonts/Satoshi-Bold.ttf",
+            "./assets/fonts/Satoshi-Black.ttf",
+            "./assets/fonts/SpaceMono-Regular.ttf",
+            "./assets/fonts/FontAwesome.ttf"
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

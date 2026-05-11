@@ -11,6 +11,7 @@ dist/
 build/
 out/
 *.tsbuildinfo
+.open-next/
 
 # SST
 .sst/
@@ -45,15 +46,11 @@ npm-debug.log*
 supabase/.temp/
 
 .superpowers/
-.sst/
 sst-env.d.ts
 .worktrees/
-.worktrees/
-# Ignore screenshots and playwright files
-.playwright-mcp/
-*.png
-!apps/**/*.png
-!packages/**/*.png
 
-# Playwright
-test-results/
+# Playwright MCP logs
+.playwright-mcp/
+
+# Group report (LaTeX source)
+docs/report/

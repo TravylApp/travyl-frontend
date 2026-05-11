@@ -75,7 +75,7 @@ function EventPill({ event }: EventPillProps) {
 
       {open && (
         <div className="absolute left-0 top-full mt-1 z-50 w-56 bg-cal-surface-elevated border border-cal-border rounded-lg shadow-lg p-3 text-left">
-          <p className="text-[13px] font-semibold text-cal-text leading-snug mb-1">
+          <p className="text-sm font-semibold text-cal-text leading-snug mb-1">
             {event.name}
           </p>
           <p className="text-[11px] text-cal-text-secondary">

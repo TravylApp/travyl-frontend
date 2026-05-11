@@ -38,7 +38,7 @@ const DEFAULT_TRAVELERS: TravelerMetadata = { adults: 1, children: 0, infants: 0
 // ─── Field primitives ────────────────────────────────────────
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="block text-[13px] font-medium text-gray-700 dark:text-gray-300 mb-2">{children}</label>;
+  return <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{children}</label>;
 }
 
 function Input({
@@ -53,7 +53,7 @@ function Input({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       disabled={disabled}
-      className="w-full h-11 rounded-xl border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.04] px-4 text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base,#1e3a5f)]/20 focus:border-[var(--trip-base,#1e3a5f)]/50 transition disabled:bg-gray-50 disabled:text-gray-400 dark:disabled:bg-white/[0.02] dark:disabled:text-gray-500"
+      className="w-full h-11 rounded-xl border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.04] px-4 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base,#1e3a5f)]/20 focus:border-[var(--trip-base,#1e3a5f)]/50 transition disabled:bg-gray-50 disabled:text-gray-400 dark:disabled:bg-white/[0.02] dark:disabled:text-gray-500"
     />
   );
 }
@@ -68,7 +68,7 @@ function Select({
       value={value}
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
-      className="w-full h-11 rounded-xl border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.04] px-4 text-[14px] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--trip-base,#1e3a5f)]/20 focus:border-[var(--trip-base,#1e3a5f)]/50 transition disabled:bg-gray-50 disabled:text-gray-400 dark:disabled:bg-white/[0.02] dark:disabled:text-gray-500"
+      className="w-full h-11 rounded-xl border border-gray-200 dark:border-white/[0.10] bg-white dark:bg-white/[0.04] px-4 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--trip-base,#1e3a5f)]/20 focus:border-[var(--trip-base,#1e3a5f)]/50 transition disabled:bg-gray-50 disabled:text-gray-400 dark:disabled:bg-white/[0.02] dark:disabled:text-gray-500"
     >
       {options.map((o) => (
         <option key={o.value} value={o.value} className="dark:bg-gray-900 dark:text-white">{o.label}</option>
@@ -130,7 +130,7 @@ function PrimaryButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex items-center gap-2 px-5 h-11 rounded-xl text-[14px] font-semibold transition-all disabled:bg-gray-200 dark:disabled:bg-white/[0.06] disabled:text-gray-400 disabled:cursor-not-allowed text-white shadow-sm hover:shadow-md"
+      className="flex items-center gap-2 px-5 h-11 rounded-xl text-sm font-semibold transition-all disabled:bg-gray-200 dark:disabled:bg-white/[0.06] disabled:text-gray-400 disabled:cursor-not-allowed text-white shadow-sm hover:shadow-md"
       style={!disabled ? { backgroundColor: 'var(--trip-base, #1e3a5f)' } : undefined}
     >
       {busy ? <Loader2 size={15} className="animate-spin" /> : icon}
@@ -451,7 +451,7 @@ export default function TripSettingsPage({ params }: { params: Promise<{ id: str
                 <button
                   onClick={() => setDetails(originalDetails)}
                   disabled={savingDetails}
-                  className="text-[13px] font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50 px-3 h-9"
+                  className="text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors disabled:opacity-50 px-3 h-9"
                 >
                   Discard
                 </button>
@@ -547,7 +547,7 @@ export default function TripSettingsPage({ params }: { params: Promise<{ id: str
 
               <div>
                 <h3 className="text-[22px] font-serif font-normal text-gray-900 dark:text-white tracking-tight leading-tight mb-1.5">Visible tabs</h3>
-                <p className="text-[13px] text-gray-500 dark:text-gray-400 mb-5">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-5">
                   Choose which tabs appear in this trip&apos;s navigation.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
@@ -559,7 +559,7 @@ export default function TripSettingsPage({ params }: { params: Promise<{ id: str
                           <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-gray-100 dark:bg-white/[0.06]">
                             <Icon size={16} className={isEnabled ? 'text-gray-700 dark:text-gray-300' : 'text-gray-400 dark:text-gray-500'} />
                           </div>
-                          <p className="text-[14px] font-medium text-gray-900 dark:text-white truncate">{label}</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{label}</p>
                         </div>
                         <Toggle
                           enabled={isEnabled}
@@ -667,7 +667,7 @@ function SharingControls({
         <div className="rounded-2xl border border-gray-200 dark:border-white/[0.08] p-5 bg-gray-50/60 dark:bg-white/[0.02] space-y-3">
           <div className="flex items-center gap-2">
             <LinkIcon size={14} className="text-gray-500 dark:text-gray-400" />
-            <p className="text-[13px] font-semibold text-gray-700 dark:text-gray-300">Share link</p>
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Share link</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex-1 rounded-lg bg-white dark:bg-white/[0.05] border border-gray-200 dark:border-white/[0.08] px-3 h-10 flex items-center text-[12px] text-gray-600 dark:text-gray-300 font-mono truncate">
@@ -676,14 +676,14 @@ function SharingControls({
             <select
               value={linkPermission}
               onChange={(e) => onChangeLinkPermission(e.target.value as 'viewer' | 'editor')}
-              className="shrink-0 text-[13px] font-medium px-3 h-10 rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.05] text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base,#1e3a5f)]/20"
+              className="shrink-0 text-sm font-medium px-3 h-10 rounded-lg border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.05] text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base,#1e3a5f)]/20"
             >
               <option value="viewer">Can view</option>
               <option value="editor">Can edit</option>
             </select>
             <button
               onClick={copyShareLink}
-              className="shrink-0 flex items-center gap-1.5 text-[13px] font-semibold px-4 h-10 rounded-lg text-white transition-all"
+              className="shrink-0 flex items-center gap-1.5 text-sm font-semibold px-4 h-10 rounded-lg text-white transition-all"
               style={{ backgroundColor: copied ? '#10b981' : 'var(--trip-base, #1e3a5f)' }}
             >
               <Copy size={14} />
@@ -702,7 +702,7 @@ function SharingControls({
             <GitFork size={16} className="text-gray-500 dark:text-gray-400" />
           </div>
           <div>
-            <p className="text-[14px] font-semibold text-gray-900 dark:text-white">{forkCount} fork{forkCount === 1 ? '' : 's'}</p>
+            <p className="text-sm font-semibold text-gray-900 dark:text-white">{forkCount} fork{forkCount === 1 ? '' : 's'}</p>
             <p className="text-[12px] text-gray-500 dark:text-gray-400">This trip has been forked by other users.</p>
           </div>
         </div>

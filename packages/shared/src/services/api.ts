@@ -51,6 +51,11 @@ export async function fetchSavedItems(): Promise<SavedItem[]> {
     .from('saved_items')
     .select('*')
     .order('created_at', { ascending: false });
+  // Table doesn't exist yet — return empty array instead of crashing
+  if (error?.code === 'PGRST204' || error?.message?.includes('does not exist')) {
+    console.warn('[fetchSavedItems] saved_items table not found');
+    return [];
+  }
   if (error) throw error;
   return data ?? [];
 }
@@ -260,22 +265,6 @@ export async function fetchCars(tripId: string): Promise<Car[]> {
   return ((data.trip_context as any).cars as Car[] | undefined) ?? [];
 }
 
-/**
- * Fetches all activities for a trip, ordered by `sort_order` ascending.
- * @param tripId - UUID of the trip
- * @returns Array of Activity objects
- * @throws PostgrestError if the query fails
- */
-export async function fetchActivities(tripId: string): Promise<Activity[]> {
-  const { data, error } = await supabase
-    .from('activities')
-    .select('*')
-    .eq('trip_id', tripId)
-    .order('sort_order', { ascending: true });
-  if (error) throw error;
-  return data ?? [];
-}
-
 // ─── Fork Trip Functions ───────────────────────────────────────
 
 /**
@@ -323,54 +312,55 @@ export async function forkTrip(tripId: string): Promise<Trip> {
   if (createError) throw createError;
   if (!newTrip) throw new Error('Failed to create forked trip');
 
-  // 3. Fetch and copy itinerary days
-  const { data: itineraryDays, error: daysError } = await supabase
-    .from('itinerary_days')
-    .select('*')
-    .eq('trip_id', tripId);
+  // 3–4. Copy itinerary days and activities.
+  // The itinerary_days table is not used in the current schema (day data
+  // lives in trip_context.itinerary). Wrap in try/catch so a missing table
+  // doesn't abort the fork — flights and hotels are still copied.
+  try {
+    const { data: itineraryDays } = await supabase
+      .from('itinerary_days')
+      .select('*')
+      .eq('trip_id', tripId);
 
-  if (daysError) throw daysError;
+    if (itineraryDays && itineraryDays.length > 0) {
+      for (const day of itineraryDays) {
+        const { id: dayId, trip_id, created_at, ...dayData } = day;
+        const newDayData = { ...dayData, trip_id: newTrip.id };
 
-  // 4. Copy itinerary days, activities, and related data
-  if (itineraryDays && itineraryDays.length > 0) {
-    for (const day of itineraryDays) {
-      const { id: dayId, trip_id, created_at, ...dayData } = day;
-      const newDayData = { ...dayData, trip_id: newTrip.id };
+        const { data: newDay } = await supabase
+          .from('itinerary_days')
+          .insert(newDayData)
+          .select()
+          .single();
 
-      const { data: newDay, error: dayInsertError } = await supabase
-        .from('itinerary_days')
-        .insert(newDayData)
-        .select()
-        .single();
+        // Copy activities for this day using the correct table name
+        if (newDay) {
+          const { data: activities } = await supabase
+            .from('activity')
+            .select('*')
+            .eq('itinerary_day_id', dayId);
 
-      if (dayInsertError) throw dayInsertError;
+          if (activities && activities.length > 0) {
+            const newActivities = activities.map((activity) => {
+              const { id, itinerary_day_id, trip_id, created_at, ...activityData } = activity;
+              return {
+                ...activityData,
+                itinerary_day_id: newDay.id,
+                trip_id: newTrip.id,
+              };
+            });
 
-      // Copy activities for this day
-      if (newDay) {
-        const { data: activities, error: activitiesError } = await supabase
-          .from('activities')
-          .select('*')
-          .eq('itinerary_day_id', dayId);
-
-        if (activitiesError) throw activitiesError;
-
-        if (activities && activities.length > 0) {
-          const newActivities = activities.map((activity) => {
-            const { id: activityId, itinerary_day_id, trip_id, created_at, ...activityData } = activity;
-            return {
-              ...activityData,
-              itinerary_day_id: newDay.id,
-              trip_id: newTrip.id,
-            };
-          });
-
-          const { error: activityInsertError } = await supabase
-            .from('activities')
-            .insert(newActivities);
-
-          if (activityInsertError) throw activityInsertError;
+            await supabase.from('activity').insert(newActivities);
+          }
         }
       }
+    }
+  } catch (err: any) {
+    // PGRST204 = table/column not found — safe to ignore for unused schema
+    if (err?.code === 'PGRST204' || err?.message?.includes('does not exist')) {
+      console.warn('[forkTrip] Skipping itinerary copy — table or column not found:', err.message);
+    } else {
+      throw err;
     }
   }
 
@@ -630,6 +620,10 @@ export async function addToItinerary(tripId: string, itemId: string, dayNumber: 
     day_number: dayNumber,
     time_slot: timeSlot ?? null,
   });
+  if (error?.code === 'PGRST204' || error?.message?.includes('does not exist')) {
+    console.warn('[addToItinerary] itinerary_items table not found');
+    return;
+  }
   if (error) throw error;
 }
 
@@ -645,6 +639,10 @@ export async function removeFromItinerary(tripId: string, itemId: string) {
     .delete()
     .eq('trip_id', tripId)
     .eq('item_id', itemId);
+  if (error?.code === 'PGRST204' || error?.message?.includes('does not exist')) {
+    console.warn('[removeFromItinerary] itinerary_items table not found');
+    return;
+  }
   if (error) throw error;
 }
 
@@ -663,11 +661,19 @@ export async function toggleFavorite(tripId: string, itemId: string, isFavorited
       .delete()
       .eq('trip_id', tripId)
       .eq('item_id', itemId);
+    if (error?.code === 'PGRST204' || error?.message?.includes('does not exist')) {
+      console.warn('[toggleFavorite] favorites table not found');
+      return;
+    }
     if (error) throw error;
   } else {
     const { error } = await supabase
       .from('favorites')
       .insert({ trip_id: tripId, item_id: itemId });
+    if (error?.code === 'PGRST204' || error?.message?.includes('does not exist')) {
+      console.warn('[toggleFavorite] favorites table not found');
+      return;
+    }
     if (error) throw error;
   }
 }
@@ -683,6 +689,10 @@ export async function updateBudgetExpense(expenseId: string, updates: { amount?:
     .from('budget_expenses')
     .update(updates)
     .eq('id', expenseId);
+  if (error?.code === 'PGRST204' || error?.message?.includes('does not exist')) {
+    console.warn('[updateBudgetExpense] budget_expenses table not found');
+    return;
+  }
   if (error) throw error;
 }
 
@@ -698,6 +708,10 @@ export async function addBudgetExpense(tripId: string, category: string, amount:
   const { error } = await supabase
     .from('budget_expenses')
     .insert({ trip_id: tripId, category, amount, note });
+  if (error?.code === 'PGRST204' || error?.message?.includes('does not exist')) {
+    console.warn('[addBudgetExpense] budget_expenses table not found');
+    return;
+  }
   if (error) throw error;
 }
 
@@ -730,17 +744,36 @@ export async function updateTripThemeSettings(
  * @throws PostgrestError if the query fails
  */
 export async function fetchCollaborators(tripId: string): Promise<TripCollaborator[]> {
+  // Fetch collaborators — no profile join here because there's no FK between
+  // trip_collaborators.user_id and profiles.id, so the Supabase REST API
+  // would 400. We load display names separately below.
   const { data, error } = await supabase
     .from('trip_collaborators')
-    .select('*, profile:profiles(display_name, avatar_url)')
+    .select('*')
     .eq('trip_id', tripId)
     .order('created_at', { ascending: true })
   if (error) throw error
-  return (data ?? []).map(({ profile, ...collaborator }) => ({
-    ...collaborator,
-    display_name: profile?.display_name ?? null,
-    avatar_url: profile?.avatar_url ?? null,
-  })) as TripCollaborator[]
+
+  const rows = (data ?? []) as TripCollaborator[]
+
+  // Batch-fetch profile info for all non-null user_ids
+  const userIds = rows
+    .map((r) => r.user_id)
+    .filter((id): id is string => !!id)
+  if (userIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, display_name, avatar_url')
+      .in('id', userIds)
+    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]))
+    return rows.map((row) => ({
+      ...row,
+      display_name: row.user_id ? (profileMap.get(row.user_id)?.display_name ?? null) : null,
+      avatar_url: row.user_id ? (profileMap.get(row.user_id)?.avatar_url ?? null) : null,
+    })) as TripCollaborator[]
+  }
+
+  return rows
 }
 
 /**

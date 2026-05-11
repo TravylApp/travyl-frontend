@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin, rateLimit } from '@/lib/api-utils'
+import { parseQuery } from '@/lib/zod-helpers'
+import { z } from '@travyl/shared'
 
 const SERPAPI_KEY = process.env.SERPAPI_KEY
+
+const hotelReviewsQuerySchema = z.object({
+  name: z.string().min(1).max(200),
+  location: z.string().max(200).default(''),
+})
 
 export async function GET(req: NextRequest) {
   const blocked = checkOrigin(req) || rateLimit(req, 'hotel-reviews', 10, 60_000)
   if (blocked) return blocked
 
-  const name = req.nextUrl.searchParams.get('name')
-  const location = req.nextUrl.searchParams.get('location') || ''
-
-  if (!name) {
-    return NextResponse.json({ error: 'Missing hotel name' }, { status: 400 })
-  }
+  const parsed = parseQuery(req, hotelReviewsQuerySchema)
+  if (!parsed.ok) return parsed.response
+  const { name, location } = parsed.data
 
   if (!SERPAPI_KEY) {
     return NextResponse.json({ reviews: [], total: 0 })

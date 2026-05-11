@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getSupabase, supabaseUrl, supabaseKey, checkOrigin, rateLimit } from '@/lib/api-utils'
+import { parseJsonBody } from '@/lib/zod-helpers'
+import { createTripBodySchema } from '@travyl/shared'
 
 
 export async function POST(req: NextRequest) {
@@ -9,8 +11,9 @@ export async function POST(req: NextRequest) {
     if (blocked) return blocked
 
     const supabase = getSupabase()
-    let body: any; try { body = await req.json() } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
-    const { title, destination, start_date, end_date, status, travelers, budget, currency, trip_context, itinerary } = body
+    const parsed = await parseJsonBody(req, createTripBodySchema)
+    if (!parsed.ok) return parsed.response
+    const { title, destination, start_date, end_date, travelers, budget, currency, trip_context } = parsed.data
 
     // Derive user_id from verified session — never trust body.user_id
     let user_id: string | null = null
@@ -28,13 +31,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Sign in to plan a trip', code: 'AUTH_REQUIRED' }, { status: 401 })
     }
 
-    if (!destination || typeof destination !== 'string' || destination.length > 200) {
-      return NextResponse.json({ error: 'Missing or invalid destination' }, { status: 400 })
-    }
-    // Sanitize inputs
-    const safeTravelers = Math.min(Math.max(1, parseInt(travelers) || 1), 50)
-    const safeBudget = budget ? Math.min(Math.max(0, parseFloat(budget) || 0), 1000000) : null
+    // Sanitize inputs — schema enforces destination shape, but `travelers`
+    // and `budget` are still accepted as strings or numbers, and we apply
+    // domain caps (50 travelers, 1M budget) here.
+    const safeTravelers = Math.min(Math.max(1, parseInt(String(travelers ?? '')) || 1), 50)
+    const safeBudget = budget != null ? Math.min(Math.max(0, parseFloat(String(budget)) || 0), 1000000) : null
     const safeTitle = title ? String(title).slice(0, 200) : `${destination.split(',')[0]} Trip`
+    const safeCurrency = currency && ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'INR', 'MXN', 'BRL'].includes(currency) ? currency : 'USD'
 
     const { data, error } = await supabase
       .from('trips')
@@ -47,7 +50,7 @@ export async function POST(req: NextRequest) {
         user_id,
         travelers: safeTravelers,
         budget: safeBudget,
-        currency: ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'INR', 'MXN', 'BRL'].includes(currency) ? currency : 'USD',
+        currency: safeCurrency,
         trip_context: trip_context || {},
         visibility: 'private',
         is_generated: true,

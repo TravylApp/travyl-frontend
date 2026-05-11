@@ -35,6 +35,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="favorites"
+        options={{
+          title: 'Places',
+          tabBarIcon: ({ color }) => <TabBarIcon name="map-marker" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="trips"
         options={{
           title: 'Trips',

@@ -13,7 +13,7 @@
 
 'use client';
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTrip } from './useTrip';
 import { useItineraryDays } from './useItineraryDays';
@@ -177,8 +177,8 @@ function buildDaysFromContext(tripContext: any, trip?: any): ItineraryDayViewMod
       image: upscaleGoogleImage(slot.poi?.photo_url) ?? null,
       source: undefined,
       timeOfDay: getToD(slot.start_time),
-      lat: slot.poi?.lat ?? null,
-      lng: slot.poi?.lng ?? null,
+      latitude: slot.poi?.lat ?? null,
+      longitude: slot.poi?.lng ?? null,
     }));
 
     const groupMap = new Map<TimeOfDay, typeof activityVMs>();
@@ -344,7 +344,6 @@ function mergeUserActivities(
 export function useItineraryScreen(tripId: string | undefined) {
   const [selectedDayIndex, setSelectedDayIndex] = useState(0);
   const queryClient = useQueryClient();
-  const channelRef = useRef<string | null>(null);
   const tripQuery = useTrip(tripId);
   const daysQuery = useItineraryDays(tripId);
   const activitiesQuery = useTripActivities(tripId);
@@ -362,14 +361,12 @@ export function useItineraryScreen(tripId: string | undefined) {
   // before mounting trip screens) so we don't worry about that case.
   useEffect(() => {
     if (!tripId) return;
-    // Use a ref-stabilized unique ID so multiple instances of this hook
-    // don't clash (the component calls useItineraryScreen twice in the
-    // layout tree). The ref persists across StrictMode double-mount too.
-    if (!channelRef.current) {
-      channelRef.current = `${tripId}-${Math.random().toString(36).slice(2, 8)}`;
-    }
+    // Unique-per-mount suffix prevents supabase.channel() from returning
+    // a stale, already-subscribed channel under React 19 StrictMode double-
+    // invoke / HMR, which would reject any further .on() calls.
+    const topic = `trip:${tripId}-${Math.random().toString(36).slice(2, 8)}`;
     const channel = supabase
-      .channel(`trip:${channelRef.current}`)
+      .channel(topic)
       // Trip row itself (title, dates, trip_context, settings, theme).
       .on(
         'postgres_changes' as any,
@@ -381,12 +378,6 @@ export function useItineraryScreen(tripId: string | undefined) {
         'postgres_changes' as any,
         { event: '*', schema: 'public', table: 'activity', filter: `trip_id=eq.${tripId}` },
         () => queryClient.invalidateQueries({ queryKey: ['trip-activities', tripId] }),
-      )
-      // Itinerary day rows (when the DB-backed itinerary is in use).
-      .on(
-        'postgres_changes' as any,
-        { event: '*', schema: 'public', table: 'itinerary_days', filter: `trip_id=eq.${tripId}` },
-        () => queryClient.invalidateQueries({ queryKey: ['itinerary-days', tripId] }),
       )
       // Flight rows.
       .on(
@@ -404,6 +395,12 @@ export function useItineraryScreen(tripId: string | undefined) {
         'postgres_changes' as any,
         { event: '*', schema: 'public', table: 'transit', filter: `trip_id=eq.${tripId}` },
         () => queryClient.invalidateQueries({ queryKey: ['transit', tripId] }),
+      )
+      // Car rental rows.
+      .on(
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'cars', filter: `trip_id=eq.${tripId}` },
+        () => queryClient.invalidateQueries({ queryKey: ['cars', tripId] }),
       )
       .subscribe();
     return () => {

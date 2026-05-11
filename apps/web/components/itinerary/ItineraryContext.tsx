@@ -116,6 +116,8 @@ function calendarActivityToViewModel(a: CalendarActivity): ActivityViewModel {
     image: a.image ?? null,
     source: 'user',
     timeOfDay: getTimeOfDay(a.startHour),
+    latitude: null,
+    longitude: null,
   };
 }
 

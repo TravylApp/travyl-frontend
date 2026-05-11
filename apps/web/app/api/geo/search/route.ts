@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit, CACHE_1H } from '@/lib/api-utils'
+import { parseQuery } from '@/lib/zod-helpers'
+import { z } from '@travyl/shared'
+
+const geoSearchQuerySchema = z.object({
+  q: z.string().min(2).max(200),
+})
 
 export interface GeoSearchResult {
   id: string
@@ -16,8 +22,9 @@ export async function GET(req: NextRequest) {
   const rl = rateLimit(req, 'geo-search', 30, 60_000)
   if (rl) return rl
 
-  const q = req.nextUrl.searchParams.get('q')?.trim()
-  if (!q || q.length < 2) return NextResponse.json([] satisfies GeoSearchResult[])
+  const parsed = parseQuery(req, geoSearchQuerySchema)
+  if (!parsed.ok) return NextResponse.json([] satisfies GeoSearchResult[])
+  const q = parsed.data.q.trim()
 
   const url = new URL('https://nominatim.openstreetmap.org/search')
   url.searchParams.set('q', q)

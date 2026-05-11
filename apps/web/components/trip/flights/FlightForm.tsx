@@ -180,7 +180,7 @@ export function FlightForm({ initial, defaultCurrency = 'USD', onSubmit, onCance
           <button
             onClick={onDelete}
             disabled={busy}
-            className="text-[13px] font-medium text-red-600 dark:text-red-400 hover:underline disabled:opacity-50"
+            className="text-sm font-medium text-red-600 dark:text-red-400 hover:underline disabled:opacity-50"
           >
             Delete flight
           </button>

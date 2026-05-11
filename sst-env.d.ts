@@ -10,7 +10,43 @@ declare module "sst" {
       "name": string
       "type": "sst.aws.Bucket"
     }
+    "ActivityCdn": {
+      "type": "sst.aws.Router"
+      "url": string
+    }
+    "DocumentUploads": {
+      "name": string
+      "type": "sst.aws.Bucket"
+    }
+    "DuffelApiToken": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "ElevenLabsApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "EventbriteApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "FoursquareApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "FoursquareClientId": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "FoursquareClientSecret": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "GeonamesUsername": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "GraphhopperApiKey": {
       "type": "sst.sst.Secret"
       "value": string
     }
@@ -19,7 +55,43 @@ declare module "sst" {
       "name": string
       "type": "sst.aws.Bus"
     }
+    "OpenExchangeRatesAppId": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "OpenTableAffiliateKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "OpenchargeApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "OtpApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "OtpServerUrl": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "OtpService": {
+      "service": string
+      "type": "sst.aws.Service"
+      "url": string
+    }
+    "OtpVpc": {
+      "type": "sst.aws.Vpc"
+    }
     "Pexels": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "PredicthqApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "PricelineRapidapiKey": {
       "type": "sst.sst.Secret"
       "value": string
     }
@@ -35,6 +107,14 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
+    "SupabaseAnonKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "SupabasePublishableKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "SupabaseSecretKey": {
       "type": "sst.sst.Secret"
       "value": string
@@ -43,14 +123,34 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
+    "TicketmasterApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
+    "TimezonedbApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "TravylEmail": {
       "configSet": string
       "sender": string
       "type": "sst.aws.Email"
     }
+    "TravylWeb": {
+      "type": "sst.aws.Nextjs"
+      "url": string
+    }
+    "TripadvisorApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
+    }
     "UserInteractions": {
       "name": string
       "type": "sst.aws.Dynamo"
+    }
+    "VisualCrossingApiKey": {
+      "type": "sst.sst.Secret"
+      "value": string
     }
   }
 }

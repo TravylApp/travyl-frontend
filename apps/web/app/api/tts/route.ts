@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { errorResponse, rateLimit, checkOrigin } from '@/lib/api-utils'
+import { parseJsonBody } from '@/lib/zod-helpers'
+import { z } from '@travyl/shared'
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -7,6 +9,11 @@ import { errorResponse, rateLimit, checkOrigin } from '@/lib/api-utils'
 const VOICE_ID = '21m00Tcm4TlvDq8ikWAM'
 const MODEL_ID = 'eleven_multilingual_v2'
 const MAX_TEXT_LENGTH = 200
+
+const ttsBodySchema = z.object({
+  text: z.string().min(1).max(MAX_TEXT_LENGTH),
+  lang: z.string().max(10).optional(),
+})
 
 // ─── Handler ─────────────────────────────────────────────────────────────────
 
@@ -23,18 +30,9 @@ export async function POST(req: NextRequest) {
     return errorResponse('TTS not configured', 503)
   }
 
-  let body: { text?: unknown; lang?: unknown }
-  try {
-    body = await req.json()
-  } catch {
-    return errorResponse('Invalid JSON body', 400)
-  }
-
-  const text = typeof body.text === 'string' ? body.text.trim() : ''
-  if (!text) return errorResponse('Missing text', 400)
-  if (text.length > MAX_TEXT_LENGTH) {
-    return errorResponse(`Text exceeds ${MAX_TEXT_LENGTH} characters`, 400)
-  }
+  const parsed = await parseJsonBody(req, ttsBodySchema)
+  if (!parsed.ok) return parsed.response
+  const text = parsed.data.text.trim()
 
   try {
     const upstream = await fetch(

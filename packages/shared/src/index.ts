@@ -3,6 +3,9 @@
 // Types
 export * from './types';
 
+// Runtime schemas (Zod) — validate data at network boundaries
+export * from './schemas';
+
 // Utils
 export * from './utils';
 

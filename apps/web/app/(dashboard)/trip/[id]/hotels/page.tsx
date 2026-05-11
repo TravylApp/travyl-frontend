@@ -43,7 +43,7 @@ export default function Hotels({ params }: { params: Promise<{ id: string }> }) 
           <h1 className="text-[26px] font-serif font-normal text-gray-900 dark:text-white tracking-tight leading-tight">
             Hotels
           </h1>
-          <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-1.5">{description}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1.5">{description}</p>
         </div>
         <button
           onClick={() => window.dispatchEvent(new CustomEvent('hotels:add-manual'))}

@@ -6,6 +6,10 @@ import { safeParseBody } from './lib/validation';
 
 const supabase = createClient(Resource.SupabaseUrl.value, Resource.SupabaseSecretKey.value);
 
+// The `transit` table may not exist in all environments — PostgREST returns
+// PGRST205 / 42P01 when the relation is missing. Handle gracefully.
+const MISSING_TABLE_CODES = new Set(['PGRST205', '42P01']);
+
 export const listHandler: APIGatewayProxyHandlerV2 = async (event) => {
   try {
     await validateAuth(event.headers.authorization);
@@ -19,6 +23,9 @@ export const listHandler: APIGatewayProxyHandlerV2 = async (event) => {
       .eq('trip_id', tripId)
       .order('created_at', { ascending: true });
     if (error) {
+      if (MISSING_TABLE_CODES.has(error.code ?? '')) {
+        return { statusCode: 200, body: JSON.stringify([]) };
+      }
       console.error('[transit-bookings] list error:', error);
       return { statusCode: 500, body: JSON.stringify({ error: 'Failed to fetch transit bookings' }) };
     }
@@ -46,6 +53,9 @@ export const createHandler: APIGatewayProxyHandlerV2 = async (event) => {
       .select()
       .single();
     if (error) {
+      if (MISSING_TABLE_CODES.has(error.code ?? '')) {
+        return { statusCode: 503, body: JSON.stringify({ error: 'Transit table not yet provisioned' }) };
+      }
       console.error('[transit-bookings] create error:', error);
       return { statusCode: 500, body: JSON.stringify({ error: 'Failed to create transit booking' }) };
     }
@@ -77,6 +87,9 @@ export const updateHandler: APIGatewayProxyHandlerV2 = async (event) => {
       .select()
       .single();
     if (error) {
+      if (MISSING_TABLE_CODES.has(error.code ?? '')) {
+        return { statusCode: 503, body: JSON.stringify({ error: 'Transit table not yet provisioned' }) };
+      }
       console.error('[transit-bookings] update error:', error);
       return { statusCode: 500, body: JSON.stringify({ error: 'Failed to update transit booking' }) };
     }
@@ -102,6 +115,9 @@ export const deleteHandler: APIGatewayProxyHandlerV2 = async (event) => {
       .delete()
       .eq('id', bookingId);
     if (error) {
+      if (MISSING_TABLE_CODES.has(error.code ?? '')) {
+        return { statusCode: 503, body: JSON.stringify({ error: 'Transit table not yet provisioned' }) };
+      }
       console.error('[transit-bookings] delete error:', error);
       return { statusCode: 500, body: JSON.stringify({ error: 'Failed to delete transit booking' }) };
     }

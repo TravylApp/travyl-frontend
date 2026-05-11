@@ -226,7 +226,7 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
               <button
                 onClick={handleAdd}
                 disabled={busy || alreadySaved}
-                className={`inline-flex items-center gap-1.5 px-4 h-10 rounded-lg text-[13px] font-semibold text-white shadow-sm hover:shadow-md transition disabled:opacity-50 shrink-0 ${
+                className={`inline-flex items-center gap-1.5 px-4 h-10 rounded-lg text-sm font-semibold text-white shadow-sm hover:shadow-md transition disabled:opacity-50 shrink-0 ${
                   alreadySaved ? 'bg-gray-500' : 'bg-[#1e3a5f] hover:bg-[#162d4a]'
                 }`}
               >
@@ -289,7 +289,7 @@ export function FlightDetailModal({ flight, alreadySaved, busy, onClose, onAdd, 
                         ) : (
                           <Plane size={14} className="text-gray-400 shrink-0" />
                         )}
-                        <div className="text-[13px] font-medium text-gray-900 dark:text-white">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">
                           {leg.airline} {leg.flightNumber}
                         </div>
                         <div className="text-[11px] text-gray-500 dark:text-gray-400 ml-auto inline-flex items-center gap-1">
@@ -475,7 +475,7 @@ function AirportCard({
 
       {/* Body */}
       <div className="p-3 space-y-1.5">
-        <h4 className="text-[13px] font-semibold text-gray-900 dark:text-white leading-tight line-clamp-2">
+        <h4 className="text-sm font-semibold text-gray-900 dark:text-white leading-tight line-clamp-2">
           {name}
         </h4>
         {info?.address && (

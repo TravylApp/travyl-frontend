@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkOrigin, rateLimit } from '@/lib/api-utils'
 import { withCache } from '@/lib/searchCache'
+import { parseQuery } from '@/lib/zod-helpers'
+import { z } from '@travyl/shared'
+
+const carsQuerySchema = z.object({
+  pickup_location: z.string().min(1).max(200),
+  dropoff_location: z.string().max(200).optional(),
+  pickup_date: z.string(),
+  pickup_time: z.string().regex(/^\d{2}:\d{2}$/).default('10:00'),
+  dropoff_date: z.string(),
+  dropoff_time: z.string().regex(/^\d{2}:\d{2}$/).default('10:00'),
+})
 
 const PCL_HOST = 'priceline-com2.p.rapidapi.com'
 const PCL_KEY = process.env.PRICELINE_RAPIDAPI_KEY
@@ -22,16 +33,17 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Priceline API not configured', rates: [] })
   }
 
-  const pickupLocation = req.nextUrl.searchParams.get('pickup_location')
-  const dropoffLocation = req.nextUrl.searchParams.get('dropoff_location') || pickupLocation
-  const pickupDate = req.nextUrl.searchParams.get('pickup_date')
-  const pickupTime = req.nextUrl.searchParams.get('pickup_time') || '10:00'
-  const dropoffDate = req.nextUrl.searchParams.get('dropoff_date')
-  const dropoffTime = req.nextUrl.searchParams.get('dropoff_time') || '10:00'
-
-  if (!pickupLocation || !pickupDate || !dropoffDate) {
-    return NextResponse.json({ error: 'Missing required params: pickup_location, pickup_date, dropoff_date', rates: [] })
-  }
+  const parsed = parseQuery(req, carsQuerySchema)
+  if (!parsed.ok) return parsed.response
+  const {
+    pickup_location: pickupLocation,
+    dropoff_location: dropoffLocationRaw,
+    pickup_date: pickupDate,
+    pickup_time: pickupTime,
+    dropoff_date: dropoffDate,
+    dropoff_time: dropoffTime,
+  } = parsed.data
+  const dropoffLocation = dropoffLocationRaw || pickupLocation
 
   const cacheKey = `cars:${pickupLocation}:${dropoffLocation ?? pickupLocation}:${pickupDate}:${dropoffDate}:${pickupTime}:${dropoffTime}`
 

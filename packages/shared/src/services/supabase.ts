@@ -43,6 +43,7 @@ function getDefaultClient(): SupabaseClient {
         persistSession: false,
         autoRefreshToken: false,
         detectSessionInUrl: false,
+        storageKey: 'sb-fallback-auth-token',
       },
     });
   }

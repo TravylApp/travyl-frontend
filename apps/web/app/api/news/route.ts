@@ -1,5 +1,12 @@
 import { NextRequest } from 'next/server'
-import { errorResponse, jsonResponse, requireParam, MissingParamError, CACHE_1H, rateLimit } from '@/lib/api-utils'
+import { errorResponse, jsonResponse, CACHE_1H, rateLimit } from '@/lib/api-utils'
+import { parseQuery } from '@/lib/zod-helpers'
+import { z } from '@travyl/shared'
+
+const newsQuerySchema = z.object({
+  destination: z.string().min(1).max(200),
+  limit: z.coerce.number().int().min(1).max(50).default(10),
+})
 
 // ─── Response types ──────────────────────────────────────────────────────────
 
@@ -140,10 +147,11 @@ async function fetchSerpNews(destination: string, limit: number): Promise<NewsAr
 export async function GET(req: NextRequest) {
   const rl = rateLimit(req, 'news', 60, 60000)
   if (rl) return rl
-  try {
-    const destination = requireParam(req.nextUrl.searchParams, 'destination')
-    const limit = parseInt(req.nextUrl.searchParams.get('limit') ?? '10', 10)
+  const parsed = parseQuery(req, newsQuerySchema)
+  if (!parsed.ok) return parsed.response
+  const { destination, limit } = parsed.data
 
+  try {
     // Try SerpAPI first (has thumbnails), fall back to RSS
     const serpNews = await fetchSerpNews(destination, limit)
     if (serpNews.length > 0) return jsonResponse(serpNews)
@@ -158,8 +166,7 @@ export async function GET(req: NextRequest) {
 
     const xml = await res.text()
     return jsonResponse(parseRSS(xml, limit))
-  } catch (err) {
-    if (err instanceof MissingParamError) return errorResponse(err.message, 400)
+  } catch {
     return errorResponse('News service unavailable', 500)
   }
 }

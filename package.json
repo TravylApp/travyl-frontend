@@ -25,6 +25,7 @@
     "@types/aws-lambda": "^8.10.161",
     "aws-cdk-lib": "^2.243.0",
     "constructs": "^10.5.1",
+    "jsdom": "^29.1.1",
     "patch-package": "^8.0.1",
     "sst": "^4.13.1",
     "tsx": "^4.21.0"
@@ -44,6 +45,6 @@
     "framer-motion": "^12.34.3",
     "lucide-react": "^0.575.0",
     "motion": "^12.34.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.6"
   }
 }

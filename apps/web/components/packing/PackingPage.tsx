@@ -190,7 +190,7 @@ export function PackingPage({ tripId }: PackingPageProps) {
                 <h2 className="text-[17px] font-serif font-normal text-gray-900 dark:text-white tracking-tight leading-tight">
                   Suggestions
                 </h2>
-                <p className="text-[13px] text-gray-500 dark:text-gray-400 mt-0.5">From AI based on your trip</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">From AI based on your trip</p>
               </div>
               <SuggestionsHeaderAction onGenerate={generateSuggestions} isGenerating={isGenerating} />
             </div>

@@ -220,7 +220,7 @@ export default function TripExplorePage({ params }: { params: Promise<{ id: stri
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
           placeholder={`Search ${destination} — sushi, parks, bars…`}
-          className="w-full h-11 pl-11 pr-11 rounded-full bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] text-[14px] text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base)]/20 focus:border-[var(--trip-base)]/40 transition-shadow"
+          className="w-full h-11 pl-11 pr-11 rounded-full bg-white dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--trip-base)]/20 focus:border-[var(--trip-base)]/40 transition-shadow"
         />
         {searchInput && (
           <button

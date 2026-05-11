@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { checkOrigin, rateLimit, supabaseUrl, supabaseKey } from '@/lib/api-utils'
+import { parseJsonBody } from '@/lib/zod-helpers'
+import { z } from '@travyl/shared'
 
 // FastAPI backend (EC2, separate from SST API Gateway). Defaults to staging
 // so the route works without an SST infra env var.
 const API_URL = process.env.FASTAPI_URL || 'https://api.dev.gotravyl.com'
+
+const planBodySchema = z.object({
+  prompt: z.string().min(1).max(2000),
+  city: z.string().max(100).optional(),
+  country: z.string().max(100).optional(),
+  answers: z.record(z.string(), z.any()).optional(),
+})
 
 export async function POST(req: NextRequest) {
   const blocked = checkOrigin(req) || rateLimit(req, 'plan', 5, 60_000)
@@ -14,18 +23,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Trip planning API not configured' }, { status: 503 })
   }
 
-  let body: any; try { body = await req.json() } catch { return NextResponse.json({ error: "Invalid request body" }, { status: 400 }) }
-
-  // Validate prompt exists
-  if (!body.prompt || typeof body.prompt !== 'string' || body.prompt.length > 2000) {
-    return NextResponse.json({ error: 'Invalid prompt' }, { status: 400 })
-  }
-
-  // Allowlist fields to prevent prompt injection / parameter manipulation
-  const safeBody: Record<string, unknown> = { prompt: body.prompt }
-  if (typeof body.city === 'string') safeBody.city = body.city.slice(0, 100)
-  if (typeof body.country === 'string') safeBody.country = body.country.slice(0, 100)
-  if (typeof body.answers === 'object' && body.answers) safeBody.answers = body.answers
+  const parsed = await parseJsonBody(req, planBodySchema)
+  if (!parsed.ok) return parsed.response
+  // Schema-stripped body — `safeParse` discards unknown keys, so this is also
+  // an allowlist defense against prompt injection / param manipulation.
+  const safeBody = parsed.data
 
   // Extract auth token — the browser uses Supabase SSR cookies, not an
   // Authorization header, so we read the session from the request cookies

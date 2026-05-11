@@ -79,7 +79,7 @@ export function HotelCard({ hotel, onEdit, onDelete }: HotelCardProps) {
               </span>
             )}
             {hotel.priceDisplay && (
-              <span className="ml-auto text-[13px] font-semibold text-gray-900 dark:text-white tabular-nums">
+              <span className="ml-auto text-sm font-semibold text-gray-900 dark:text-white tabular-nums">
                 {hotel.priceDisplay}
               </span>
             )}

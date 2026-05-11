@@ -2,6 +2,38 @@ import { APIGatewayProxyHandlerV2 } from 'aws-lambda';
 import { Resource } from 'sst';
 import { validateAuth } from './lib/auth';
 
+// ─── Region routing ────────────────────────────────────────
+// Maps bounding boxes to OTP region names. When OTP instances are
+// added for additional regions, add entries here. The handler checks
+// that query coordinates fall within a known region before querying.
+
+interface BoundingBox {
+  name: string;
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+}
+
+const REGIONS: BoundingBox[] = [
+  {
+    name: 'NYC Metro',
+    minLat: 40.4,
+    maxLat: 41.2,
+    minLng: -74.6,
+    maxLng: -73.5,
+  },
+];
+
+function findRegion(lat: number, lng: number): BoundingBox | null {
+  for (const region of REGIONS) {
+    if (lat >= region.minLat && lat <= region.maxLat && lng >= region.minLng && lng <= region.maxLng) {
+      return region;
+    }
+  }
+  return null;
+}
+
 interface OTPItinerary {
   duration: number;
   startTime: string;
@@ -96,8 +128,38 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
       };
     }
 
+    // Validate coordinates fall within a known OTP region
+    const originLat = parseFloat(origin_lat);
+    const originLng = parseFloat(origin_lng);
+    const destLat = parseFloat(dest_lat);
+    const destLng = parseFloat(dest_lng);
+
+    const originRegion = findRegion(originLat, originLng);
+    const destRegion = findRegion(destLat, destLng);
+
+    if (!originRegion) {
+      return {
+        statusCode: 503,
+        body: JSON.stringify({
+          error: `Transit routing not available for origin coordinates (${origin_lat}, ${origin_lng}). Currently serving: ${REGIONS.map((r) => r.name).join(', ')}`,
+        }),
+      };
+    }
+    if (!destRegion) {
+      return {
+        statusCode: 503,
+        body: JSON.stringify({
+          error: `Transit routing not available for destination coordinates (${dest_lat}, ${dest_lng}). Currently serving: ${REGIONS.map((r) => r.name).join(', ')}`,
+        }),
+      };
+    }
+
     const otpUrl = Resource.OtpServerUrl.value;
     const otpKey = Resource.OtpApiKey.value;
+
+    if (!otpUrl || otpUrl === 'placeholder') {
+      return { statusCode: 503, body: JSON.stringify({ error: 'Transit routing not configured' }) };
+    }
 
     const otpResponse = await fetch(
       `${otpUrl}/otp/routers/default/plan?` + new URLSearchParams({

@@ -63,7 +63,7 @@ export function BudgetTable({
       <tfoot>
         <tr className="bg-[#fafaf7] dark:bg-white/[0.02] font-semibold">
           <td></td>
-          <td className="py-3 px-2 text-[13px] text-gray-900 dark:text-white">Total</td>
+          <td className="py-3 px-2 text-sm text-gray-900 dark:text-white">Total</td>
           <td className="py-3 px-2 text-right tabular-nums text-gray-900 dark:text-white">{formatAmount(totalBudgeted)}</td>
           <td className="py-3 px-2 text-right tabular-nums text-gray-900 dark:text-white">{formatAmount(totalActual)}</td>
           <td className={`py-3 px-2 text-right tabular-nums ${totalRemainingClass}`}>

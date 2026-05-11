@@ -121,7 +121,7 @@ export function RescoperPopover({
             type="text"
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 dark:border-cal-border bg-transparent px-3 py-1.5 text-[13px] text-gray-800 dark:text-cal-text focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full rounded-lg border border-gray-200 dark:border-cal-border bg-transparent px-3 py-1.5 text-sm text-gray-800 dark:text-cal-text focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
 
@@ -142,7 +142,7 @@ export function RescoperPopover({
               type="date"
               value={toInputValue(startDate)}
               onChange={(e) => e.target.value && setStartDate(fromInputValue(e.target.value))}
-              className="flex-1 rounded-lg border border-gray-200 dark:border-cal-border bg-transparent px-2 py-1.5 text-[13px] text-gray-800 dark:text-cal-text focus:outline-none focus:ring-1 focus:ring-primary"
+              className="flex-1 rounded-lg border border-gray-200 dark:border-cal-border bg-transparent px-2 py-1.5 text-sm text-gray-800 dark:text-cal-text focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
         </div>
@@ -157,7 +157,7 @@ export function RescoperPopover({
               type="date"
               value={toInputValue(endDate)}
               onChange={(e) => e.target.value && setEndDate(fromInputValue(e.target.value))}
-              className="flex-1 rounded-lg border border-gray-200 dark:border-cal-border bg-transparent px-2 py-1.5 text-[13px] text-gray-800 dark:text-cal-text focus:outline-none focus:ring-1 focus:ring-primary"
+              className="flex-1 rounded-lg border border-gray-200 dark:border-cal-border bg-transparent px-2 py-1.5 text-sm text-gray-800 dark:text-cal-text focus:outline-none focus:ring-1 focus:ring-primary"
             />
             <button
               onClick={() => setEndDate(addOneDayTo(endDate))}
@@ -182,14 +182,14 @@ export function RescoperPopover({
         <div className="flex items-center justify-end gap-2">
           <button
             onClick={onClose}
-            className="px-3 py-1.5 text-[13px] text-gray-500 dark:text-cal-text-secondary hover:text-gray-700 dark:hover:text-cal-text transition-colors"
+            className="px-3 py-1.5 text-sm text-gray-500 dark:text-cal-text-secondary hover:text-gray-700 dark:hover:text-cal-text transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleApply}
             disabled={isInvalid || isLoading}
-            className="px-4 py-1.5 rounded-lg bg-primary text-white text-[13px] font-medium hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-1.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isLoading ? 'Saving…' : 'Apply'}
           </button>

@@ -51,7 +51,7 @@ export function BudgetTableRow({
             onClick={() => setExpanded((v) => !v)}
             aria-expanded={expanded}
             aria-controls={`expenses-${item.id}`}
-            className="flex items-center gap-1.5 text-[13px] font-medium text-gray-900 dark:text-white hover:text-[var(--trip-base)] transition-colors"
+            className="flex items-center gap-1.5 text-sm font-medium text-gray-900 dark:text-white hover:text-[var(--trip-base)] transition-colors"
           >
             <ChevronRight
               size={12}

@@ -387,7 +387,7 @@ export function PlaceDetailModal({
             </h2>
 
             {/* Stat row */}
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-gray-600 dark:text-white/60 mb-5">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-gray-600 dark:text-white/60 mb-5">
               {rating > 0 && (
                 <span className="inline-flex items-center gap-1">
                   <Star size={13} className="fill-amber-400 text-amber-400" />
@@ -454,7 +454,7 @@ export function PlaceDetailModal({
                     type="button"
                     onClick={() => setShowDayPicker(true)}
                     disabled={adding}
-                    className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-[#1e3a5f] text-white text-[14px] font-semibold hover:bg-[#16314f] transition-colors disabled:opacity-60"
+                    className="inline-flex items-center gap-2 px-5 h-11 rounded-xl bg-[#1e3a5f] text-white text-sm font-semibold hover:bg-[#16314f] transition-colors disabled:opacity-60"
                   >
                     <CalendarPlus size={15} /> Add to itinerary
                     {(place as { duration?: string }).duration && (
@@ -465,7 +465,7 @@ export function PlaceDetailModal({
                   </button>
                 )}
                 {addedDay && (
-                  <div className="inline-flex items-center gap-2 px-4 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-500/[0.12] text-emerald-700 dark:text-emerald-400 text-[13px] font-semibold">
+                  <div className="inline-flex items-center gap-2 px-4 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-500/[0.12] text-emerald-700 dark:text-emerald-400 text-sm font-semibold">
                     <Check size={15} /> Added to {addedDay}
                     <button
                       type="button"
@@ -568,7 +568,7 @@ export function PlaceDetailModal({
                       </h3>
                       <ul className="space-y-1.5">
                         {p.tips!.map((tip, i) => (
-                          <li key={i} className="text-[13px] leading-relaxed text-gray-700 dark:text-white/70 flex items-start gap-2">
+                          <li key={i} className="text-sm leading-relaxed text-gray-700 dark:text-white/70 flex items-start gap-2">
                             <span className="text-gray-300 dark:text-white/30 mt-0.5">•</span>
                             <span>{tip}</span>
                           </li>
@@ -796,7 +796,7 @@ function DayPreview({
       {/* Active day caption + start time */}
       <div className="flex items-center justify-between gap-3 mb-3">
         <div className="min-w-0">
-          <p className="text-[13px] font-semibold text-gray-900 dark:text-white truncate">
+          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">
             {activeDay.label}
           </p>
           <p className="text-[11px] text-gray-500 dark:text-white/50">

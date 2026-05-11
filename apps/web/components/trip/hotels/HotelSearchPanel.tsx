@@ -248,7 +248,7 @@ export function HotelSearchPanel({
       {(showForm || !hasSearched) && (
         <div className="rounded-xl border border-gray-200 dark:border-white/[0.08] bg-gray-50 dark:bg-white/[0.03] p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-[13px] font-semibold text-gray-700 dark:text-gray-300">Search hotels</p>
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">Search hotels</p>
             {hasSearched && (
               <button
                 onClick={() => setShowForm(false)}
@@ -305,13 +305,13 @@ export function HotelSearchPanel({
       {!loading && hasSearched && error && (
         <div className="text-center py-12">
           <Search size={22} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-          <p className="text-[13px] text-red-600 dark:text-red-400 font-medium">Search failed</p>
+          <p className="text-sm text-red-600 dark:text-red-400 font-medium">Search failed</p>
           <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 max-w-sm mx-auto">
             {error === 'unavailable' ? 'Hotel search is temporarily unavailable.' : error}
           </p>
           <button
             onClick={() => setShowForm(true)}
-            className="mt-4 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[13px] font-medium border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
+            className="mt-4 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-sm font-medium border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"
           >
             <Search size={13} /> Change search
           </button>
@@ -321,7 +321,7 @@ export function HotelSearchPanel({
       {!loading && hasSearched && !error && results.length === 0 && (
         <div className="text-center py-12">
           <Building2 size={22} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
-          <p className="text-[13px] text-gray-500 dark:text-gray-400">No hotels found for these dates.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">No hotels found for these dates.</p>
           <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">Try a different city or adjust your dates.</p>
         </div>
       )}
@@ -330,7 +330,7 @@ export function HotelSearchPanel({
       {!loading && results.length > 0 && (
         <>
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[13px] text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               <span className="font-semibold text-gray-900 dark:text-white">{results.length}</span> hotels
               {filteredResults.length < results.length && (
                 <span className="text-gray-400 dark:text-gray-500">
@@ -548,7 +548,7 @@ export function HotelSearchPanel({
             <div className="flex-1 min-w-0">
               {filteredResults.length === 0 ? (
                 <div className="text-center py-16 rounded-xl border border-dashed border-gray-200 dark:border-white/[0.08]">
-                  <p className="text-[13px] text-gray-500 dark:text-gray-400">No hotels match these filters.</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No hotels match these filters.</p>
                   <button
                     onClick={clearAll}
                     className="mt-3 inline-flex items-center gap-1.5 px-4 h-9 rounded-xl text-[12px] font-medium border border-gray-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] transition"

@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { getActivityColor } from '@travyl/shared/viewmodels/calendarViewModel'
+import { usePlaceImages } from '@travyl/shared'
 import { formatHour12 } from './utils'
 import type { SuggestionCard } from './types'
 import type { CalendarActivity } from '@travyl/shared/types'
@@ -23,11 +24,13 @@ function SlotCard({
   originalActivity,
   selected,
   onSelect,
+  imageOverrides,
 }: {
   slot: DaySlotAlternatives
   originalActivity: CalendarActivity | undefined
   selected: SuggestionCard | null
   onSelect: (alternative: SuggestionCard) => void
+  imageOverrides: Map<string, string>
 }) {
   const formatPrice = (price: number | null, currency: string) => {
     if (price === null || price === 0) return 'Free'
@@ -78,7 +81,7 @@ function SlotCard({
           {slot.alternatives.map((alt) => {
             const isSelected = selected?.id === alt.id
             const tagColor = getActivityColor(alt.category)
-            const imageUrl = alt.imageUrl || alt.imageUrls?.[0] || ''
+            const imageUrl = alt.imageUrl || alt.imageUrls?.[0] || imageOverrides.get(alt.name) || ''
 
             return (
               <button
@@ -171,6 +174,24 @@ export function RegenerateDayModal({
     return () => { document.body.style.overflow = prev }
   }, [])
 
+  // ── Enrich alternatives with images via Unsplash ───────────
+  // SerpAPI doesn't always return images, so we fetch them in
+  // parallel via usePlaceImages (same approach as ForYouPanel).
+  const alternativeNames = useMemo(
+    () => slots.flatMap((s) => s.alternatives.map((a) => a.name)),
+    [slots],
+  )
+  const imageResults = usePlaceImages(alternativeNames)
+
+  const imageOverrides = useMemo(() => {
+    const map = new Map<string, string>()
+    alternativeNames.forEach((name, i) => {
+      const url = imageResults[i]?.data?.url
+      if (url) map.set(name, url)
+    })
+    return map
+  }, [alternativeNames, imageResults])
+
   const handleSelect = (activityId: string, alternative: SuggestionCard) => {
     setSelections((prev) => {
       const next = new Map(prev)
@@ -238,6 +259,7 @@ export function RegenerateDayModal({
               originalActivity={originalActivities.find((a) => a.id === slot.activityId)}
               selected={selections.get(slot.activityId) ?? null}
               onSelect={(alt) => handleSelect(slot.activityId, alt)}
+              imageOverrides={imageOverrides}
             />
           ))}
         </div>

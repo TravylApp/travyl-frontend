@@ -27,7 +27,7 @@ export function HotelCard({ hotel }: HotelCardProps) {
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Building2 size={14} className="text-white flex-shrink-0" />
           <div className="min-w-0 flex-1">
-            <span className="block text-[13px] font-semibold text-white truncate">{hotel.name}</span>
+            <span className="block text-sm font-semibold text-white truncate">{hotel.name}</span>
             {hotel.starRating != null && (
               <div className="flex gap-0.5 mt-0.5">
                 {Array.from({ length: hotel.starRating }).map((_, i) => (
@@ -86,7 +86,7 @@ export function HotelCard({ hotel }: HotelCardProps) {
         </div>
 
         {/* Book button */}
-        <button className="w-full mt-3 py-2.5 bg-[#60a5fa] hover:bg-[#3b82f6] text-white text-[13px] font-semibold rounded-xl shadow-md hover:shadow-lg transition-all">
+        <button className="w-full mt-3 py-2.5 bg-[#60a5fa] hover:bg-[#3b82f6] text-white text-sm font-semibold rounded-xl shadow-md hover:shadow-lg transition-all">
           Book Hotel
         </button>
 

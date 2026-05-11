@@ -24,6 +24,24 @@ import {
 
 export const site = new sst.aws.Nextjs('TravylWeb', {
   path: 'apps/web',
+  // /api/trips/plan and /api/trips/extract proxy to FastAPI for AI trip
+  // generation, which routinely takes 30-60s. SST's default Lambda timeout
+  // of 20s would 504 these requests. Cap at 60s — that's CloudFront's max
+  // origin response timeout without a service-quota increase. SST mirrors
+  // server.timeout into the CloudFront origin readTimeout in its KV
+  // metadata; setting it higher than 60s makes the viewer-request function
+  // return "invalid value for origin rewrite" at runtime and breaks the
+  // entire site. If we ever need >60s here, request a CloudFront quota
+  // bump first, then raise both this timeout and the KV readTimeout.
+  server: {
+    timeout: '60 seconds',
+  },
+  permissions: [
+    {
+      actions: ['bedrock:InvokeModel'],
+      resources: ['*'],
+    },
+  ],
   domain: {
     name: 'dev.gotravyl.com',
     dns: false,

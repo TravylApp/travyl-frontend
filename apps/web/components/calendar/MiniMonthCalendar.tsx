@@ -135,7 +135,7 @@ export function MiniMonthCalendar({
         >
           <NavArrowLeft width={14} height={14} />
         </button>
-        <span className="text-[13px] font-semibold text-cal-text">
+        <span className="text-sm font-semibold text-cal-text">
           {formatMonthLabel(viewYear, viewMonth)}
         </span>
         <button

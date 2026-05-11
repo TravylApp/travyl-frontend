@@ -14,7 +14,6 @@ import { TripThemeProvider } from '@/components/trip/TripThemeContext';
 import { CompactTripHeader } from '@/components/trip/CompactTripHeader';
 import { TripMagazineHero } from '@/components/trip/TripMagazineHero';
 import { PlaceDetailOverlay } from '@/components/PlaceDetailOverlay';
-import { TripOnboardingBanner } from '@/components/trip/TripOnboardingBanner';
 import { useTripSettingsRegistration } from '@/stores/tripSettingsStore';
 import { useQuery } from '@tanstack/react-query';
 import type { PlaceItem } from '@travyl/shared';
@@ -435,8 +434,6 @@ function TripLayoutContent({
       {/* Content area */}
       <div className={`relative z-10 ${isCalendar ? 'flex-1 flex flex-col min-h-0' : ''}`}>
         <div className={isCalendar ? 'flex-1 flex flex-col min-h-0 w-full' : isMagazine ? '' : 'mx-auto max-w-[1800px]'}>
-          {isOverview && <TripOnboardingBanner />}
-
           <div className={`flex ${isCalendar ? 'flex-1 min-h-0' : ''}`}>
             {/* Main content */}
             <div className={`flex-1 min-w-0 relative overflow-hidden transition-[padding] duration-200 ease-out ${

@@ -38,7 +38,10 @@ export async function addTransit(tripId: string, input: CreateTransitBookingInpu
     .insert({ trip_id: tripId, data: input.data })
     .select()
     .single();
-  if (error) throw error;
+  if (error) {
+    if (MISSING_TABLE_CODES.has(error.code ?? '')) throw Object.assign(error, { _missingTable: true });
+    throw error;
+  }
   return {
     id: data.id,
     trip_id: data.trip_id,
@@ -54,7 +57,10 @@ export async function updateTransit(id: string, input: Partial<CreateTransitBook
     .eq('id', id)
     .select()
     .single();
-  if (error) throw error;
+  if (error) {
+    if (MISSING_TABLE_CODES.has(error.code ?? '')) throw Object.assign(error, { _missingTable: true });
+    throw error;
+  }
   return {
     id: data.id,
     trip_id: data.trip_id,
@@ -68,5 +74,8 @@ export async function deleteTransit(id: string): Promise<void> {
     .from('transit')
     .delete()
     .eq('id', id);
-  if (error) throw error;
+  if (error) {
+    if (MISSING_TABLE_CODES.has(error.code ?? '')) throw Object.assign(error, { _missingTable: true });
+    throw error;
+  }
 }
